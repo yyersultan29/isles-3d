@@ -73,10 +73,10 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 - [x] Use instancing / geometry reuse for repeated vegetation.
 
 **Mountains and cliffs**
-- [ ] Improve large-scale mountain silhouettes before adding polygon density.
-- [ ] Add layered rock colors, believable ridges, crevices and controlled snow coverage.
-- [ ] Add sparse rock debris at bases and avoid harsh repetitive triangular patterns.
-- [ ] Preserve hex tile coordinates and height relationships.
+- [x] Improve large-scale mountain silhouettes before adding polygon density. Done in V3.1: 2–3 capsule massifs per tile with a saddle ridge. The triangle count is unchanged (≈1.20M).
+- [x] Add layered rock colors, believable ridges, crevices and controlled snow coverage. Done in V3.1: radial erosion gullies, rock buttresses and soft strata ledges, plus curvature-based snow that forms caps on top and streaks in the gullies.
+- [ ] Add sparse rock debris at bases and avoid harsh repetitive triangular patterns. The mountain surface is done in V3.1. Still open: the debris boulders use faceted low-poly meshes.
+- [x] Preserve hex tile coordinates and height relationships. Verified in V3.1: the token plateau and the zero height at the rails are unchanged, and all three mountain tokens are readable.
 
 **Settlements and pieces**
 - [x] Improve roofs, timber/stone details, doors, windows and chimneys.
@@ -245,7 +245,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | Milestone | Status | Commit / PR | Screenshot | Notes |
 |---|---|---|---|---|
 | M0 — Baseline | Done | `m0-baseline` | `screenshots/baseline/` | 162 meshes, ≈1.2M tris, ~47 fps @1440×900 DPR2 |
-| V3 — Environment assets | In progress | `2c4fdb8`, `bdc6ec0` | — | Open: mountain silhouettes, cliff facets, seam/material pass |
+| V3 — Environment assets | In progress | `2c4fdb8`, `bdc6ec0`, V3.1 | `screenshots/milestones/v3.1/` | V3.1 mountains done; open: debris boulders, island cliff facets, seam/material pass |
 | V4 — Lighting & water | Partly done (unreviewed) | `bba5a95`, `2c4fdb8` | — | Calmer ocean, gradient, thin foam already in; formal review pending |
 | V5 — Micro-animations | Not started | — | — | Subtle motion |
 | V6 — HUD polish | Not started | — | — | Responsive |
@@ -259,4 +259,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** finish the open **V3** items: mountain silhouettes, cliff facets, and terrain seams and materials.
+**Recommended next action:** **V3.2**. Fix the faceted island cliffs and debris boulders, then do **V3.3**: terrain seams and materials.

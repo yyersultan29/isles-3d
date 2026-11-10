@@ -73,24 +73,82 @@ export function findTile(x: number, z: number): Tile | null {
 
 // ---------- terrain height per biome (world coords, local to tile) ----------
 
-const MOUNTAIN_PEAKS = new Map<number, { x: number; z: number; h: number; r: number }[]>()
-function peaksFor(t: Tile) {
-  let p = MOUNTAIN_PEAKS.get(t.id)
-  if (!p) {
+/**
+ * Mountain layout per tile: 2–3 broad massifs (capsules = elongated ridges), placed behind and beside the
+ * token so the number stays visible from the camera (+z), plus a connecting saddle ridge.
+ */
+interface Massif { ax: number; az: number; bx: number; bz: number; h: number; r: number }
+const MOUNTAIN_MASSIFS = new Map<number, Massif[]>()
+function massifsFor(t: Tile) {
+  let m = MOUNTAIN_MASSIFS.get(t.id)
+  if (!m) {
     const rnd = mulberry32(t.seed)
-    p = []
-    const n = 6
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + rnd() * 0.6 + t.id
-      const rr = 0.5 + rnd() * 0.18
-      // taller peaks toward the back (north) so the token stays readable
-      const back = Math.sin(a) < 0 ? 1 : 0.62
-      p.push({ x: Math.cos(a) * rr, z: Math.sin(a) * rr, h: (0.45 + rnd() * 0.35) * back, r: 0.44 + rnd() * 0.14 })
-    }
-    p.push({ x: (rnd() - 0.5) * 0.2, z: -0.6, h: 0.78, r: 0.52 })
-    MOUNTAIN_PEAKS.set(t.id, p)
+    const flip = rnd() < 0.5 ? -1 : 1 // mirror layouts so the three mountain tiles differ
+    const j = () => (rnd() - 0.5) * 0.12
+    m = [
+      // main massif: a short ridge behind the token, tallest point toward one side
+      { ax: flip * -0.42 + j(), az: -0.5 + j(), bx: flip * 0.12 + j(), bz: -0.6 + j(), h: 0.74 + rnd() * 0.1, r: 0.42 },
+      // secondary peak on the flank
+      { ax: flip * 0.52 + j(), az: -0.16 + j(), bx: flip * 0.58 + j(), bz: 0.1 + j(), h: 0.5 + rnd() * 0.1, r: 0.34 },
+      // lower foothill on the opposite front flank
+      { ax: flip * -0.56 + j(), az: 0.22 + j(), bx: flip * -0.5 + j(), bz: 0.4 + j(), h: 0.28 + rnd() * 0.08, r: 0.3 },
+    ]
+    MOUNTAIN_MASSIFS.set(t.id, m)
   }
-  return p
+  return m
+}
+
+/** Distance from p to segment ab, plus the segment parameter (0..1). */
+function segDist(px: number, pz: number, m: Massif) {
+  const dx = m.bx - m.ax, dz = m.bz - m.az
+  const k = clamp(((px - m.ax) * dx + (pz - m.az) * dz) / (dx * dx + dz * dz))
+  return [Math.hypot(px - (m.ax + dx * k), pz - (m.az + dz * k)), k] as const
+}
+
+function mountainHeight(t: Tile, lx: number, lz: number, x: number, z: number, s: number) {
+  const ms = massifsFor(t)
+  let m = 0
+  let crestAngle = 0
+  for (let i = 0; i < ms.length; i++) {
+    const q = ms[i]
+    // slight domain warp so ridges aren't perfectly straight
+    const wx = lx + 0.06 * noise2(x * 2.3 + i, z * 2.3)
+    const wz = lz + 0.06 * noise2(x * 2.3, z * 2.3 - i)
+    const [d, k] = segDist(wx, wz, q)
+    const u = d / q.r
+    if (u >= 1) continue
+    // broad shoulders, steeper near the crest; the peak height varies along the ridge
+    const along = 0.82 + 0.18 * Math.sin(k * Math.PI + i)
+    const prof = Math.pow(1 - u * u, 1.6) * (1 - 0.35 * u)
+    const v = q.h * along * prof
+    if (v > m) { m = v; crestAngle = Math.atan2(wz - (q.az + (q.bz - q.az) * k), wx - (q.ax + (q.bx - q.ax) * k)) }
+  }
+  // saddle between main and secondary massifs
+  {
+    const a = ms[0], b = ms[1]
+    const sad: Massif = { ax: a.bx, az: a.bz, bx: b.ax, bz: b.az, h: 0, r: 0.22 }
+    const [d] = segDist(lx, lz, sad)
+    if (d < sad.r) m = Math.max(m, 0.34 * Math.pow(1 - (d / sad.r) ** 2, 1.5))
+  }
+  if (m > 0.01) {
+    // erosion gullies running down from the crests (radial streak noise), deeper mid-slope
+    const radial = Math.hypot(lx, lz)
+    const gully = Math.abs(noise2(crestAngle * 3.2 + s, radial * 2.2 + x * 0.8))
+    const mid = smoothstep(0.06, 0.25, m) * (1 - smoothstep(0.55, 0.8, m))
+    m *= 1 - 0.22 * (1 - smoothstep(0.0, 0.35, gully)) * mid
+    // restrained rock breakup instead of the old high-frequency "saw"
+    const rg = ridged(x * 2.2 + s, z * 2.2, 3)
+    m += (rg - 0.4) * 0.1 * clamp(m * 2.5)
+    // mid-frequency rock buttresses and ledges: breaks the smooth "dough" look without a saw silhouette
+    const rk = ridged(x * 4.6 - s, z * 4.6 + s, 2)
+    m += (rk - 0.45) * 0.07 * smoothstep(0.08, 0.3, m)
+    const step = 0.055
+    const q = m / step
+    const f = q - Math.floor(q)
+    m += (smoothstep(0.55, 0.9, f) - f) * step * 0.35 * smoothstep(0.1, 0.25, m) // soft strata ledges
+    m += 0.012 * noise2(x * 9, z * 9) * clamp(m * 4)
+  }
+  return Math.max(0, m) + 0.05 + 0.025 * fbm(x * 4, z * 4, 2)
 }
 
 /** Height above the tile plane for a world point inside tile t. */
@@ -129,15 +187,7 @@ export function tileHeight(t: Tile, x: number, z: number): number {
       break
     }
     case 'mountain': {
-      let m = 0
-      for (const p of peaksFor(t)) {
-        const dd = Math.hypot(lx - p.x, lz - p.z) / p.r
-        if (dd < 1) m = Math.max(m, p.h * Math.pow(1 - dd, 1.1))
-      }
-      const rg = ridged(x * 3.1 + s, z * 3.1, 4)
-      m += m > 0.02 ? (rg - 0.35) * 0.27 * clamp(m * 2) : 0
-      m += 0.05 + 0.03 * fbm(x * 4, z * 4, 2)
-      h = m * (0.25 + 0.75 * centre)
+      h = mountainHeight(t, lx, lz, x, z, s) * (0.25 + 0.75 * centre)
       break
     }
   }

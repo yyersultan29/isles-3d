@@ -11,7 +11,7 @@ const PAL = {
   wheat: C('#c48a24'), wheatLight: C('#e6b444'),
   sand: C('#d8b47a'), sandLight: C('#efd6a4'), sandDark: C('#b08752'),
   clay: C('#a24a2a'), clayLight: C('#c8783f'), clayDark: C('#61291a'), clayGreen: C('#66762c'),
-  rock: C('#7f786f'), rockDark: C('#48423d'), rockLight: C('#a39b90'), snow: C('#f4f6f8'), snowShade: C('#cfd8e2'),
+  rock: C('#776f66'), rockDark: C('#423c37'), rockLight: C('#9d958a'), snow: C('#f4f6f8'), snowShade: C('#cfd8e2'),
   dirt: C('#9b744a'), dirtDark: C('#6e5032'),
 }
 
@@ -58,15 +58,24 @@ function biomeColor(t: Tile, x: number, z: number, h: number, ny: number, out: T
       const gz = (tileHeight(t, x, z + e) - tileHeight(t, x, z - e)) / (2 * e)
       const nys = 1 / Math.sqrt(1 + gx * gx + gz * gz)
       ny = ny * 0.3 + nys * 0.7
+      // curvature (Laplacian): >0 in gullies/hollows, <0 on ridges and crests
+      const c0 = tileHeight(t, x, z)
+      const lap = (tileHeight(t, x + e, z) + tileHeight(t, x - e, z) + tileHeight(t, x, z + e) + tileHeight(t, x, z - e) - 4 * c0) / (e * e)
+      const hollow = smoothstep(0.4, 3, lap)
+      const ridge = smoothstep(0.4, 3, -lap)
       const steep = smoothstep(0.85, 0.45, ny)
       // horizontal strata give the rock a layered, carved look
       const strata = Math.sin(h * 70 + noise2(x * 5, z * 5) * 3) * 0.5 + 0.5
-      out.lerpColors(PAL.rockLight, PAL.rock, clamp(n1 * 0.6 + n2 * 0.1 + steep * 0.45))
+      out.lerpColors(PAL.rockLight, PAL.rock, clamp(0.35 + n1 * 0.5 + n2 * 0.1 + steep * 0.45))
       out.lerp(PAL.rockDark, steep * 0.5 + strata * 0.24)
-      out.lerp(PAL.rockLight, smoothstep(0.75, 0.95, noise2(x * 9, h * 40)) * 0.35) // pale stone bands
-      // snow settles on upward-facing facets near the peaks, with a few streaks lower down
-      const snowLine = 0.34 + fbm(x * 1.5, z * 1.5, 2) * 0.1
-      const snow = smoothstep(snowLine, snowLine + 0.09, h) * smoothstep(0.42, 0.72, ny)
+      out.lerp(PAL.rockLight, smoothstep(0.78, 0.95, noise2(x * 9, h * 40)) * 0.22) // pale stone bands
+      out.lerp(PAL.rockLight, ridge * 0.12) // sunlit, weathered crests
+      out.lerp(PAL.rockDark, hollow * 0.35 * (1 - smoothstep(0.3, 0.45, h))) // shadowed lower gullies
+      // snow: caps on gentle upper slopes, plus streaks that collect in gullies below the snow line
+      const snowLine = 0.36 + fbm(x * 1.5, z * 1.5, 2) * 0.08
+      const cap = smoothstep(snowLine, snowLine + 0.05, h) * smoothstep(0.45, 0.65, ny)
+      const streak = smoothstep(0.3, 0.6, hollow) * smoothstep(snowLine - 0.2, snowLine - 0.06, h) * smoothstep(0.25, 0.5, ny)
+      const snow = Math.max(cap, streak)
       tmp.lerpColors(PAL.snowShade, PAL.snow, clamp(ny * 1.4 - 0.3))
       out.lerp(tmp, snow)
       out.lerp(PAL.grassDark, smoothstep(0.1, 0.04, h) * 0.7)
