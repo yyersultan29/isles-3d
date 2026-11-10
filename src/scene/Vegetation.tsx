@@ -26,8 +26,11 @@ for (const h of HARBORS) {
 }
 export const blocked = (x: number, z: number, pad = 0) => blockers.some(([bx, bz, r]) => (x - bx) ** 2 + (z - bz) ** 2 < (r + pad) ** 2)
 
+/** True for the area between a tile's number token and the camera (+z), where tall props would hide the number. */
+const tokenSightline = (lx: number, lz: number) => lz > 0 && lz < 0.62 && Math.abs(lx) < 0.3 + lz * 0.15
+
 /** Poisson-ish scatter inside a tile. */
-function scatter(t: Tile, n: number, minD: number, opts: { dMax?: number; rMin?: number; seed?: number; accept?: (x: number, z: number) => boolean } = {}) {
+function scatter(t: Tile, n: number, minD: number, opts: { dMax?: number; rMin?: number; seed?: number; keepTokenClear?: boolean; accept?: (x: number, z: number) => boolean } = {}) {
   const rnd = mulberry32(t.seed + (opts.seed ?? 0))
   const pts: [number, number][] = []
   const dMax = opts.dMax ?? 0.84
@@ -41,6 +44,7 @@ function scatter(t: Tile, n: number, minD: number, opts: { dMax?: number; rMin?:
     if (Math.hypot(lx, lz) < rMin) continue
     const x = t.x + lx, z = t.z + lz
     if (blocked(x, z)) continue
+    if (opts.keepTokenClear && tokenSightline(lx, lz)) continue
     if (opts.accept && !opts.accept(x, z)) continue
     if (pts.some(([px, pz]) => (px - x) ** 2 + (pz - z) ** 2 < minD * minD)) continue
     pts.push([x, z])
@@ -109,13 +113,13 @@ function Pines() {
       let size = [0.28, 0.4]
       if (t.biome === 'forest') {
         // density varies across the tile: a thick core with clearings near the edge
-        pts = scatter(t, 70, 0.105, { rMin: 0.4, dMax: 0.86, accept: (x, z) => fbm(x * 2.6 + t.seed, z * 2.6, 2) > -0.35 })
+        pts = scatter(t, 70, 0.105, { rMin: 0.4, dMax: 0.86, keepTokenClear: true, accept: (x, z) => fbm(x * 2.6 + t.seed, z * 2.6, 2) > -0.35 })
         size = [0.22, 0.5]
       }
-      else if (t.biome === 'hills') pts = scatter(t, 6, 0.2, { seed: 3, dMax: 0.8, accept: (x, z) => fbm(x * 2, z * 2) > 0.1 })
-      else if (t.biome === 'pasture') { pts = scatter(t, 4, 0.25, { seed: 8, rMin: 0.55 }); size = [0.24, 0.32] }
-      else if (t.biome === 'mountain') { pts = scatter(t, 10, 0.12, { seed: 4, rMin: 0.4, accept: (x, z) => tileHeight(t, x, z) < 0.18 }); size = [0.18, 0.26] }
-      else if (t.biome === 'wheat') { pts = scatter(t, 2, 0.4, { seed: 9, rMin: 0.7 }); size = [0.24, 0.3] }
+      else if (t.biome === 'hills') pts = scatter(t, 6, 0.2, { seed: 3, keepTokenClear: true, dMax: 0.8, accept: (x, z) => fbm(x * 2, z * 2) > 0.1 })
+      else if (t.biome === 'pasture') { pts = scatter(t, 4, 0.25, { seed: 8, keepTokenClear: true, rMin: 0.55 }); size = [0.24, 0.32] }
+      else if (t.biome === 'mountain') { pts = scatter(t, 10, 0.12, { seed: 4, keepTokenClear: true, rMin: 0.4, accept: (x, z) => tileHeight(t, x, z) < 0.18 }); size = [0.18, 0.26] }
+      else if (t.biome === 'wheat') { pts = scatter(t, 2, 0.4, { seed: 9, keepTokenClear: true, rMin: 0.7 }); size = [0.24, 0.3] }
       const broadChance = t.biome === 'forest' ? 0.1 : t.biome === 'pasture' || t.biome === 'wheat' ? 0.7 : t.biome === 'hills' ? 0.35 : 0
       for (const [x, z] of pts) push(x, z, tileHeight(t, x, z), size[0] + rnd() * (size[1] - size[0]), broadChance)
     }

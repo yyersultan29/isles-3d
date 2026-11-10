@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { HARBORS, corner, tileAt, WATER_Y, islandRadius } from './board'
 import { signTexture } from './textures'
+import { StaticBatch } from './StaticBatch'
 
 const wood = new THREE.MeshStandardMaterial({ color: '#8b5a32', roughness: 0.85 })
 const woodDark = new THREE.MeshStandardMaterial({ color: '#5a3a20', roughness: 0.9 })
@@ -74,14 +75,27 @@ function Sign({ kind, ratio }: { kind: (typeof HARBORS)[number]['kind']; ratio: 
   )
 }
 
+const LANTERN_POOL = (() => {
+  const c = document.createElement('canvas')
+  c.width = c.height = 64
+  const g = c.getContext('2d')!
+  const grd = g.createRadialGradient(32, 32, 2, 32, 32, 32)
+  grd.addColorStop(0, 'rgba(255,180,90,0.9)')
+  grd.addColorStop(0.5, 'rgba(255,150,60,0.3)')
+  grd.addColorStop(1, 'rgba(255,140,50,0)')
+  g.fillStyle = grd
+  g.fillRect(0, 0, 64, 64)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.5, toneMapped: false })
+})()
+
 function Lantern({ phase }: { phase: number }) {
   const mat = useRef<THREE.MeshStandardMaterial>(null)
-  const light = useRef<THREE.PointLight>(null)
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     const f = 1 + Math.sin(t * 8 + phase) * 0.12 + Math.sin(t * 21 + phase * 2) * 0.08
     if (mat.current) mat.current.emissiveIntensity = 6 * f
-    if (light.current) light.current.intensity = 0.45 * f
   })
   return (
     <group>
@@ -95,7 +109,10 @@ function Lantern({ phase }: { phase: number }) {
         <boxGeometry args={[0.032, 0.042, 0.032]} />
         <meshStandardMaterial ref={mat} color="#ffd38a" emissive="#ff9933" emissiveIntensity={6} />
       </mesh>
-      <pointLight ref={light} position={[0.06, 0.26, 0.04]} color="#ffa64d" intensity={0.45} distance={0.9} decay={2} />
+      {/* warm light pool on the planks, replacing a point light */}
+      <mesh position={[0.06, 0.012, 0]} rotation-x={-Math.PI / 2} material={LANTERN_POOL} renderOrder={3}>
+        <planeGeometry args={[0.5, 0.5]} />
+      </mesh>
     </group>
   )
 }
@@ -129,7 +146,7 @@ export function harborSignTops(): [number, number, number][] {
 export function Harbors() {
   const docks = useMemo(dockLayout, [])
   return (
-    <group>
+    <StaticBatch>
       {docks.map(({ h, i, mx, mz, out, ramp }) => {
         const drop = -DECK_Y
         const ang = Math.atan2(drop, ramp)
@@ -155,6 +172,6 @@ export function Harbors() {
           </group>
         )
       })}
-    </group>
+    </StaticBatch>
   )
 }

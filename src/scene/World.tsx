@@ -180,6 +180,8 @@ export function World() {
         gl.toneMapping = THREE.NoToneMapping
         scene.background = new THREE.Color('#0b2236')
         scene.fog = new THREE.Fog('#1f3f55', 17, 40)
+        // dev-only hook for scene audits (scripts/audit.mjs)
+        if (import.meta.env.DEV) Object.assign(window, { __isles: { gl, scene } })
       }}
     >
       <CameraRig />

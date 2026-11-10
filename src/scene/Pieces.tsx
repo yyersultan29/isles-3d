@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { TILES, tileHeight, corner, tileAt, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight } from './board'
 import { tokenTexture } from './textures'
+import { StaticBatch } from './StaticBatch'
 import { mulberry32 } from './noise'
 
 // ---------------- Number tokens ----------------
@@ -21,6 +22,14 @@ function tokenSideGeometry() {
   return new THREE.LatheGeometry(pts, 48)
 }
 
+const TOKEN_SIDE = new THREE.MeshStandardMaterial({ color: '#d9c296', roughness: 0.6 })
+const tokenTopMats = new Map<number, THREE.MeshStandardMaterial>()
+const tokenTop = (n: number) => {
+  let m = tokenTopMats.get(n)
+  if (!m) tokenTopMats.set(n, (m = new THREE.MeshStandardMaterial({ map: tokenTexture(n), roughness: 0.55 })))
+  return m
+}
+
 export function Tokens() {
   const side = useMemo(() => tokenSideGeometry(), [])
   const top = useMemo(() => {
@@ -29,7 +38,7 @@ export function Tokens() {
     return g
   }, [])
   return (
-    <group>
+    <StaticBatch>
       {TILES.filter((t) => t.number).map((t) => {
         let y = 0
         for (let a = 0; a < 8; a++) {
@@ -39,16 +48,12 @@ export function Tokens() {
         y = Math.max(y, tileHeight(t, t.x, t.z)) + 0.04
         return (
           <group key={t.id} position={[t.x, y, t.z]} rotation-y={0}>
-            <mesh geometry={side} castShadow receiveShadow>
-              <meshStandardMaterial color="#d9c296" roughness={0.6} />
-            </mesh>
-            <mesh geometry={top} position-y={0.0525} receiveShadow>
-              <meshStandardMaterial map={tokenTexture(t.number!)} roughness={0.55} />
-            </mesh>
+            <mesh geometry={side} material={TOKEN_SIDE} castShadow receiveShadow />
+            <mesh geometry={top} material={tokenTop(t.number!)} position-y={0.0525} receiveShadow />
           </group>
         )
       })}
-    </group>
+    </StaticBatch>
   )
 }
 
@@ -114,6 +119,18 @@ function windowGeometry(w: number, d: number, wallH: number, sw = 0.03, sh = 0.0
   }
   win(0, wallH * 0.95, d / 2 + inset, 0)
   win(0, wallH * 0.95, -d / 2 - inset, Math.PI)
+  return mergeGeometries(parts)!
+}
+
+/** Pairs of open shutters flanking each side window. */
+function shutterGeometry(w: number, d: number, wallH: number) {
+  const parts: THREE.BufferGeometry[] = []
+  for (const sx of [-1, 1]) for (const zz of [-d / 4, d / 4]) for (const side of [-1, 1]) {
+    const g = new THREE.BoxGeometry(0.004, 0.05, 0.016)
+    g.translate((sx * w) / 2 + sx * 0.003, wallH * 0.55, zz + side * 0.028)
+    parts.push(g.toNonIndexed())
+  }
+  for (const p of parts) for (const k of Object.keys(p.attributes)) if (k !== 'position' && k !== 'normal') p.deleteAttribute(k)
   return mergeGeometries(parts)!
 }
 
@@ -217,7 +234,11 @@ function House({ w, d, wallH, roofH, wall, roof, ridge }: { w: number; d: number
     return {
       ...h,
       win: windowGeometry(w, d, wallH),
-      frame: windowGeometry(w, d, wallH, 0.042, 0.052, 0.0015),
+      frame: (() => {
+        const f = windowGeometry(w, d, wallH, 0.042, 0.052, 0.0015).toNonIndexed()
+        f.deleteAttribute('uv')
+        return mergeGeometries([f, shutterGeometry(w, d, wallH)])!
+      })(),
       timber: timberGeometry(w, d, wallH),
     }
   }, [w, d, wallH, roofH])
@@ -262,18 +283,34 @@ function Chimney({ x, y, z }: { x: number; y: number; z: number }) {
   )
 }
 
+const PAD = new THREE.MeshStandardMaterial({ color: '#7d6a55', roughness: 0.95 })
+
+/** One material set per player, shared by every house and road of that colour (lets StaticBatch merge them). */
+const playerMatCache = new Map<Player, { wall: THREE.MeshStandardMaterial; roof: THREE.MeshStandardMaterial; ridge: THREE.MeshStandardMaterial; road: THREE.MeshStandardMaterial; roadEdge: THREE.MeshStandardMaterial }>()
+function playerMats(player: Player) {
+  let m = playerMatCache.get(player)
+  if (!m) {
+    const pc = PLAYER_COLORS[player]
+    m = {
+      wall: new THREE.MeshStandardMaterial({ color: pc.wall, map: plasterTex, roughness: 0.7 }),
+      roof: new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(1.12), map: shingleTex, roughness: 0.62 }),
+      ridge: new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(0.65), roughness: 0.6 }),
+      road: new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.5, emissive: pc.wall, emissiveIntensity: 0.12 }),
+      roadEdge: new THREE.MeshStandardMaterial({ color: pc.roof, roughness: 0.7 }),
+    }
+    playerMatCache.set(player, m)
+  }
+  return m
+}
+
 function Settlement({ player, city }: { player: Player; city: boolean }) {
-  const pc = PLAYER_COLORS[player]
-  const wall = useMemo(() => new THREE.MeshStandardMaterial({ color: pc.wall, map: plasterTex, roughness: 0.7 }), [pc])
-  const roof = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(1.12), map: shingleTex, roughness: 0.62 }), [pc])
-  const ridge = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(0.65), roughness: 0.6 }), [pc])
+  const { wall, roof, ridge } = playerMats(player)
   const pad = city ? 0.26 : 0.18
   return (
     <group>
       {/* trodden earth pad + warm light pool */}
-      <mesh position-y={0.006} castShadow receiveShadow>
+      <mesh position-y={0.006} material={PAD} castShadow receiveShadow>
         <cylinderGeometry args={[pad * 0.92, pad, 0.016, 10]} />
-        <meshStandardMaterial color="#7d6a55" roughness={0.95} />
       </mesh>
       <mesh position-y={0.016} rotation-x={-Math.PI / 2} material={GROUND_GLOW}>
         <planeGeometry args={[pad * 2.6, pad * 2.6]} />
@@ -300,7 +337,7 @@ function Settlement({ player, city }: { player: Player; city: boolean }) {
 
 export function Buildings() {
   return (
-    <group>
+    <StaticBatch>
       {BUILDINGS.map((b, i) => {
         const t = tileAt(...b.tile)
         const [x, z] = corner(t, b.corner)
@@ -314,7 +351,7 @@ export function Buildings() {
       })}
       <Roads />
       <Lanterns />
-    </group>
+    </StaticBatch>
   )
 }
 
@@ -324,26 +361,24 @@ function Roads() {
       ROADS.map((r) => {
         const t = tileAt(...r.tile)
         const a = corner(t, r.edge), b = corner(t, (r.edge + 1) % 6)
-        return { a, b, color: PLAYER_COLORS[r.player].wall, edge: PLAYER_COLORS[r.player].roof }
+        return { a, b, mats: playerMats(r.player) }
       }),
     [],
   )
   return (
     <group>
-      {items.map(({ a, b, color, edge }, i) => {
+      {items.map(({ a, b, mats }, i) => {
         const len = Math.hypot(b[0] - a[0], b[1] - a[1])
         const ang = -Math.atan2(b[1] - a[1], b[0] - a[0])
         return (
           <group key={i} position={[(a[0] + b[0]) / 2, 0.03, (a[1] + b[1]) / 2]} rotation-y={ang}>
             {/* darker plinth along the rail, then two chunky painted blocks on top */}
-            <mesh position-y={0.012} castShadow receiveShadow>
+            <mesh position-y={0.012} material={mats.roadEdge} castShadow receiveShadow>
               <boxGeometry args={[len * 0.74, 0.03, 0.135]} />
-              <meshStandardMaterial color={edge} roughness={0.7} />
             </mesh>
             {[-0.19, 0.19].map((f, k) => (
-              <mesh key={k} position={[f * len, 0.05, 0]} castShadow receiveShadow>
+              <mesh key={k} position={[f * len, 0.05, 0]} material={mats.road} castShadow receiveShadow>
                 <boxGeometry args={[len * 0.355, 0.06, 0.11]} />
-                <meshStandardMaterial color={color} roughness={0.5} emissive={color} emissiveIntensity={0.12} />
               </mesh>
             ))}
           </group>
@@ -352,6 +387,8 @@ function Roads() {
     </group>
   )
 }
+
+const LANTERN_POST = new THREE.MeshStandardMaterial({ color: '#2c2622' })
 
 /** Small lantern posts next to cities; flickering warm light. */
 function Lanterns() {
@@ -375,9 +412,8 @@ function Lanterns() {
     <group>
       {spots.map(([x, y, z], i) => (
         <group key={i} position={[x, y, z]}>
-          <mesh position-y={0.08} castShadow>
+          <mesh position-y={0.08} material={LANTERN_POST} castShadow>
             <cylinderGeometry args={[0.008, 0.01, 0.16, 6]} />
-            <meshStandardMaterial color="#2c2622" />
           </mesh>
           <mesh position-y={0.17}>
             <boxGeometry args={[0.03, 0.035, 0.03]} />
