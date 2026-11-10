@@ -46,13 +46,16 @@ Good CC0 sources include Kenney (kenney.nl), Quaternius (quaternius.com) and Pol
 ## Known differences from the reference
 - The reference is a painted concept, so its micro-detail, such as individual wheat ears and rock texture, can't be matched exactly with real-time procedural geometry.
 - Avatars are stylised SVG faces, not painted portraits.
-- The south harbour sign sits behind the resource-card tray at the default framing.
+- At 16:10 and 16:9 the south harbour sign sits behind the card tray, and the east 2:1 sign sits behind the dice panel. They're visible at 4:3.
 - The decorative corner cliffs and waterfall are mostly outside the frame or behind the HUD at 16:10 and 16:9. They only show on narrow or 4:3 windows, or when you orbit the camera.
 - The ocean has sun glints and wave crests, but it lacks the reference's painterly highlights and reads slightly flatter.
 - Forest trees are procedural cones in six shapes. The reference's painted conifers have more silhouette detail; a GLB tree set would close that gap.
 
 ## Framing
-The camera opens up its vertical FOV on viewports narrower than 16:10 (`CameraRig` in `World.tsx`), so the whole island stays between the HUD columns. You can override the framing for testing with `?cam=x,y,z&tgt=x,y,z`.
+`CameraRig` in `World.tsx` keeps a fixed 43° camera angle. On every resize it solves for camera distance and pan so the board fills the screen area the HUD doesn't cover:
+- The hex corners must stay clear of the left nav, the right HUD column and the card tray.
+- The harbour signs must stay below the top edge.
+- The west signs and the island rim must stay on screen. You can override the framing for testing with `?cam=x,y,z&tgt=x,y,z`.
 
 ## Deploy
 Live at **https://yyersultan29.github.io/isles-3d/**.

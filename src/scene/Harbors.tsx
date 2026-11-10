@@ -81,7 +81,7 @@ function Lantern({ phase }: { phase: number }) {
     const t = clock.elapsedTime
     const f = 1 + Math.sin(t * 8 + phase) * 0.12 + Math.sin(t * 21 + phase * 2) * 0.08
     if (mat.current) mat.current.emissiveIntensity = 6 * f
-    if (light.current) light.current.intensity = 0.9 * f
+    if (light.current) light.current.intensity = 0.45 * f
   })
   return (
     <group>
@@ -95,33 +95,46 @@ function Lantern({ phase }: { phase: number }) {
         <boxGeometry args={[0.032, 0.042, 0.032]} />
         <meshStandardMaterial ref={mat} color="#ffd38a" emissive="#ff9933" emissiveIntensity={6} />
       </mesh>
-      <pointLight ref={light} position={[0.06, 0.26, 0.04]} color="#ffa64d" intensity={0.9} distance={1.1} decay={2} />
+      <pointLight ref={light} position={[0.06, 0.26, 0.04]} color="#ffa64d" intensity={0.45} distance={0.9} decay={2} />
     </group>
   )
 }
 
+export const SIGN_SCALE = 1.5
+const DECK_Y = WATER_Y + 0.13
+const PIER_LEN = 0.46
+
+function dockLayout() {
+  return HARBORS.map((h, i) => {
+    const t = tileAt(...h.tile)
+    const a = corner(t, h.edge), b = corner(t, (h.edge + 1) % 6)
+    const mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2
+    const out = Math.atan2(mz - t.z, mx - t.x) // outward direction
+    const start = Math.hypot(mx, mz)
+    const ramp = Math.max(0.3, islandRadius(out) - start + 0.12)
+    return { h, i, mx, mz, out, ramp }
+  })
+}
+
+/** World positions of the top edge of every harbour sign (used by the camera framing). */
+export function harborSignTops(): [number, number, number][] {
+  return dockLayout().map(({ mx, mz, out, ramp }) => {
+    const along = ramp + 0.04 + PIER_LEN * 0.35
+    const side = 0.28
+    // local +z = outward, local +x = (sin out, -cos out)
+    return [mx + Math.cos(out) * along + Math.sin(out) * side, DECK_Y + 0.47 * SIGN_SCALE, mz + Math.sin(out) * along - Math.cos(out) * side]
+  })
+}
+
 export function Harbors() {
-  const docks = useMemo(
-    () =>
-      HARBORS.map((h, i) => {
-        const t = tileAt(...h.tile)
-        const a = corner(t, h.edge), b = corner(t, (h.edge + 1) % 6)
-        const mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2
-        const out = Math.atan2(mz - t.z, mx - t.x) // outward direction
-        const start = Math.hypot(mx, mz)
-        const ramp = Math.max(0.3, islandRadius(out) - start + 0.12)
-        return { h, i, mx, mz, out, ramp }
-      }),
-    [],
-  )
-  const DECK_Y = WATER_Y + 0.13
+  const docks = useMemo(dockLayout, [])
   return (
     <group>
       {docks.map(({ h, i, mx, mz, out, ramp }) => {
         const drop = -DECK_Y
         const ang = Math.atan2(drop, ramp)
         const rampLen = Math.hypot(drop, ramp)
-        const pierLen = 0.46
+        const pierLen = PIER_LEN
         return (
           <group key={i} position={[mx, 0, mz]} rotation-y={Math.PI / 2 - out}>
             <group position={[0, 0.0, 0.04]} rotation-x={ang}>
@@ -129,7 +142,7 @@ export function Harbors() {
             </group>
             <group position={[0, DECK_Y, ramp + 0.04]}>
               <Pier length={pierLen} />
-              <group position={[0.28, 0.0, pierLen * 0.35]} rotation-y={-(Math.PI / 2 - out)} scale={1.9}>
+              <group position={[0.28, 0.0, pierLen * 0.35]} rotation-y={-(Math.PI / 2 - out)} scale={SIGN_SCALE}>
                 <Sign kind={h.kind} ratio={h.ratio} />
               </group>
               <group position={[-0.17, 0, pierLen * 0.9]}>

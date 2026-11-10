@@ -146,7 +146,7 @@ function Wheat() {
     const rnd = mulberry32(77)
     for (const t of TILES.filter((t) => t.biome === 'wheat')) {
       // field patches with rows in varying directions
-      const cell = 0.024
+      const cell = 0.02
       for (let gx = -0.9; gx <= 0.9; gx += cell) {
         for (let gz = -1; gz <= 1; gz += cell * 0.86) {
           const lx = gx + (rnd() - 0.5) * cell * 1.2
@@ -242,6 +242,12 @@ function Rocks() {
         b[i(rnd)].push({ x, y: tileHeight(t, x, z) - 0.01, z, s: 0.03 + rnd() * rnd() * 0.1, ry: rnd() * 6.28, tint })
       }
     }
+    // larger outcrops half-buried on mountain flanks break up the faceted slopes
+    for (const t of TILES.filter((t) => t.biome === 'mountain')) {
+      for (const [x, z] of scatter(t, 16, 0.16, { seed: 91, rMin: 0.36, dMax: 0.8, accept: (x, z) => { const h = tileHeight(t, x, z); return h > 0.05 && h < 0.42 } })) {
+        b[i(rnd)].push({ x, y: tileHeight(t, x, z) - 0.03, z, s: 0.1 + rnd() * 0.12, ry: rnd() * 6.28, sy: 0.8 + rnd() * 0.6, tint: new THREE.Color().setHSL(0.08, 0.06, 0.78 + rnd() * 0.2) })
+      }
+    }
     // coastal boulders at the waterline
     for (let k = 0; k < 220; k++) {
       const th = rnd() * Math.PI * 2
@@ -259,6 +265,41 @@ function Rocks() {
   )
 }
 const i = (rnd: () => number) => (rnd() < 0.5 ? 0 : 1)
+
+// ---------- Meadow flowers ----------
+function Flowers() {
+  const geo = useMemo(() => {
+    const g = new THREE.IcosahedronGeometry(1, 0)
+    g.scale(1, 0.6, 1)
+    g.translate(0, 0.9, 0)
+    return g
+  }, [])
+  const items = useMemo(() => {
+    const out: Inst[] = []
+    const rnd = mulberry32(141)
+    const cols = ['#f4f1e6', '#f2cf4a', '#c9a6e8', '#f0a3a3'].map((c) => new THREE.Color(c))
+    for (const t of TILES.filter((t) => t.biome === 'pasture' || t.biome === 'forest')) {
+      const n = t.biome === 'pasture' ? 140 : 40
+      for (let k = 0; k < n; k++) {
+        const lx = (rnd() * 2 - 1) * 0.9, lz = rnd() * 2 - 1
+        if (hexDist(lx, lz) > 0.86 || Math.hypot(lx, lz) < 0.32) continue
+        const x = t.x + lx, z = t.z + lz
+        if (blocked(x, z)) continue
+        // clustered: flowers grow in patches
+        if (noise2(x * 4 + 7, z * 4) < 0.1) continue
+        out.push({ x, y: tileHeight(t, x, z), z, s: 0.011 + rnd() * 0.006, ry: rnd() * 6.28, tint: cols[Math.floor(rnd() * cols.length)] })
+      }
+    }
+    return out
+  }, [])
+  const ref = useRef<THREE.InstancedMesh>(null)
+  useInstances(ref, items)
+  return (
+    <instancedMesh ref={ref} args={[geo, undefined, Math.max(1, items.length)]} frustumCulled={false}>
+      <meshStandardMaterial roughness={0.7} />
+    </instancedMesh>
+  )
+}
 
 // ---------- Sheep ----------
 function Sheep() {
@@ -298,6 +339,7 @@ export function Vegetation() {
       <Bushes />
       <Rocks />
       <Sheep />
+      <Flowers />
     </group>
   )
 }

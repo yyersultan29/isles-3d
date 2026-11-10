@@ -99,66 +99,142 @@ function houseParts(w: number, d: number, wallH: number, roofH: number) {
   return { body, roof }
 }
 
-function windowGeometry(w: number, d: number, wallH: number) {
+function windowGeometry(w: number, d: number, wallH: number, sw = 0.03, sh = 0.04, inset = 0.002) {
   const parts: THREE.BufferGeometry[] = []
   const win = (x: number, y: number, z: number, ry: number) => {
-    const g = new THREE.PlaneGeometry(0.03, 0.04)
+    const g = new THREE.PlaneGeometry(sw, sh)
     g.rotateY(ry)
     g.translate(x, y, z)
     parts.push(g)
   }
   for (const zz of [-d / 4, d / 4]) {
-    win(w / 2 + 0.002, wallH * 0.55, zz, Math.PI / 2)
-    win(-w / 2 - 0.002, wallH * 0.55, zz, -Math.PI / 2)
+    win(w / 2 + inset, wallH * 0.55, zz, Math.PI / 2)
+    win(-w / 2 - inset, wallH * 0.55, zz, -Math.PI / 2)
   }
-  win(0, wallH * 0.95, d / 2 + 0.002, 0)
-  win(0, wallH * 0.95, -d / 2 - 0.002, Math.PI)
+  win(0, wallH * 0.95, d / 2 + inset, 0)
+  win(0, wallH * 0.95, -d / 2 - inset, Math.PI)
   return mergeGeometries(parts)!
+}
+
+/** Half-timber frame: corner posts, wall-plate beams and a gable tie beam, merged into one mesh. */
+function timberGeometry(w: number, d: number, wallH: number) {
+  const parts: THREE.BufferGeometry[] = []
+  const box = (sx: number, sy: number, sz: number, x: number, y: number, z: number) => {
+    const g = new THREE.BoxGeometry(sx, sy, sz)
+    g.translate(x, y, z)
+    parts.push(g.toNonIndexed())
+  }
+  const t = 0.013
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(t, wallH, t, (sx * w) / 2, wallH / 2, (sz * d) / 2)
+  for (const sx of [-1, 1]) box(t, t, d + t, (sx * w) / 2, wallH - t / 2, 0)
+  for (const sz of [-1, 1]) box(w + t, t, t, 0, wallH - t / 2, (sz * d) / 2)
+  for (const sx of [-1, 1]) box(t * 0.9, t * 0.9, d, (sx * w) / 2 + 0.001, wallH * 0.12, 0) // sill beam
+  return mergeGeometries(parts)!
+}
+
+const WOOD = new THREE.MeshStandardMaterial({ color: '#3b2a1c', roughness: 0.85 })
+const STONE = new THREE.MeshStandardMaterial({ color: '#8d8478', roughness: 0.92 })
+const DOOR = new THREE.MeshStandardMaterial({ color: '#4a2e18', roughness: 0.8 })
+const GLOW = new THREE.MeshStandardMaterial({ color: '#ffd08a', emissive: '#ffa840', emissiveIntensity: 3.6 })
+
+/** Soft warm pool of window light on the ground (additive decal, no real light cost). */
+const glowTex = (() => {
+  const c = document.createElement('canvas')
+  c.width = c.height = 128
+  const g = c.getContext('2d')!
+  const grd = g.createRadialGradient(64, 64, 4, 64, 64, 64)
+  grd.addColorStop(0, 'rgba(255,190,110,0.9)')
+  grd.addColorStop(0.45, 'rgba(255,160,70,0.35)')
+  grd.addColorStop(1, 'rgba(255,140,50,0)')
+  g.fillStyle = grd
+  g.fillRect(0, 0, 128, 128)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
+})()
+const GROUND_GLOW = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.45, toneMapped: false })
+
+function House({ w, d, wallH, roofH, wall, roof, ridge }: { w: number; d: number; wallH: number; roofH: number; wall: THREE.Material; roof: THREE.Material; ridge: THREE.Material }) {
+  const g = useMemo(() => {
+    const h = houseParts(w, d, wallH, roofH)
+    return {
+      ...h,
+      win: windowGeometry(w, d, wallH),
+      frame: windowGeometry(w, d, wallH, 0.042, 0.052, 0.0015),
+      timber: timberGeometry(w, d, wallH),
+    }
+  }, [w, d, wallH, roofH])
+  return (
+    <group>
+      {/* stone plinth */}
+      <mesh position-y={0.008} material={STONE} castShadow receiveShadow>
+        <boxGeometry args={[w + 0.024, 0.02, d + 0.024]} />
+      </mesh>
+      <group position-y={0.016}>
+        <mesh geometry={g.body} material={wall} castShadow receiveShadow />
+        <mesh geometry={g.timber} material={WOOD} castShadow />
+        <mesh geometry={g.roof} material={roof} castShadow receiveShadow />
+        {/* ridge cap */}
+        <mesh position-y={wallH + roofH + 0.016} rotation-z={Math.PI / 4} material={ridge} castShadow>
+          <boxGeometry args={[0.02, 0.02, d + 0.06]} />
+        </mesh>
+        <mesh geometry={g.frame} material={WOOD} />
+        <mesh geometry={g.win} material={GLOW} />
+        {/* door with frame on the front gable */}
+        <mesh position={[0, 0.034, d / 2 + 0.0015]} material={WOOD}>
+          <planeGeometry args={[0.046, 0.07]} />
+        </mesh>
+        <mesh position={[0, 0.031, d / 2 + 0.003]} material={DOOR}>
+          <planeGeometry args={[0.034, 0.062]} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+function Chimney({ x, y, z }: { x: number; y: number; z: number }) {
+  return (
+    <group position={[x, y, z]}>
+      <mesh position-y={0.04} material={STONE} castShadow>
+        <boxGeometry args={[0.028, 0.08, 0.028]} />
+      </mesh>
+      <mesh position-y={0.084} material={WOOD} castShadow>
+        <boxGeometry args={[0.036, 0.01, 0.036]} />
+      </mesh>
+    </group>
+  )
 }
 
 function Settlement({ player, city }: { player: Player; city: boolean }) {
   const pc = PLAYER_COLORS[player]
-  const geos = useMemo(() => {
-    if (!city) {
-      const h = houseParts(0.15, 0.2, 0.11, 0.08)
-      return { main: h, win: windowGeometry(0.15, 0.2, 0.11), tower: null as null | ReturnType<typeof houseParts> }
-    }
-    const h = houseParts(0.2, 0.26, 0.13, 0.09)
-    const tower = houseParts(0.12, 0.12, 0.26, 0.11)
-    return { main: h, win: windowGeometry(0.2, 0.26, 0.13), tower }
-  }, [city])
-  const wall = useMemo(() => new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.65 }), [pc])
-  const roof = useMemo(() => new THREE.MeshStandardMaterial({ color: pc.roof, roughness: 0.55 }), [pc])
-  const glow = useMemo(() => new THREE.MeshStandardMaterial({ color: '#ffcf7a', emissive: '#ffae42', emissiveIntensity: 4 }), [])
-  const base = useMemo(() => new THREE.MeshStandardMaterial({ color: '#7d6a55', roughness: 0.9 }), [])
-  const door = useMemo(() => new THREE.MeshStandardMaterial({ color: '#3a2416', roughness: 0.8 }), [])
+  const wall = useMemo(() => new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.62 }), [pc])
+  const roof = useMemo(() => new THREE.MeshStandardMaterial({ color: pc.roof, roughness: 0.5 }), [pc])
+  const ridge = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(0.65), roughness: 0.6 }), [pc])
+  const pad = city ? 0.26 : 0.18
   return (
     <group>
-      <mesh position-y={0.012} castShadow receiveShadow material={base}>
-        <cylinderGeometry args={[city ? 0.24 : 0.16, city ? 0.26 : 0.18, 0.03, 8]} />
+      {/* trodden earth pad + warm light pool */}
+      <mesh position-y={0.006} castShadow receiveShadow>
+        <cylinderGeometry args={[pad * 0.92, pad, 0.016, 10]} />
+        <meshStandardMaterial color="#7d6a55" roughness={0.95} />
       </mesh>
-      <group position={[city ? -0.04 : 0, 0.025, 0]}>
-        <mesh geometry={geos.main.body} material={wall} castShadow receiveShadow />
-        <mesh geometry={geos.main.roof} material={roof} castShadow />
-        <mesh geometry={geos.win} material={glow} />
-        {/* door on the gable end */}
-        <mesh position={[0, 0.03, (city ? 0.13 : 0.1) + 0.003]} material={door}>
-          <planeGeometry args={[0.035, 0.06]} />
-        </mesh>
-        <mesh position={[0.04, city ? 0.2 : 0.17, 0.05]} material={roof} castShadow>
-          <boxGeometry args={[0.025, 0.06, 0.025]} />
-        </mesh>
-      </group>
-      {geos.tower && (
-        <group position={[0.11, 0.025, -0.02]}>
-          <mesh geometry={geos.tower.body} material={wall} castShadow receiveShadow />
-          <mesh geometry={geos.tower.roof} material={roof} castShadow />
-          <mesh position={[0.061, 0.18, 0]} rotation-y={Math.PI / 2} material={glow}>
-            <planeGeometry args={[0.03, 0.05]} />
-          </mesh>
-          <mesh position={[0, 0.18, 0.061]} material={glow}>
-            <planeGeometry args={[0.03, 0.05]} />
-          </mesh>
+      <mesh position-y={0.016} rotation-x={-Math.PI / 2} material={GROUND_GLOW}>
+        <planeGeometry args={[pad * 2.6, pad * 2.6]} />
+      </mesh>
+      {!city ? (
+        <group position-y={0.012}>
+          <House w={0.15} d={0.2} wallH={0.11} roofH={0.08} wall={wall} roof={roof} ridge={ridge} />
+          <Chimney x={0.035} y={0.016 + 0.11 + 0.035} z={-0.05} />
+        </group>
+      ) : (
+        <group position-y={0.012}>
+          <group position-x={-0.05}>
+            <House w={0.2} d={0.26} wallH={0.13} roofH={0.09} wall={wall} roof={roof} ridge={ridge} />
+            <Chimney x={-0.045} y={0.016 + 0.13 + 0.04} z={0.06} />
+          </group>
+          <group position={[0.11, 0, -0.03]}>
+            <House w={0.12} d={0.12} wallH={0.26} roofH={0.11} wall={wall} roof={roof} ridge={ridge} />
+          </group>
         </group>
       )}
     </group>

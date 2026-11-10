@@ -9,12 +9,12 @@ const time = { value: 0 }
 /** Lit PBR ocean with procedural swell normals and depth-based colouring. */
 function Water() {
   const mat = useMemo(() => {
-    const m = new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.0, envMapIntensity: 0.22 })
+    const m = new THREE.MeshStandardMaterial({ roughness: 0.42, metalness: 0.0, envMapIntensity: 0.2 })
     m.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = time
       shader.uniforms.uDeep = { value: new THREE.Color('#021120') }
-      shader.uniforms.uMid = { value: new THREE.Color('#06243a') }
-      shader.uniforms.uShallow = { value: new THREE.Color('#0d515a') }
+      shader.uniforms.uMid = { value: new THREE.Color('#08324d') }
+      shader.uniforms.uShallow = { value: new THREE.Color('#117480') }
       shader.uniforms.uApo = { value: ISLAND_APOTHEM }
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>\nuniform float uTime;\nvarying vec3 vWPos;`)
@@ -50,8 +50,8 @@ function Water() {
           'vec4 diffuseColor = vec4( diffuse, opacity );',
           `float dIsl = length(vWPos.xz) - islandR(vWPos.xz);
           float nC = snoise(vWPos.xz * 0.35) * 0.5 + 0.5;
-          vec3 wcol = mix(uShallow, uMid, smoothstep(0.05, 0.8 + nC * 0.6, dIsl));
-          wcol = mix(wcol, uDeep, smoothstep(1.2, 6.5, dIsl));
+          vec3 wcol = mix(uShallow, uMid, smoothstep(0.0, 0.55 + nC * 0.5, dIsl));
+          wcol = mix(wcol, uDeep, smoothstep(1.0, 5.0, dIsl));
           // lighter wave crests give the surface visible structure
           float crest = smoothstep(0.45, 0.9, H(vWPos.xz * 0.6));
           wcol = mix(wcol, wcol * 1.35 + vec3(0.01, 0.018, 0.026), crest * 0.14);
