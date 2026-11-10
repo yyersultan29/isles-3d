@@ -1,0 +1,147 @@
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
+import { HARBORS, corner, tileAt, WATER_Y, islandRadius } from './board'
+import { signTexture } from './textures'
+
+const wood = new THREE.MeshStandardMaterial({ color: '#8b5a32', roughness: 0.85 })
+const woodDark = new THREE.MeshStandardMaterial({ color: '#5a3a20', roughness: 0.9 })
+const rope = new THREE.MeshStandardMaterial({ color: '#c9a66b', roughness: 1 })
+
+function Pier({ length }: { length: number }) {
+  // planks run across the pier; pier extends along +z (outward)
+  const planks = Math.floor(length / 0.06)
+  return (
+    <group>
+      {Array.from({ length: planks }, (_, i) => (
+        <mesh key={i} position={[((i * 37) % 5) * 0.002, 0, 0.03 + i * 0.06]} rotation-y={((i * 13) % 7 - 3) * 0.01} material={i % 3 ? wood : woodDark} castShadow receiveShadow>
+          <boxGeometry args={[0.3, 0.018, 0.052]} />
+        </mesh>
+      ))}
+      {/* stringers */}
+      {[-0.11, 0.11].map((x) => (
+        <mesh key={x} position={[x, -0.025, length / 2]} material={woodDark} castShadow>
+          <boxGeometry args={[0.03, 0.03, length]} />
+        </mesh>
+      ))}
+      {/* posts */}
+      {Array.from({ length: Math.ceil(length / 0.28) + 1 }, (_, i) =>
+        [-0.15, 0.15].map((x) => (
+          <mesh key={`${i}${x}`} position={[x, -0.16, Math.min(i * 0.28, length - 0.02)]} material={woodDark} castShadow>
+            <cylinderGeometry args={[0.018, 0.02, 0.42, 6]} />
+          </mesh>
+        )),
+      )}
+      {/* rail rope */}
+      {[-0.15, 0.15].map((x) => (
+        <mesh key={x} position={[x, 0.07, length / 2]} rotation-x={Math.PI / 2} material={rope}>
+          <cylinderGeometry args={[0.005, 0.005, length, 4]} />
+        </mesh>
+      ))}
+      {Array.from({ length: Math.ceil(length / 0.28) + 1 }, (_, i) =>
+        [-0.15, 0.15].map((x) => (
+          <mesh key={`r${i}${x}`} position={[x, 0.04, Math.min(i * 0.28, length - 0.02)]} material={woodDark}>
+            <cylinderGeometry args={[0.012, 0.012, 0.08, 5]} />
+          </mesh>
+        )),
+      )}
+    </group>
+  )
+}
+
+function Sign({ kind, ratio }: { kind: (typeof HARBORS)[number]['kind']; ratio: string }) {
+  const tex = useMemo(() => signTexture(kind, ratio), [kind, ratio])
+  return (
+    <group>
+      {[-0.2, 0.2].map((x) => (
+        <mesh key={x} position={[x, 0.22, 0]} material={woodDark} castShadow>
+          <cylinderGeometry args={[0.016, 0.02, 0.5, 6]} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.42, 0]} material={woodDark} castShadow>
+        <boxGeometry args={[0.5, 0.025, 0.03]} />
+      </mesh>
+      <mesh position={[0, 0.33, 0.012]} castShadow>
+        <boxGeometry args={[0.44, 0.26, 0.015]} />
+        <meshStandardMaterial attach="material-0" color="#5a3a20" />
+        <meshStandardMaterial attach="material-1" color="#5a3a20" />
+        <meshStandardMaterial attach="material-2" color="#5a3a20" />
+        <meshStandardMaterial attach="material-3" color="#5a3a20" />
+        <meshStandardMaterial attach="material-4" map={tex} roughness={0.8} emissive="#ffffff" emissiveMap={tex} emissiveIntensity={0.12} />
+        <meshStandardMaterial attach="material-5" map={tex} roughness={0.8} />
+      </mesh>
+    </group>
+  )
+}
+
+function Lantern({ phase }: { phase: number }) {
+  const mat = useRef<THREE.MeshStandardMaterial>(null)
+  const light = useRef<THREE.PointLight>(null)
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    const f = 1 + Math.sin(t * 8 + phase) * 0.12 + Math.sin(t * 21 + phase * 2) * 0.08
+    if (mat.current) mat.current.emissiveIntensity = 6 * f
+    if (light.current) light.current.intensity = 0.9 * f
+  })
+  return (
+    <group>
+      <mesh position-y={0.16} material={woodDark} castShadow>
+        <cylinderGeometry args={[0.01, 0.012, 0.32, 6]} />
+      </mesh>
+      <mesh position={[0.03, 0.31, 0]} material={woodDark}>
+        <boxGeometry args={[0.07, 0.01, 0.01]} />
+      </mesh>
+      <mesh position={[0.06, 0.28, 0]}>
+        <boxGeometry args={[0.032, 0.042, 0.032]} />
+        <meshStandardMaterial ref={mat} color="#ffd38a" emissive="#ff9933" emissiveIntensity={6} />
+      </mesh>
+      <pointLight ref={light} position={[0.06, 0.26, 0.04]} color="#ffa64d" intensity={0.9} distance={1.1} decay={2} />
+    </group>
+  )
+}
+
+export function Harbors() {
+  const docks = useMemo(
+    () =>
+      HARBORS.map((h, i) => {
+        const t = tileAt(...h.tile)
+        const a = corner(t, h.edge), b = corner(t, (h.edge + 1) % 6)
+        const mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2
+        const out = Math.atan2(mz - t.z, mx - t.x) // outward direction
+        const start = Math.hypot(mx, mz)
+        const ramp = Math.max(0.3, islandRadius(out) - start + 0.12)
+        return { h, i, mx, mz, out, ramp }
+      }),
+    [],
+  )
+  const DECK_Y = WATER_Y + 0.13
+  return (
+    <group>
+      {docks.map(({ h, i, mx, mz, out, ramp }) => {
+        const drop = -DECK_Y
+        const ang = Math.atan2(drop, ramp)
+        const rampLen = Math.hypot(drop, ramp)
+        const pierLen = 0.46
+        return (
+          <group key={i} position={[mx, 0, mz]} rotation-y={Math.PI / 2 - out}>
+            <group position={[0, 0.0, 0.04]} rotation-x={ang}>
+              <Pier length={rampLen} />
+            </group>
+            <group position={[0, DECK_Y, ramp + 0.04]}>
+              <Pier length={pierLen} />
+              <group position={[0.28, 0.0, pierLen * 0.35]} rotation-y={-(Math.PI / 2 - out)} scale={1.9}>
+                <Sign kind={h.kind} ratio={h.ratio} />
+              </group>
+              <group position={[-0.17, 0, pierLen * 0.9]}>
+                <Lantern phase={i * 1.7} />
+              </group>
+              <mesh position={[0.1, 0.04, pierLen * 0.95]} material={woodDark} castShadow>
+                <cylinderGeometry args={[0.035, 0.035, 0.07, 10]} />
+              </mesh>
+            </group>
+          </group>
+        )
+      })}
+    </group>
+  )
+}

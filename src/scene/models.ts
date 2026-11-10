@@ -1,0 +1,196 @@
+// Procedural mesh builders for props. Each returns a merged, vertex-coloured BufferGeometry
+// so it can be drawn as a single InstancedMesh.
+import * as THREE from 'three'
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { mulberry32, noise2 } from './noise'
+
+function paint(g: THREE.BufferGeometry, fn: (p: THREE.Vector3, out: THREE.Color) => void) {
+  const p = g.attributes.position as THREE.BufferAttribute
+  const col = new Float32Array(p.count * 3)
+  const v = new THREE.Vector3()
+  const c = new THREE.Color()
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i)
+    fn(v, c)
+    c.toArray(col, i * 3)
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3))
+  return g
+}
+
+const solid = (hex: string) => {
+  const c = new THREE.Color(hex)
+  return (_: THREE.Vector3, out: THREE.Color) => out.copy(c)
+}
+
+function clean(g: THREE.BufferGeometry) {
+  // strip attributes so geometries can merge
+  const n = g.index ? g.toNonIndexed() : g
+  for (const k of Object.keys(n.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'color') n.deleteAttribute(k)
+  return n
+}
+
+/** Stylised layered pine: 4–5 drooping, jagged skirts + trunk. Height ≈ 1. */
+export function pineGeometry(seed: number, shape: { slender?: number; layers?: number; hue?: number } = {}) {
+  const rnd = mulberry32(seed)
+  const parts: THREE.BufferGeometry[] = []
+  const slender = shape.slender ?? 1 // <1 = narrow spruce, >1 = broad fir
+  const trunk = new THREE.CylinderGeometry(0.035, 0.05, 0.3, 6)
+  trunk.translate(0, 0.15, 0)
+  parts.push(paint(clean(trunk), solid('#4a2f1c')))
+  const layers = shape.layers ?? 4 + Math.floor(rnd() * 2)
+  const hue = shape.hue ?? 0
+  const dark = new THREE.Color('#21451f').offsetHSL(hue, 0, 0)
+  const mid = new THREE.Color('#3d7230').offsetHSL(hue, 0, 0)
+  const tip = new THREE.Color('#8db552').offsetHSL(hue, -0.05, 0)
+  for (let l = 0; l < layers; l++) {
+    const t = l / (layers - 1)
+    const r = 0.36 * slender * (1 - t * 0.74) * (0.88 + rnd() * 0.24)
+    const h = (0.34 * (1 - t * 0.35) * 4.5) / Math.max(4, layers) / Math.sqrt(slender)
+    const y0 = 0.16 + t * 0.62 * (4.5 / Math.max(4, layers)) * (layers > 5 ? 1.15 : 1)
+    const cone = new THREE.ConeGeometry(r, h, 11, 3, true)
+    const p = cone.attributes.position as THREE.BufferAttribute
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i)
+      const a = Math.atan2(z, x)
+      const rim = (-y / h + 0.5) // 0 at top, 1 at rim
+      const jag = 1 + 0.22 * Math.sin(a * 11 + l * 2) * rim + 0.1 * noise2(a * 3 + l, seed) * rim
+      p.setXYZ(i, x * jag, y - rim * rim * 0.06 * (0.5 + 0.5 * Math.sin(a * 11)), z * jag)
+    }
+    cone.translate(0, y0 + h / 2, 0)
+    cone.computeVertexNormals()
+    parts.push(
+      paint(clean(cone), (v, out) => {
+        const k = (v.y - y0) / h // 0 bottom of skirt, 1 top
+        out.lerpColors(dark, mid, Math.min(1, k * 1.4))
+        out.lerp(tip, Math.max(0, k - 0.55) * 1.2 * (0.6 + 0.4 * t))
+      }),
+    )
+  }
+  const g = mergeGeometries(parts)!
+  g.computeBoundingSphere()
+  return g
+}
+
+/** Round broadleaf bush / deciduous tree crown. */
+export function bushGeometry(seed: number) {
+  const rnd = mulberry32(seed)
+  const parts: THREE.BufferGeometry[] = []
+  for (let i = 0; i < 4; i++) {
+    const s = new THREE.IcosahedronGeometry(0.22 + rnd() * 0.1, 1)
+    const p = s.attributes.position as THREE.BufferAttribute
+    for (let k = 0; k < p.count; k++) {
+      const f = 1 + 0.18 * noise2(p.getX(k) * 9 + i, p.getZ(k) * 9 + p.getY(k) * 5)
+      p.setXYZ(k, p.getX(k) * f, p.getY(k) * f * 0.85, p.getZ(k) * f)
+    }
+    s.translate((rnd() - 0.5) * 0.3, 0.2 + rnd() * 0.12, (rnd() - 0.5) * 0.3)
+    parts.push(clean(s))
+  }
+  let g = mergeGeometries(parts)!
+  g = mergeVertices(g)
+  g.computeVertexNormals()
+  const lo = new THREE.Color('#2d4f1d'), hi = new THREE.Color('#77a23e')
+  paint(g, (v, out) => out.lerpColors(lo, hi, Math.min(1, Math.max(0, v.y * 1.8 - 0.2))))
+  return g.toNonIndexed()
+}
+
+/** Faceted boulder. */
+export function rockGeometry(seed: number) {
+  const rnd = mulberry32(seed)
+  const g = new THREE.DodecahedronGeometry(0.5, 1)
+  const p = g.attributes.position as THREE.BufferAttribute
+  const sx = 0.8 + rnd() * 0.5, sy = 0.5 + rnd() * 0.4, sz = 0.8 + rnd() * 0.4
+  for (let i = 0; i < p.count; i++) {
+    const f = 1 + 0.25 * noise2(p.getX(i) * 3 + seed, p.getZ(i) * 3 + p.getY(i) * 2)
+    p.setXYZ(i, p.getX(i) * f * sx, Math.max(-0.1, p.getY(i) * f * sy), p.getZ(i) * f * sz)
+  }
+  g.computeVertexNormals()
+  const lo = new THREE.Color('#5d5852'), hi = new THREE.Color('#a59e94')
+  return paint(clean(g), (v, out) => out.lerpColors(lo, hi, Math.min(1, Math.max(0, v.y * 1.5 + 0.4 + noise2(v.x * 8, v.z * 8) * 0.2))))
+}
+
+/** Single wheat stalk with bearded ear; height ≈ 1. */
+export function wheatGeometry() {
+  const parts: THREE.BufferGeometry[] = []
+  const stem = new THREE.CylinderGeometry(0.014, 0.02, 0.72, 3)
+  stem.translate(0, 0.36, 0)
+  parts.push(paint(clean(stem), solid('#cf8f22')))
+  const ear = new THREE.OctahedronGeometry(0.085, 0)
+  ear.scale(0.75, 2.8, 0.75)
+  ear.translate(0, 0.84, 0)
+  parts.push(paint(clean(ear), (v, out) => out.set('#eda21c').lerp(new THREE.Color('#ffd36a'), Math.max(0, (v.y - 0.78) * 3.5))))
+  const leaf = new THREE.PlaneGeometry(0.05, 0.36, 1, 2)
+  const lp = leaf.attributes.position as THREE.BufferAttribute
+  for (let i = 0; i < lp.count; i++) lp.setZ(i, Math.pow(lp.getY(i) + 0.18, 2) * 0.6)
+  leaf.rotateY(0.7)
+  leaf.translate(0.02, 0.34, 0)
+  parts.push(paint(clean(leaf), solid('#c4952c')))
+  const g = mergeGeometries(parts)!
+  g.computeVertexNormals()
+  return g
+}
+
+/** Small grass tuft of crossed blades; height ≈ 1. */
+export function grassTuftGeometry() {
+  const parts: THREE.BufferGeometry[] = []
+  for (let i = 0; i < 5; i++) {
+    const b = new THREE.BufferGeometry()
+    const w = 0.09
+    b.setAttribute('position', new THREE.Float32BufferAttribute([-w, 0, 0, w, 0, 0, 0, 1, 0.18], 3))
+    b.computeVertexNormals()
+    b.rotateY((i / 5) * Math.PI * 2)
+    b.rotateZ((i - 2) * 0.12)
+    parts.push(b)
+  }
+  const g = mergeGeometries(parts)!
+  const lo = new THREE.Color('#34561b'), hi = new THREE.Color('#7a9a3a')
+  paint(g, (v, out) => out.lerpColors(lo, hi, v.y))
+  // point normals up for soft grass shading
+  const n = g.attributes.normal as THREE.BufferAttribute
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0)
+  return g
+}
+
+/** Fluffy sheep. Returns wool + dark (head/legs) parts that share instance transforms. */
+export function sheepGeometries() {
+  const rnd = mulberry32(99)
+  const wool: THREE.BufferGeometry[] = []
+  const body = [
+    [0, 0.2, 0, 0.14], [0.1, 0.21, 0, 0.12], [-0.1, 0.2, 0, 0.12], [0.02, 0.27, 0.04, 0.1],
+    [-0.05, 0.27, -0.05, 0.1], [0.08, 0.24, 0.07, 0.09], [-0.08, 0.24, 0.07, 0.09], [0.06, 0.25, -0.07, 0.09],
+  ]
+  for (const [x, y, z, r] of body) {
+    const s = new THREE.IcosahedronGeometry(r, 1)
+    const p = s.attributes.position as THREE.BufferAttribute
+    for (let i = 0; i < p.count; i++) {
+      const f = 1 + 0.12 * (rnd() - 0.5)
+      p.setXYZ(i, p.getX(i) * f, p.getY(i) * f, p.getZ(i) * f)
+    }
+    s.translate(x, y, z)
+    wool.push(clean(s))
+  }
+  const woolG = mergeGeometries(wool)!
+  woolG.computeVertexNormals()
+  paint(woolG, (v, out) => out.set('#f2efe6').lerp(new THREE.Color('#cfc8b8'), Math.max(0, 0.25 - v.y) * 3))
+
+  const dark: THREE.BufferGeometry[] = []
+  const head = new THREE.SphereGeometry(0.07, 8, 6)
+  head.scale(1.25, 0.9, 0.85)
+  head.translate(0.21, 0.26, 0)
+  dark.push(clean(head))
+  for (const [ex, ez] of [[0.2, 0.06], [0.2, -0.06]]) {
+    const ear = new THREE.SphereGeometry(0.03, 5, 4)
+    ear.scale(1.6, 0.5, 0.9)
+    ear.translate(ex, 0.3, ez)
+    dark.push(clean(ear))
+  }
+  for (const [lx, lz] of [[0.09, 0.06], [0.09, -0.06], [-0.09, 0.06], [-0.09, -0.06]]) {
+    const leg = new THREE.CylinderGeometry(0.018, 0.016, 0.14, 5)
+    leg.translate(lx, 0.07, lz)
+    dark.push(clean(leg))
+  }
+  const darkG = mergeGeometries(dark)!
+  darkG.computeVertexNormals()
+  paint(darkG, solid('#2a2523'))
+  return { wool: woolG, dark: darkG }
+}
