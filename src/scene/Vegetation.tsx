@@ -255,7 +255,7 @@ function Bushes() {
 
 function Rocks() {
   const geos = useMemo(() => [rockGeometry(1), rockGeometry(2)], [])
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true }), [])
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }), [])
   const buckets = useMemo(() => {
     const b: Inst[][] = [[], []]
     const rnd = mulberry32(44)

@@ -155,19 +155,34 @@ export function bushGeometry(seed: number) {
   return g.toNonIndexed()
 }
 
-/** Faceted boulder. */
+/** Weathered boulder: rounded mass with flattened bedding planes and soft shading. */
 export function rockGeometry(seed: number) {
   const rnd = mulberry32(seed)
-  const g = new THREE.DodecahedronGeometry(0.5, 1)
+  let g: THREE.BufferGeometry = new THREE.IcosahedronGeometry(0.5, 2)
+  g.deleteAttribute('normal')
+  g.deleteAttribute('uv')
+  g = mergeVertices(g)
   const p = g.attributes.position as THREE.BufferAttribute
-  const sx = 0.8 + rnd() * 0.5, sy = 0.5 + rnd() * 0.4, sz = 0.8 + rnd() * 0.4
+  const sx = 0.85 + rnd() * 0.45, sy = 0.5 + rnd() * 0.3, sz = 0.8 + rnd() * 0.4
+  const tilt = (rnd() - 0.5) * 0.5
   for (let i = 0; i < p.count; i++) {
-    const f = 1 + 0.25 * noise2(p.getX(i) * 3 + seed, p.getZ(i) * 3 + p.getY(i) * 2)
-    p.setXYZ(i, p.getX(i) * f * sx, Math.max(-0.1, p.getY(i) * f * sy), p.getZ(i) * f * sz)
+    let x = p.getX(i), y = p.getY(i), z = p.getZ(i)
+    const f = 1 + 0.22 * noise2(x * 2.6 + seed, z * 2.6 + y * 2) + 0.07 * noise2(x * 7, y * 7 + z * 3)
+    x *= f * sx; y *= f * sy; z *= f * sz
+    // a few planar cuts (bedding/fracture planes) give it a rock rather than a potato silhouette
+    const plane = y + x * tilt
+    if (plane > 0.16) y -= (plane - 0.16) * 0.7
+    if (x > 0.36 * sx) x -= (x - 0.36 * sx) * 0.6
+    y = Math.max(-0.08, y)
+    p.setXYZ(i, x, y, z)
   }
   g.computeVertexNormals()
-  const lo = new THREE.Color('#5d5852'), hi = new THREE.Color('#a59e94')
-  return paint(clean(g), (v, out) => out.lerpColors(lo, hi, Math.min(1, Math.max(0, v.y * 1.5 + 0.4 + noise2(v.x * 8, v.z * 8) * 0.2))))
+  const lo = new THREE.Color('#57524c'), hi = new THREE.Color('#a8a196'), moss = new THREE.Color('#5d6b33')
+  return paint(g, (v, out) => {
+    out.lerpColors(lo, hi, Math.min(1, Math.max(0, v.y * 1.6 + 0.45 + noise2(v.x * 9, v.z * 9) * 0.15)))
+    out.multiplyScalar(0.92 + 0.12 * Math.sin(v.y * 60 + v.x * 6)) // faint bedding lines
+    out.lerp(moss, Math.max(0, v.y * 2 - 0.1) * Math.max(0, noise2(v.x * 6 + seed, v.z * 6)) * 0.7)
+  })
 }
 
 /** Single wheat stalk with bearded ear; height ≈ 1. */
