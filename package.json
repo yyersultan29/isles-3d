@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "preview": "vite preview",
-    "shot": "node scripts/screenshot.mjs"
+    "shot": "node scripts/screenshot.mjs",
+    "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",

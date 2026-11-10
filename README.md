@@ -53,3 +53,8 @@ Good CC0 sources include Kenney (kenney.nl), Quaternius (quaternius.com) and Pol
 
 ## Framing
 The camera opens up its vertical FOV on viewports narrower than 16:10 (`CameraRig` in `World.tsx`), so the whole island stays between the HUD columns. You can override the framing for testing with `?cam=x,y,z&tgt=x,y,z`.
+
+## Deploy
+Live at **https://yyersultan29.github.io/isles-3d/**.
+
+`npm run deploy` runs `scripts/deploy.sh`. The script typechecks the project, builds with base path `/isles-3d/`, and force-pushes `dist/` to the `gh-pages` branch. GitHub Pages serves that branch. The `main` branch is never touched by a deploy.
