@@ -1,8 +1,8 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { TILES, Tile, tileHeight, hexDist, corner, tileAt, BUILDINGS, ROADS, HARBORS, islandRadius, WATER_Y } from './board'
+import { TILES, Tile, tileHeight, hexDist, corner, tileAt, BUILDINGS, ROADS, HARBORS, islandRadius, WATER_Y, EDGES, findTile } from './board'
 import { mulberry32, noise2, fbm } from './noise'
-import { pineGeometry, bushGeometry, rockGeometry, wheatGeometry, grassTuftGeometry, sheepGeometries } from './models'
+import { pineGeometry, broadleafGeometry, bushGeometry, rockGeometry, wheatGeometry, grassTuftGeometry, sheepGeometries } from './models'
 import { addWind } from './shaders'
 import { oceanTime } from './Ocean'
 
@@ -86,16 +86,23 @@ const PINE_SHAPES = [
   { slender: 1.2, layers: 4, hue: 0.03 },
 ]
 const PINE_VARIANTS = PINE_SHAPES.length
+const BROADLEAF_VARIANTS = 2
 
 function Pines() {
-  const geos = useMemo(() => PINE_SHAPES.map((sh, i) => pineGeometry(11 + i * 7, sh)), [])
+  const geos = useMemo(
+    () => [...PINE_SHAPES.map((sh, i) => pineGeometry(11 + i * 7, sh)), ...Array.from({ length: BROADLEAF_VARIANTS }, (_, i) => broadleafGeometry(301 + i * 13))],
+    [],
+  )
   const mat = useMemo(() => windMaterial(0.006), [])
   const buckets = useMemo(() => {
-    const b: Inst[][] = Array.from({ length: PINE_VARIANTS }, () => [])
+    const b: Inst[][] = Array.from({ length: PINE_VARIANTS + BROADLEAF_VARIANTS }, () => [])
     const rnd = mulberry32(5)
-    const push = (x: number, z: number, y: number, s: number) => {
+    // broadleafChance: share of deciduous trees for this placement context
+    const push = (x: number, z: number, y: number, s: number, broadleafChance = 0.15) => {
       const tint = new THREE.Color().setHSL(0.2 + rnd() * 0.12, 0.25, 0.74 + rnd() * 0.26)
-      b[Math.floor(rnd() * PINE_VARIANTS)].push({ x, y: y - 0.01, z, s, ry: rnd() * 6.28, sy: 0.9 + rnd() * 0.45, tint })
+      const broad = rnd() < broadleafChance
+      const v = broad ? PINE_VARIANTS + Math.floor(rnd() * BROADLEAF_VARIANTS) : Math.floor(rnd() * PINE_VARIANTS)
+      b[v].push({ x, y: y - 0.01, z, s: broad ? s * 0.95 : s, ry: rnd() * 6.28, sy: broad ? 0.85 + rnd() * 0.25 : 0.9 + rnd() * 0.45, tint })
     }
     for (const t of TILES) {
       let pts: [number, number][] = []
@@ -109,7 +116,8 @@ function Pines() {
       else if (t.biome === 'pasture') { pts = scatter(t, 4, 0.25, { seed: 8, rMin: 0.55 }); size = [0.24, 0.32] }
       else if (t.biome === 'mountain') { pts = scatter(t, 10, 0.12, { seed: 4, rMin: 0.4, accept: (x, z) => tileHeight(t, x, z) < 0.18 }); size = [0.18, 0.26] }
       else if (t.biome === 'wheat') { pts = scatter(t, 2, 0.4, { seed: 9, rMin: 0.7 }); size = [0.24, 0.3] }
-      for (const [x, z] of pts) push(x, z, tileHeight(t, x, z), size[0] + rnd() * (size[1] - size[0]))
+      const broadChance = t.biome === 'forest' ? 0.1 : t.biome === 'pasture' || t.biome === 'wheat' ? 0.7 : t.biome === 'hills' ? 0.35 : 0
+      for (const [x, z] of pts) push(x, z, tileHeight(t, x, z), size[0] + rnd() * (size[1] - size[0]), broadChance)
     }
     // a scattering of pines on the island rim (outside the rails)
     for (let i = 0; i < 70; i++) {
@@ -118,7 +126,7 @@ function Pines() {
       const x = Math.cos(th) * r, z = Math.sin(th) * r
       if (blocked(x, z, 0.1)) continue
       if (noise2(Math.cos(th) * 3, Math.sin(th) * 3) < -0.1) continue
-      push(x, z, -0.03, 0.2 + rnd() * 0.12)
+      push(x, z, -0.03, 0.2 + rnd() * 0.12, 0.3)
     }
     return b
   }, [])
@@ -197,6 +205,18 @@ function Grass() {
         const tint = new THREE.Color().setHSL(0.17 + rnd() * 0.07, 0.2, 0.58 + rnd() * 0.2)
         out.push({ x, y: h - 0.005, z, s: 0.035 + rnd() * 0.035, ry: rnd() * 6.28, tint })
       }
+      // edge fringe: taller tufts in the band just inside the rails soften the tile boundary
+      if (t.biome === 'wheat' || t.biome === 'desert') continue
+      for (let k = 0; k < 220; k++) {
+        const a = rnd() * Math.PI * 2
+        const lx = Math.cos(a), lz = Math.sin(a)
+        const dEdge = hexDist(lx, lz)
+        const d = 0.8 + rnd() * 0.13
+        const x = t.x + (lx / dEdge) * d * 0.866 * 1.155, z = t.z + (lz / dEdge) * d * 0.866 * 1.155
+        if (hexDist(x - t.x, z - t.z) > 0.94 || blocked(x, z)) continue
+        const tint = new THREE.Color().setHSL(0.18 + rnd() * 0.06, 0.22, 0.6 + rnd() * 0.2)
+        out.push({ x, y: tileHeight(t, x, z) - 0.005, z, s: 0.045 + rnd() * 0.04, ry: rnd() * 6.28, tint })
+      }
     }
     return out
   }, [])
@@ -246,6 +266,20 @@ function Rocks() {
     for (const t of TILES.filter((t) => t.biome === 'mountain')) {
       for (const [x, z] of scatter(t, 16, 0.16, { seed: 91, rMin: 0.36, dMax: 0.8, accept: (x, z) => { const h = tileHeight(t, x, z); return h > 0.05 && h < 0.42 } })) {
         b[i(rnd)].push({ x, y: tileHeight(t, x, z) - 0.03, z, s: 0.1 + rnd() * 0.12, ry: rnd() * 6.28, sy: 0.8 + rnd() * 0.6, tint: new THREE.Color().setHSL(0.08, 0.06, 0.78 + rnd() * 0.2) })
+      }
+    }
+    // pebbles strewn along the rails tie neighbouring tiles together
+    for (const e of EDGES) {
+      for (let k = 0; k < 4; k++) {
+        const f = rnd()
+        const px = e.a[0] + (e.b[0] - e.a[0]) * f, pz = e.a[1] + (e.b[1] - e.a[1]) * f
+        const nx = -(e.b[1] - e.a[1]), nz = e.b[0] - e.a[0]
+        const nl = Math.hypot(nx, nz)
+        const side = (rnd() < 0.5 ? -1 : 1) * (0.07 + rnd() * 0.06)
+        const x = px + (nx / nl) * side, z = pz + (nz / nl) * side
+        const t = findTile(x, z)
+        if (!t || blocked(x, z)) continue
+        b[i(rnd)].push({ x, y: tileHeight(t, x, z) - 0.005, z, s: 0.02 + rnd() * 0.025, ry: rnd() * 6.28, tint: new THREE.Color().setHSL(0.08, 0.1, 0.72 + rnd() * 0.25) })
       }
     }
     // coastal boulders at the waterline

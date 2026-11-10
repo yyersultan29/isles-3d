@@ -9,7 +9,7 @@ const time = { value: 0 }
 /** Lit PBR ocean with procedural swell normals and depth-based colouring. */
 function Water() {
   const mat = useMemo(() => {
-    const m = new THREE.MeshStandardMaterial({ roughness: 0.42, metalness: 0.0, envMapIntensity: 0.2 })
+    const m = new THREE.MeshStandardMaterial({ roughness: 0.42, metalness: 0.0, envMapIntensity: 0.09 })
     m.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = time
       shader.uniforms.uDeep = { value: new THREE.Color('#021120') }
@@ -40,10 +40,10 @@ function Water() {
           }
           float H(vec2 p){
             float t = uTime;
-            return 0.55 * snoise(p * vec2(0.9, 1.4) + vec2(t * 0.11, t * 0.05))
-                 + 0.30 * snoise(p * 2.3 + vec2(-t * 0.21, t * 0.14))
-                 + 0.15 * snoise(p * 5.7 + vec2(t * 0.4, -t * 0.33))
-                 + 0.03 * snoise(p * 13.0 + vec2(-t * 0.7, t * 0.6));
+            // broad swell + one ripple octave; the old 13x octave produced sparkle/aliasing noise
+            return 0.62 * snoise(p * vec2(0.7, 1.1) + vec2(t * 0.11, t * 0.05))
+                 + 0.28 * snoise(p * 1.9 + vec2(-t * 0.21, t * 0.14))
+                 + 0.10 * snoise(p * 4.6 + vec2(t * 0.38, -t * 0.3));
           }`,
         )
         .replace(
@@ -54,7 +54,7 @@ function Water() {
           wcol = mix(wcol, uDeep, smoothstep(1.0, 5.0, dIsl));
           // lighter wave crests give the surface visible structure
           float crest = smoothstep(0.45, 0.9, H(vWPos.xz * 0.6));
-          wcol = mix(wcol, wcol * 1.35 + vec3(0.01, 0.018, 0.026), crest * 0.14);
+          wcol = mix(wcol, wcol * 1.25 + vec3(0.006, 0.014, 0.02), crest * 0.07);
           vec4 diffuseColor = vec4(wcol, opacity);`,
         )
         .replace(
@@ -65,7 +65,9 @@ function Water() {
             float h0 = H(p);
             float hx = H(p + vec2(e, 0.0));
             float hz = H(p + vec2(0.0, e));
-            float amp = 0.03;
+            // calmer normals, flattening with distance so far water doesn't shimmer
+            float camD = length(cameraPosition - vWPos);
+            float amp = 0.013 * mix(1.0, 0.35, smoothstep(10.0, 26.0, camD));
             vec3 nW = normalize(vec3(-(hx - h0) / e * amp, 1.0, -(hz - h0) / e * amp));
             normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
           }`,
@@ -100,7 +102,7 @@ function Foam() {
       const rb = islandRadius(th)
       for (let j = 0; j <= RINGS; j++) {
         const v = j / RINGS
-        const r = rb + 0.04 + v * 0.85
+        const r = rb + 0.02 + v * 0.95
         pos.push(Math.cos(th) * r, 0, Math.sin(th) * r)
         uv.push(i / SEG, v)
       }
@@ -118,6 +120,7 @@ function Foam() {
     const m = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
+      side: THREE.DoubleSide, // ring winding faces down; without this the foam was back-face culled
       uniforms: { uTime: time },
       vertexShader: `varying vec2 vUv; varying vec3 vW;
         void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
@@ -128,19 +131,19 @@ function Foam() {
           vec2 p = vW.xz;
           float n = snoise(p * 4.0 + uTime * 0.2) * 0.5 + 0.5;
           float n2 = snoise(p * 11.0 - uTime * 0.35) * 0.5 + 0.5;
-          float shore = 1.0 - smoothstep(0.06, 0.28 + n * 0.12, v);
+          float shore = 1.0 - smoothstep(0.17 + n * 0.08, 0.3 + n * 0.1, v);
           // waves rolling in toward the shore
           float w = fract(v * 3.2 + uTime * 0.18 + n * 0.5);
           float ring = smoothstep(0.0, 0.08, w) * (1.0 - smoothstep(0.08, 0.32, w));
-          ring *= smoothstep(0.45, 0.75, n2 + n * 0.3) * (1.0 - smoothstep(0.15, 0.9, v));
-          float lace = smoothstep(0.58, 0.8, n2) * (1.0 - smoothstep(0.1, 0.6, v)) * 0.65;
-          float a = max(shore * (0.65 + 0.35 * n2), max(ring * 0.85, lace));
+          ring *= smoothstep(0.55, 0.8, n2 + n * 0.3) * smoothstep(0.24, 0.34, v) * (1.0 - smoothstep(0.38, 0.7, v));
+          float lace = smoothstep(0.66, 0.84, n2) * smoothstep(0.2, 0.3, v) * (1.0 - smoothstep(0.3, 0.55, v)) * 0.45;
+          float a = max(shore * (0.55 + 0.35 * n2), max(ring * 0.6, lace));
           gl_FragColor = vec4(vec3(0.9, 0.95, 0.97), min(1.0, a * 1.05));
         }`,
     })
     return { geo: g, mat: m }
   }, [])
-  return <mesh geometry={geo} material={mat} position={[0, WATER_Y + 0.008, 0]} renderOrder={2} />
+  return <mesh geometry={geo} material={mat} position={[0, WATER_Y + 0.036, 0]} renderOrder={2} />
 }
 
 export function Ocean() {

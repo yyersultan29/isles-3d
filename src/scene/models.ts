@@ -30,40 +30,101 @@ function clean(g: THREE.BufferGeometry) {
   return n
 }
 
-/** Stylised layered pine: 4–5 drooping, jagged skirts + trunk. Height ≈ 1. */
+/**
+ * Layered conifer. Each tier is an irregular skirt with 5–7 drooping branch lobes, a slight random tilt
+ * and jagged needle edges, so the silhouette stops reading as a stack of perfect cones.
+ * Colours: dark shaded underside, mid body and sunlit tips. Height ≈ 1.
+ */
 export function pineGeometry(seed: number, shape: { slender?: number; layers?: number; hue?: number } = {}) {
   const rnd = mulberry32(seed)
   const parts: THREE.BufferGeometry[] = []
   const slender = shape.slender ?? 1 // <1 = narrow spruce, >1 = broad fir
-  const trunk = new THREE.CylinderGeometry(0.035, 0.05, 0.3, 6)
-  trunk.translate(0, 0.15, 0)
+  const trunk = new THREE.CylinderGeometry(0.03, 0.05, 0.34, 7)
+  trunk.translate(0, 0.17, 0)
   parts.push(paint(clean(trunk), solid('#4a2f1c')))
   const layers = shape.layers ?? 4 + Math.floor(rnd() * 2)
   const hue = shape.hue ?? 0
-  const dark = new THREE.Color('#21451f').offsetHSL(hue, 0, 0)
-  const mid = new THREE.Color('#3d7230').offsetHSL(hue, 0, 0)
-  const tip = new THREE.Color('#8db552').offsetHSL(hue, -0.05, 0)
+  const under = new THREE.Color('#183a1c').offsetHSL(hue, 0, 0)
+  const dark = new THREE.Color('#22481f').offsetHSL(hue, 0, 0)
+  const mid = new THREE.Color('#3b6f2e').offsetHSL(hue, 0, 0)
+  const tip = new THREE.Color('#86ae4e').offsetHSL(hue, -0.05, 0)
+  const span = 0.7 // vertical extent of the foliage
   for (let l = 0; l < layers; l++) {
     const t = l / (layers - 1)
-    const r = 0.36 * slender * (1 - t * 0.74) * (0.88 + rnd() * 0.24)
-    const h = (0.34 * (1 - t * 0.35) * 4.5) / Math.max(4, layers) / Math.sqrt(slender)
-    const y0 = 0.16 + t * 0.62 * (4.5 / Math.max(4, layers)) * (layers > 5 ? 1.15 : 1)
-    const cone = new THREE.ConeGeometry(r, h, 11, 3, true)
+    const r = 0.37 * slender * (1 - t * 0.76) * (0.88 + rnd() * 0.24)
+    const h = ((0.34 * (1 - t * 0.3) * 4.5) / Math.max(4, layers)) / Math.sqrt(slender)
+    const y0 = 0.15 + t * span * (layers > 5 ? 1.12 : 1)
+    const lobes = 5 + Math.floor(rnd() * 3)
+    const phase = rnd() * Math.PI * 2
+    const cone = new THREE.ConeGeometry(r, h, 18, 4, true)
     const p = cone.attributes.position as THREE.BufferAttribute
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), y = p.getY(i), z = p.getZ(i)
       const a = Math.atan2(z, x)
-      const rim = (-y / h + 0.5) // 0 at top, 1 at rim
-      const jag = 1 + 0.22 * Math.sin(a * 11 + l * 2) * rim + 0.1 * noise2(a * 3 + l, seed) * rim
-      p.setXYZ(i, x * jag, y - rim * rim * 0.06 * (0.5 + 0.5 * Math.sin(a * 11)), z * jag)
+      const rim = -y / h + 0.5 // 0 at top, 1 at rim
+      const lobe = Math.pow(Math.abs(Math.cos(((a + phase) * lobes) / 2)), 1.5) // 1 at branch, 0 between
+      const jag = 1 + (0.28 * lobe - 0.1) * rim + 0.09 * Math.sin(a * 23 + l * 3) * rim * rim + 0.07 * noise2(a * 2 + l, seed) * rim
+      const droop = rim * rim * (0.05 + 0.07 * lobe)
+      p.setXYZ(i, x * jag, y - droop, z * jag)
     }
+    // slight per-tier tilt and twist
+    cone.rotateY(rnd() * Math.PI)
+    cone.rotateX((rnd() - 0.5) * 0.12)
+    cone.rotateZ((rnd() - 0.5) * 0.12)
     cone.translate(0, y0 + h / 2, 0)
     cone.computeVertexNormals()
     parts.push(
       paint(clean(cone), (v, out) => {
         const k = (v.y - y0) / h // 0 bottom of skirt, 1 top
-        out.lerpColors(dark, mid, Math.min(1, k * 1.4))
-        out.lerp(tip, Math.max(0, k - 0.55) * 1.2 * (0.6 + 0.4 * t))
+        const radial = Math.min(1, Math.hypot(v.x, v.z) / Math.max(0.01, r))
+        out.lerpColors(under, dark, Math.min(1, k * 2.2))
+        out.lerp(mid, Math.min(1, Math.max(0, k - 0.25) * 1.6))
+        // sunlit outer needle tips (sun from -x/-z), more on upper tiers
+        const sun = Math.max(0, (-v.x - v.z) / Math.max(0.01, r) * 0.7 + 0.3)
+        out.lerp(tip, Math.max(0, radial - 0.55) * 1.4 * (0.45 + 0.55 * t) * sun)
+      }),
+    )
+  }
+  const g = mergeGeometries(parts)!
+  g.computeBoundingSphere()
+  return g
+}
+
+/** Broadleaf tree: short trunk and branches with 4–6 lumpy crown masses. Height ≈ 1. */
+export function broadleafGeometry(seed: number) {
+  const rnd = mulberry32(seed)
+  const parts: THREE.BufferGeometry[] = []
+  const trunk = new THREE.CylinderGeometry(0.035, 0.06, 0.42, 7)
+  trunk.translate(0, 0.21, 0)
+  parts.push(paint(clean(trunk), solid('#53361f')))
+  for (let b = 0; b < 3; b++) {
+    const br = new THREE.CylinderGeometry(0.014, 0.025, 0.22, 5)
+    br.translate(0, 0.11, 0)
+    br.rotateZ(0.7)
+    br.rotateY((b / 3) * Math.PI * 2 + rnd())
+    br.translate(0, 0.3, 0)
+    parts.push(paint(clean(br), solid('#53361f')))
+  }
+  const crowns = 4 + Math.floor(rnd() * 3)
+  const lo = new THREE.Color('#25431a'), mid = new THREE.Color('#446f27'), hi = new THREE.Color('#87a849')
+  for (let c = 0; c < crowns; c++) {
+    const rad = 0.17 + rnd() * 0.09
+    const s = new THREE.IcosahedronGeometry(rad, 2)
+    const p = s.attributes.position as THREE.BufferAttribute
+    for (let k = 0; k < p.count; k++) {
+      const f = 1 + 0.16 * noise2(p.getX(k) * 11 + c * 3, p.getZ(k) * 11 + p.getY(k) * 7) + 0.06 * noise2(p.getX(k) * 30, p.getY(k) * 30)
+      p.setXYZ(k, p.getX(k) * f, p.getY(k) * f * 0.82, p.getZ(k) * f)
+    }
+    const a = (c / crowns) * Math.PI * 2 + rnd()
+    const rr = c === 0 ? 0 : 0.13 + rnd() * 0.07
+    const cy = c === 0 ? 0.68 : 0.5 + rnd() * 0.16
+    s.translate(Math.cos(a) * rr, cy, Math.sin(a) * rr)
+    s.computeVertexNormals()
+    parts.push(
+      paint(clean(s), (v, out) => {
+        const k = Math.min(1, Math.max(0, (v.y - 0.35) / 0.5))
+        out.lerpColors(lo, mid, k)
+        out.lerp(hi, Math.max(0, k - 0.6) * 1.6 * Math.max(0, 0.5 - v.x - v.z))
       }),
     )
   }

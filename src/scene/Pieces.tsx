@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { TILES, tileHeight, corner, tileAt, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight } from './board'
 import { tokenTexture } from './textures'
+import { mulberry32 } from './noise'
 
 // ---------------- Number tokens ----------------
 const TOKEN_R = 0.27
@@ -132,6 +133,62 @@ function timberGeometry(w: number, d: number, wallH: number) {
   return mergeGeometries(parts)!
 }
 
+/**
+ * Greyscale roof shingles, multiplied by the player's roof colour.
+ * Box-slab UVs run u = down the slope, v = along the ridge, so rows are columns in canvas x.
+ */
+const shingleTex = (() => {
+  const c = document.createElement('canvas')
+  c.width = c.height = 256
+  const g = c.getContext('2d')!
+  const rows = 6
+  const rw = 256 / rows
+  const rnd = mulberry32(7)
+  for (let r = 0; r < rows; r++) {
+    const x0 = r * rw
+    const tiles = 7
+    const th = 256 / tiles
+    const off = (r % 2) * th * 0.5
+    for (let k = -1; k <= tiles; k++) {
+      const y0 = k * th + off
+      const l = 205 + Math.floor(rnd() * 40)
+      // each shingle: lighter at its exposed lower edge, shaded where the next row overlaps
+      const grd = g.createLinearGradient(x0, 0, x0 + rw, 0)
+      grd.addColorStop(0, `rgb(${l - 60},${l - 60},${l - 60})`)
+      grd.addColorStop(0.25, `rgb(${l - 15},${l - 15},${l - 15})`)
+      grd.addColorStop(1, `rgb(${l},${l},${l})`)
+      g.fillStyle = grd
+      g.fillRect(x0, y0 + 1.5, rw, th - 3)
+    }
+    g.fillStyle = 'rgba(0,0,0,0.45)'
+    g.fillRect(x0, 0, 2, 256)
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 8
+  return t
+})()
+
+/** Very subtle plaster speckle for walls (near-white, so player colours stay true). */
+const plasterTex = (() => {
+  const c = document.createElement('canvas')
+  c.width = c.height = 128
+  const g = c.getContext('2d')!
+  g.fillStyle = '#f4f4f4'
+  g.fillRect(0, 0, 128, 128)
+  const rnd = mulberry32(3)
+  for (let i = 0; i < 900; i++) {
+    const v = 215 + Math.floor(rnd() * 40)
+    g.fillStyle = `rgb(${v},${v},${v})`
+    g.fillRect(rnd() * 128, rnd() * 128, 1 + rnd() * 2, 1 + rnd() * 2)
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.repeat.set(6, 6)
+  return t
+})()
+
 const WOOD = new THREE.MeshStandardMaterial({ color: '#3b2a1c', roughness: 0.85 })
 const STONE = new THREE.MeshStandardMaterial({ color: '#8d8478', roughness: 0.92 })
 const DOOR = new THREE.MeshStandardMaterial({ color: '#4a2e18', roughness: 0.8 })
@@ -207,8 +264,8 @@ function Chimney({ x, y, z }: { x: number; y: number; z: number }) {
 
 function Settlement({ player, city }: { player: Player; city: boolean }) {
   const pc = PLAYER_COLORS[player]
-  const wall = useMemo(() => new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.62 }), [pc])
-  const roof = useMemo(() => new THREE.MeshStandardMaterial({ color: pc.roof, roughness: 0.5 }), [pc])
+  const wall = useMemo(() => new THREE.MeshStandardMaterial({ color: pc.wall, map: plasterTex, roughness: 0.7 }), [pc])
+  const roof = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(1.12), map: shingleTex, roughness: 0.62 }), [pc])
   const ridge = useMemo(() => new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(0.65), roughness: 0.6 }), [pc])
   const pad = city ? 0.26 : 0.18
   return (

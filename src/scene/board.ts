@@ -134,7 +134,7 @@ export function tileHeight(t: Tile, x: number, z: number): number {
         const dd = Math.hypot(lx - p.x, lz - p.z) / p.r
         if (dd < 1) m = Math.max(m, p.h * Math.pow(1 - dd, 1.1))
       }
-      const rg = ridged(x * 3.1 + s, z * 3.1, 5)
+      const rg = ridged(x * 3.1 + s, z * 3.1, 4)
       m += m > 0.02 ? (rg - 0.35) * 0.27 * clamp(m * 2) : 0
       m += 0.05 + 0.03 * fbm(x * 4, z * 4, 2)
       h = m * (0.25 + 0.75 * centre)

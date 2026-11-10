@@ -62,10 +62,11 @@ function biomeColor(t: Tile, x: number, z: number, h: number, ny: number, out: T
       // horizontal strata give the rock a layered, carved look
       const strata = Math.sin(h * 70 + noise2(x * 5, z * 5) * 3) * 0.5 + 0.5
       out.lerpColors(PAL.rockLight, PAL.rock, clamp(n1 * 0.6 + n2 * 0.1 + steep * 0.45))
-      out.lerp(PAL.rockDark, steep * 0.55 + strata * 0.12)
+      out.lerp(PAL.rockDark, steep * 0.5 + strata * 0.24)
+      out.lerp(PAL.rockLight, smoothstep(0.75, 0.95, noise2(x * 9, h * 40)) * 0.35) // pale stone bands
       // snow settles on upward-facing facets near the peaks, with a few streaks lower down
-      const snowLine = 0.4 + fbm(x * 1.5, z * 1.5, 2) * 0.1
-      const snow = smoothstep(snowLine, snowLine + 0.1, h) * smoothstep(0.5, 0.8, ny)
+      const snowLine = 0.34 + fbm(x * 1.5, z * 1.5, 2) * 0.1
+      const snow = smoothstep(snowLine, snowLine + 0.09, h) * smoothstep(0.42, 0.72, ny)
       tmp.lerpColors(PAL.snowShade, PAL.snow, clamp(ny * 1.4 - 0.3))
       out.lerp(tmp, snow)
       out.lerp(PAL.grassDark, smoothstep(0.1, 0.04, h) * 0.7)
@@ -137,16 +138,15 @@ export function buildTileGeometry(t: Tile, N: number, flat = false) {
 
 function TileMesh({ t }: { t: Tile }) {
   const geo = useMemo(() => {
-    const flat = t.biome === 'mountain' || t.biome === 'hills'
-    return buildTileGeometry(t, t.biome === 'mountain' ? 54 : t.biome === 'hills' ? 40 : 30, flat)
+    // smooth-shaded, finer meshes: organic rock and clay instead of sharp low-poly facets
+    return buildTileGeometry(t, t.biome === 'mountain' ? 72 : t.biome === 'hills' ? 48 : 30, false)
   }, [t])
   return (
     <mesh geometry={geo} position={[t.x, 0, t.z]} castShadow receiveShadow>
       <meshStandardMaterial
         vertexColors
-        roughness={t.biome === 'mountain' ? 0.88 : 0.95}
+        roughness={t.biome === 'mountain' ? 0.86 : 0.95}
         metalness={0}
-        flatShading={t.biome === 'mountain'}
       />
     </mesh>
   )

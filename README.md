@@ -49,7 +49,7 @@ Good CC0 sources include Kenney (kenney.nl), Quaternius (quaternius.com) and Pol
 - At 16:10 and 16:9 the south harbour sign sits behind the card tray, and the east 2:1 sign sits behind the dice panel. They're visible at 4:3.
 - The decorative corner cliffs and waterfall are mostly outside the frame or behind the HUD at 16:10 and 16:9. They only show on narrow or 4:3 windows, or when you orbit the camera.
 - The ocean has sun glints and wave crests, but it lacks the reference's painterly highlights and reads slightly flatter.
-- Forest trees are procedural cones in six shapes. The reference's painted conifers have more silhouette detail; a GLB tree set would close that gap.
+- Trees are procedural, not hand-modelled: six tiered conifers with lobed, drooping branches and two broadleaf variants. The reference's painted trees still have finer needle detail.
 
 ## Framing
 `CameraRig` in `World.tsx` keeps a fixed 43° camera angle. On every resize it solves for camera distance and pan so the board fills the screen area the HUD doesn't cover:
