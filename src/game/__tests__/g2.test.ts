@@ -4,39 +4,11 @@ import { apply, legalActions, validate } from '../engine'
 import { draft, publicVP } from '../state'
 import { longestRoad, resolveLargestArmy, resolveLongestRoad } from '../rules/awards'
 import { createRng, pick } from '../rng'
-import type { Action, EdgeId, GameState, PlayerId, ResourceCounts, TileId, VertexId } from '../types'
+import type { EdgeId, GameState, PlayerId, ResourceCounts, TileId, VertexId } from '../types'
 import { PLAYER_IDS, RESOURCE_ORDER } from '../types'
-import { act, assertInvariants, concretize, must, newGame, playSetup, resolvePending, waiting } from './helpers'
+import { act, assertInvariants, concretize, fixture, must, newGame, playSetup, resolvePending, waiting } from './helpers'
 
 const code = (r: { ok: boolean; error?: { code: string } }) => (r.ok ? 'OK' : r.error!.code)
-
-/** Empty board in `actions`, order p1..p4, p1 active, with optional hands, buildings and roads. */
-function fixture(opts: {
-  hands?: Partial<Record<PlayerId, Partial<ResourceCounts>>>
-  buildings?: [VertexId, PlayerId, ('settlement' | 'city')?][]
-  roads?: [EdgeId, PlayerId][]
-  friendly?: boolean
-  phase?: GameState['phase']
-} = {}): GameState {
-  const s = draft(newGame(1, { friendlyRobber: !!opts.friendly }))
-  s.order = [...PLAYER_IDS]
-  s.active = 0
-  s.turn = 5
-  s.phase = opts.phase ?? { kind: 'actions' }
-  for (const [p, h] of Object.entries(opts.hands ?? {}) as [PlayerId, Partial<ResourceCounts>][]) {
-    const pl = s.players.find((x) => x.id === p)!
-    for (const r of RESOURCE_ORDER) { const n = h[r] ?? 0; pl.resources[r] += n; s.bank[r] -= n }
-  }
-  for (const [v, p, t] of opts.buildings ?? []) {
-    s.buildings[v] = { owner: p, type: t ?? 'settlement' }
-    const pl = s.players.find((x) => x.id === p)!
-    if (t === 'city') pl.pieces.cities -= 1
-    else pl.pieces.settlements -= 1
-  }
-  for (const [e, p] of opts.roads ?? []) { s.roads[e] = p; s.players.find((x) => x.id === p)!.pieces.roads -= 1 }
-  assertInvariants(s)
-  return s
-}
 
 const topo = newGame(1).board.topo
 const lots = { lumber: 5, brick: 5, wool: 5, grain: 5, ore: 5 }
@@ -131,7 +103,7 @@ describe('construction (G2.1, G2.2)', () => {
     const legal = legalActions(s, 'p1')
     expect(legal.some((a) => a.type === 'BUILD_ROAD')).toBe(true)
     expect(legal).toContainEqual({ type: 'BUILD_CITY', vertex: home })
-    for (const a of legal) expect(validate(s, 'p1', a as Action).ok).toBe(true)
+    for (const a of legal) expect(validate(s, 'p1', concretize(s, 'p1', a)).ok).toBe(true)
     const roadsLegal = new Set(legal.filter((a) => a.type === 'BUILD_ROAD').map((a) => (a as { edge: EdgeId }).edge))
     for (const e of topo.edges) expect(validate(s, 'p1', { type: 'BUILD_ROAD', edge: e }).ok).toBe(roadsLegal.has(e))
   })

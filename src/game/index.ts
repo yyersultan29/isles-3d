@@ -5,3 +5,4 @@ export { createGame, apply, validate, legalActions, DEFAULT_SETTINGS } from './e
 export { viewFor, eventsFor, type PublicGameState, type PublicPlayer, type Viewer } from './view'
 export { buildTopology, sceneToAxial, axialToScene, hexCorners, hexSides } from './topology'
 export { STANDARD_FIXED, PORT_EDGES, pips, resourceOf } from './board'
+export { replay, hashState, canonicalJson, ENGINE_VERSION, type ReplayFile } from './replay'

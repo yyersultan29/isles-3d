@@ -6,6 +6,7 @@ import { RuleError, fail } from '../errors'
 import { playerOf } from '../state'
 import { checkSettlementSpot } from './setup'
 import { updateLongestRoad } from './awards'
+import { cancelOnHandChange } from './trade'
 
 export const COSTS: Record<'road' | 'settlement' | 'city' | 'dev', Partial<ResourceCounts>> = {
   road: { lumber: 1, brick: 1 },
@@ -55,7 +56,7 @@ export function checkRoad(s: GameState, p: PlayerId, e: EdgeId, free: boolean) {
 
 export function buildRoad(s: GameState, p: PlayerId, e: EdgeId, free: boolean, events: GameEvent[]) {
   checkRoad(s, p, e, free)
-  if (!free) pay(s, p, COSTS.road)
+  if (!free) { pay(s, p, COSTS.road); cancelOnHandChange(s, events) }
   s.roads[e] = p
   playerOf(s, p).pieces.roads -= 1
   events.push({ type: 'BUILT', what: 'road', at: e, by: p, free })
@@ -72,6 +73,7 @@ export function checkSettlement(s: GameState, p: PlayerId, v: VertexId) {
 export function buildSettlement(s: GameState, p: PlayerId, v: VertexId, events: GameEvent[]) {
   checkSettlement(s, p, v)
   pay(s, p, COSTS.settlement)
+  cancelOnHandChange(s, events)
   s.buildings[v] = { owner: p, type: 'settlement' }
   playerOf(s, p).pieces.settlements -= 1
   events.push({ type: 'BUILT', what: 'settlement', at: v, by: p, free: false })
@@ -89,6 +91,7 @@ export function checkCity(s: GameState, p: PlayerId, v: VertexId) {
 export function buildCity(s: GameState, p: PlayerId, v: VertexId, events: GameEvent[]) {
   checkCity(s, p, v)
   pay(s, p, COSTS.city)
+  cancelOnHandChange(s, events)
   s.buildings[v] = { owner: p, type: 'city' }
   const pl = playerOf(s, p)
   pl.pieces.cities -= 1

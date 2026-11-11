@@ -5,6 +5,7 @@ import { RESOURCE_ORDER } from '../types'
 import { fail } from '../errors'
 import { pick, type Rng } from '../rng'
 import { activeId, handSize, playerOf, publicVP } from '../state'
+import { cancelOnHandChange } from './trade'
 
 /** After a 7: who must discard how many (fixed at roll time). */
 export function discardsOwed(s: GameState): Partial<Record<PlayerId, number>> {
@@ -119,6 +120,7 @@ function stealFrom(s: GameState, thief: PlayerId, victim: PlayerId, rng: Rng, ev
   hand[res] -= 1
   playerOf(s, thief).resources[res] += 1
   events.push({ type: 'CARD_STOLEN', from: victim, to: thief, resource: res })
+  cancelOnHandChange(s, events)
 }
 
 /** Players the discard phase is waiting for. */

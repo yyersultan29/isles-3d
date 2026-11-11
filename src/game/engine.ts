@@ -1,19 +1,21 @@
 // Engine API (GAME_DESIGN.md §11): createGame, validate, apply, legalActions.
 // Pure and deterministic: all randomness comes from state.rngState; inputs are never mutated.
 //
-// Implemented: setup, ROLL with production, seven/discard/robber/steal, construction, END_TURN.
-// Trades and dev cards arrive in G3; until then those actions are rejected with WRONG_PHASE.
+// Implements the full base game: setup, dice and production, seven/discard/robber/steal,
+// construction, trades, development cards, awards and victory.
 
 import type { Action, ActionType, Check, DevCard, DevCardType, GameEvent, GameSettings, GameState, LegalAction, PlayerId, Result } from './types'
 import { PLAYER_IDS, RESOURCE_ORDER } from './types'
 import { RuleError, fail, type ErrorCode } from './errors'
 import { createRng, shuffle } from './rng'
 import { desertTile, generateBoard } from './board'
-import { activeId, draft, emptyCounts } from './state'
+import { activeId, draft, emptyCounts, handSize, playerOf } from './state'
 import { placeSetupRoad, placeSetupSettlement, setupRoadSpots, setupSettlementSpots } from './rules/setup'
 import { endTurn, roll } from './rules/turn'
-import { buildCity, buildRoad, buildSettlement, legalCities, legalRoads, legalSettlements } from './rules/build'
+import { COSTS, buildCity, buildRoad, buildSettlement, canAfford, legalCities, legalRoads, legalSettlements } from './rules/build'
 import { discard, discardWaitingFor, moveRobber, robberTargets, steal } from './rules/robber'
+import { MAX_PROPOSALS_PER_TURN, bankTrade, cancel, confirm, propose, respond, responders, tradeRate } from './rules/trade'
+import { afterFreeRoad, buyDev, canPlayType, playKnight, playMonopoly, playRoadBuilding, playYearOfPlenty } from './rules/devcards'
 import { checkVictory } from './rules/victory'
 
 export const DEFAULT_SETTINGS: Omit<GameSettings, 'seed'> = {
@@ -131,16 +133,19 @@ function schemaError(a: unknown): string | null {
 
 // ---------------------------------------------------------------- dispatch
 
-/** Which action types each phase accepts (§4.1 who-may-act table). Trades and dev cards: G3. */
+const DEV_PLAYS: ActionType[] = ['PLAY_KNIGHT', 'PLAY_ROAD_BUILDING', 'PLAY_YEAR_OF_PLENTY', 'PLAY_MONOPOLY']
+
+/** Which action types each phase accepts (§4.1 who-may-act table). */
 function allowedInPhase(s: GameState): ActionType[] {
   switch (s.phase.kind) {
     case 'setup': return s.phase.step === 'settlement' ? ['PLACE_SETTLEMENT'] : ['PLACE_ROAD']
-    case 'preRoll': return ['ROLL']
+    case 'preRoll': return ['ROLL', ...DEV_PLAYS]
     case 'discard': return ['DISCARD']
     case 'moveRobber': return ['MOVE_ROBBER']
     case 'steal': return ['STEAL']
-    case 'actions': return ['BUILD_ROAD', 'BUILD_SETTLEMENT', 'BUILD_CITY', 'END_TURN']
-    default: return [] // roadBuilding: G3
+    case 'actions': return ['BUILD_ROAD', 'BUILD_SETTLEMENT', 'BUILD_CITY', 'BUY_DEV', ...DEV_PLAYS, 'BANK_TRADE', 'PROPOSE_TRADE', 'RESPOND_TRADE', 'CONFIRM_TRADE', 'CANCEL_TRADE', 'END_TURN']
+    case 'roadBuilding': return ['BUILD_ROAD']
+    default: return []
   }
 }
 
@@ -155,7 +160,10 @@ function step(state: GameState, player: PlayerId, action: Action): { state: Game
   if (!isPlayer(player)) fail('MALFORMED_ACTION', `unknown player ${String(player)}`)
   if (state.phase.kind === 'gameOver') fail('GAME_OVER', 'the game has ended')
   if (!allowedInPhase(state).includes(action.type)) fail('WRONG_PHASE', `${action.type} is not legal in ${state.phase.kind}`)
-  if (!waitingFor(state).includes(player)) fail('NOT_YOUR_TURN', `waiting for ${waitingFor(state).join(', ')}`)
+  // RESPOND_TRADE is the one action a non-active player takes in `actions`; respond() checks the addressee
+  if (action.type === 'RESPOND_TRADE') {
+    if (player === activeId(state)) fail('NOT_ADDRESSED', "the proposer can't respond to their own trade")
+  } else if (!waitingFor(state).includes(player)) fail('NOT_YOUR_TURN', `waiting for ${waitingFor(state).join(', ')}`)
 
   const s = draft(state)
   const rng = createRng(state.rngState)
@@ -167,11 +175,24 @@ function step(state: GameState, player: PlayerId, action: Action): { state: Game
     case 'DISCARD': discard(s, player, action.cards, events); break
     case 'MOVE_ROBBER': moveRobber(s, player, action.tile, rng, events); break
     case 'STEAL': steal(s, player, action.victim, rng, events); break
-    case 'BUILD_ROAD': buildRoad(s, player, action.edge, false, events); break
+    case 'BUILD_ROAD':
+      if (s.phase.kind === 'roadBuilding') { buildRoad(s, player, action.edge, true, events); afterFreeRoad(s, player) }
+      else buildRoad(s, player, action.edge, false, events)
+      break
+    case 'BUY_DEV': buyDev(s, player, events); break
+    case 'PLAY_KNIGHT': playKnight(s, player, events); break
+    case 'PLAY_ROAD_BUILDING': playRoadBuilding(s, player, events); break
+    case 'PLAY_YEAR_OF_PLENTY': playYearOfPlenty(s, player, action.take, events); break
+    case 'PLAY_MONOPOLY': playMonopoly(s, player, action.resource, events); break
+    case 'BANK_TRADE': bankTrade(s, player, action.give, action.get, action.count ?? 1, events); break
+    case 'PROPOSE_TRADE': propose(s, player, action.offer, action.request, action.to, events); break
+    case 'RESPOND_TRADE': respond(s, player, action.tradeId, action.accept, events); break
+    case 'CONFIRM_TRADE': confirm(s, player, action.tradeId, action.with, events); break
+    case 'CANCEL_TRADE': cancel(s, events); break
     case 'BUILD_SETTLEMENT': buildSettlement(s, player, action.vertex, events); break
     case 'BUILD_CITY': buildCity(s, player, action.vertex, events); break
     case 'END_TURN': endTurn(s, player, events); break
-    default: fail('WRONG_PHASE', `${action.type} is not implemented yet`)
+    default: { const never: never = action; throw new Error(`unhandled action ${JSON.stringify(never)}`) }
   }
   checkVictory(s, events)
   s.rngState = rng.state
@@ -200,13 +221,20 @@ export function validate(state: GameState, player: PlayerId, action: Action): Ch
 
 /** Every concrete legal action for `player` (§11). Contract: each one passes validate. */
 export function legalActions(s: GameState, player: PlayerId): LegalAction[] {
-  if (s.phase.kind === 'gameOver' || !waitingFor(s).includes(player)) return []
+  if (s.phase.kind === 'gameOver') return []
+  if (s.phase.kind === 'actions' && player !== activeId(s)) {
+    if (!responders(s).includes(player) || !s.trade) return []
+    const t = s.trade
+    const canPay = RESOURCE_ORDER.every((r) => playerOf(s, player).resources[r] >= (t.request[r] ?? 0))
+    return [...(canPay ? [{ type: 'RESPOND_TRADE' as const, tradeId: t.id, accept: true }] : []), { type: 'RESPOND_TRADE' as const, tradeId: t.id, accept: false }]
+  }
+  if (!waitingFor(s).includes(player)) return []
   switch (s.phase.kind) {
     case 'setup':
       return s.phase.step === 'settlement'
         ? setupSettlementSpots(s).map((vertex) => ({ type: 'PLACE_SETTLEMENT' as const, vertex }))
         : setupRoadSpots(s).map((edge) => ({ type: 'PLACE_ROAD' as const, edge }))
-    case 'preRoll': return [{ type: 'ROLL' }]
+    case 'preRoll': return [{ type: 'ROLL' }, ...devPlays(s, player)]
     case 'discard': return [{ type: 'DISCARD', count: s.phase.pending[player]! }]
     case 'moveRobber': return robberTargets(s, player).map((tile) => ({ type: 'MOVE_ROBBER' as const, tile }))
     case 'steal': return s.phase.candidates.map((victim) => ({ type: 'STEAL' as const, victim }))
@@ -214,8 +242,43 @@ export function legalActions(s: GameState, player: PlayerId): LegalAction[] {
       ...legalRoads(s, player, false).map((edge) => ({ type: 'BUILD_ROAD' as const, edge })),
       ...legalSettlements(s, player).map((vertex) => ({ type: 'BUILD_SETTLEMENT' as const, vertex })),
       ...legalCities(s, player).map((vertex) => ({ type: 'BUILD_CITY' as const, vertex })),
+      ...(s.deck.length && canAfford(s, player, COSTS.dev) ? [{ type: 'BUY_DEV' as const }] : []),
+      ...devPlays(s, player),
+      ...bankTrades(s, player),
+      ...(s.tradesProposedThisTurn < MAX_PROPOSALS_PER_TURN && handSize(playerOf(s, player).resources) > 0 ? [{ type: 'PROPOSE_TRADE' as const }] : []),
+      ...(s.trade ? [
+        ...s.trade.to.filter((p) => s.trade!.responses[p] === 'accept').map((w) => ({ type: 'CONFIRM_TRADE' as const, tradeId: s.trade!.id, with: w })),
+        { type: 'CANCEL_TRADE' as const },
+      ] : []),
       { type: 'END_TURN' },
     ]
+    case 'roadBuilding': return legalRoads(s, player, true).map((edge) => ({ type: 'BUILD_ROAD' as const, edge }))
     default: return []
   }
+}
+
+function devPlays(s: GameState, p: PlayerId): LegalAction[] {
+  const out: LegalAction[] = []
+  if (canPlayType(s, p, 'knight')) out.push({ type: 'PLAY_KNIGHT' })
+  if (canPlayType(s, p, 'roadBuilding') && playerOf(s, p).pieces.roads > 0 && legalRoads(s, p, true).length) out.push({ type: 'PLAY_ROAD_BUILDING' })
+  if (canPlayType(s, p, 'yearOfPlenty')) {
+    const total = RESOURCE_ORDER.reduce((a, r) => a + s.bank[r], 0)
+    if (total === 1) out.push({ type: 'PLAY_YEAR_OF_PLENTY', take: [RESOURCE_ORDER.find((r) => s.bank[r] > 0)!] })
+    else if (total > 1)
+      RESOURCE_ORDER.forEach((a, i) => RESOURCE_ORDER.slice(i).forEach((b) => {
+        if (a === b ? s.bank[a] >= 2 : s.bank[a] >= 1 && s.bank[b] >= 1) out.push({ type: 'PLAY_YEAR_OF_PLENTY', take: [a, b] })
+      }))
+  }
+  if (canPlayType(s, p, 'monopoly')) for (const resource of RESOURCE_ORDER) out.push({ type: 'PLAY_MONOPOLY', resource })
+  return out
+}
+
+function bankTrades(s: GameState, p: PlayerId): LegalAction[] {
+  const out: LegalAction[] = []
+  const hand = playerOf(s, p).resources
+  for (const give of RESOURCE_ORDER) {
+    if (hand[give] < tradeRate(s, p, give)) continue
+    for (const get of RESOURCE_ORDER) if (get !== give && s.bank[get] > 0) out.push({ type: 'BANK_TRADE', give, get })
+  }
+  return out
 }

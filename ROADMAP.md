@@ -215,16 +215,18 @@ Specification: `GAME_DESIGN.md` v1.2 (systems review of the v1.1 rules audit, 20
 
 ### G3 — Trading, development cards, victory and a local hot-seat game
 
-- [ ] **G3.1 Bank and port trades**: 4:1, 3:1 and 2:1 at the best rate a settlement or city earns; the bank must have stock; `count` is the number of cards received (§9).
-- [ ] **G3.2 Player trades**: propose, respond, confirm; the active player is always a party; nothing given for free; not the same type on both sides; re-validated at confirm (`TRADE_STALE`); one open proposal with a `tradeId`; the proposer must hold the offer; any hand change by the active player cancels it; at most 20 proposals per turn; open offers cancel at turn end (§9).
-- [ ] **G3.3 Dev cards**: buy (own turn, any number, not from an empty deck); one non-VP card per turn; never on the turn it was bought; every non-VP type is playable before the roll and returns to `preRoll`, so the roll still happens (§4.1, §8).
-- [ ] **G3.4 Card effects**: Knight (robber and steal, +1 army), Road Building (up to 2, placed one at a time, only legal edges), Year of Plenty (`take` of 1–2 cards, limited by bank stock), Monopoly (§8).
-- [ ] **G3.5 Victory**: the `checkVictory` procedure runs after every successful action and at the start of each turn, for the active player only; hidden VP cards count and are revealed in `GAME_WON`; off-turn rule (§10.4).
-- [ ] **G3.6 `viewFor(player)` and `eventsFor(player)`**: full visibility matrix and event redaction (§17). Test: no view produced during a full playout contains a secret field.
-- [ ] **G3.7 Replay**: seed plus action log gives an identical state. Replay file format and `schemaVersion` per §22; a few golden replays with a final-state hash stored in the repo.
-- [ ] **G3.8 Full-game simulation test**: a random-legal-move bot finishes 1,000 seeded games with no invariant violations or stuck states. Assertions per §23.2; a 2,000-turn cap is reported, not failed (§23.3).
+- [x] **G3.1 Bank and port trades**: 4:1, 3:1 and 2:1 at the best rate a settlement or city earns; the bank must have stock; `count` is the number of cards received (§9).
+- [x] **G3.2 Player trades**: propose, respond, confirm; the active player is always a party; nothing given for free; not the same type on both sides; re-validated at confirm (`TRADE_STALE`); one open proposal with a `tradeId`; the proposer must hold the offer; any hand change by the active player cancels it; at most 20 proposals per turn; open offers cancel at turn end (§9).
+- [x] **G3.3 Dev cards**: buy (own turn, any number, not from an empty deck); one non-VP card per turn; never on the turn it was bought; every non-VP type is playable before the roll and returns to `preRoll`, so the roll still happens (§4.1, §8).
+- [x] **G3.4 Card effects**: Knight (robber and steal, +1 army), Road Building (up to 2, placed one at a time, only legal edges), Year of Plenty (`take` of 1–2 cards, limited by bank stock), Monopoly (§8).
+- [x] **G3.5 Victory**: the `checkVictory` procedure runs after every successful action and at the start of each turn, for the active player only; hidden VP cards count and are revealed in `GAME_WON`; off-turn rule (§10.4).
+- [x] **G3.6 `viewFor(player)` and `eventsFor(player)`**: full visibility matrix and event redaction (§17). Test: no view produced during a full playout contains a secret field.
+- [x] **G3.7 Replay**: seed plus action log gives an identical state. Replay file format and `schemaVersion` per §22; a few golden replays with a final-state hash stored in the repo.
+- [x] **G3.8 Full-game simulation test**: a random-legal-move bot finishes 1,000 seeded games with no invariant violations or stuck states. Assertions per §23.2; a 2,000-turn cap is reported, not failed (§23.3).
 
 **Exit criteria:** complete local games are possible through the engine API alone; tests cover every §13 scenario.
+
+**G3 result (2026-11-11):** new `rules/trade.ts`, `rules/devcards.ts` and `replay.ts`. Bank trades use the best rate from any port touching the player's settlement or city. Player trades follow propose → respond → confirm with one open `tradeId`; it is re-validated at confirm (`TRADE_STALE` keeps it open) and cancelled by any hand change of the proposer, by a new proposal, by `CANCEL_TRADE` or at turn end. Dev cards: buy, then the one-per-turn and purchase-turn rules (the oldest copy is played first). Every non-VP card is playable before the roll and resumes `preRoll`. Road Building places 1–2 free roads one at a time and is rejected without a legal edge. Year of Plenty is limited by bank stock. Victory is checked after every action for the active player only, so an off-turn 10th point wins when that player's turn starts; `GAME_WON` reveals VP cards. Tests: `npm test` runs 134 tests in about 24 s. Three golden replays live in `src/game/__tests__/golden/` with final-state hashes: standard-fixed seed 7, random seed 42 and a 40-turn cap. Nine mutations are caught: port rate, purchase turn, stale check, Monopoly removal, one card per turn, trade limit, Knight resume, `vpToWin`, responder holding the request. The default run plays 25 bot games; `VITE_PLAYOUTS=1000 npm test -- g3` plays 1,000 seeded games (about 6.5 min). After every action it checks conservation, pieces, award idempotence and dev-card non-creation; on sampled states it checks `legalActions ⊆ validate` and that views contain no secrets. Result: 999 games reached `gameOver` and 1 hit the 2,000-turn cap (reported, not failed, per §23.3); the average was ≈356 turns. A separate test plays 5 games with player trades (more than 20 completed trades) under the same invariants. Deviation from §23.2: the bot isn't uniform; it prefers cities, settlements and cards so that games finish within the cap. Assumption: the bot never proposes trades, so trades in full playouts are covered only by the separate trade test. The scene is unchanged (no diff in `src/scene`/`src/ui`).
 
 ### G4 — 3D and UI integration (hot-seat)
 
@@ -301,8 +303,9 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | V7 — Camera & visual QA | Done | V7 | `screenshots/milestones/v7/` | Pan clamp, reset (dbl-click/R), view presets, tile hover, QA at 10 viewports and DPR 1–3; docs in CAMERA.md |
 | V8 — Performance | Done | `bdc6ec0`, V8 | `screenshots/milestones/v8/` | Shadow-map throttling, quality presets, WebGL fallback, ASSETS.md, perf probe. 52.6 fps @1440×900 DPR2 (was 46.6); identical image on `high` |
 | G1 — Engine foundation | Done | `861b562` | — | 65 tests; setup, dice, production, views, replay |
-| G2 — Construction & robber | Done | G2 | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
-| G3–G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2 |
+| G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
+| G3 — Trades, dev cards, victory | Done | G3 | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
+| G4–G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -310,4 +313,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **G3**: trading, development cards, victory and a local hot-seat game (in progress).
+**Recommended next action:** **G4**: 3D and UI integration (hot-seat), after the G3 review.
