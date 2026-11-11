@@ -6,7 +6,7 @@ import { pineGeometry, broadleafGeometry, bushGeometry, rockGeometry, wheatGeome
 import { addWind } from './shaders'
 import { oceanTime } from './Ocean'
 
-export interface Inst { x: number; y: number; z: number; s: number; ry: number; sy?: number; tint?: THREE.Color }
+export interface Inst { x: number; y: number; z: number; s: number; ry: number; sy?: number; rx?: number; rz?: number; tint?: THREE.Color }
 
 // ---------- exclusion: keep props off buildings / roads / harbours ----------
 const blockers: [number, number, number][] = []
@@ -25,6 +25,16 @@ for (const h of HARBORS) {
   blockers.push([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0.3])
 }
 export const blocked = (x: number, z: number, pad = 0) => blockers.some(([bx, bz, r]) => (x - bx) ** 2 + (z - bz) ** 2 < (r + pad) ** 2)
+
+/** Random point on the turf strip between the outer rails and the cliff lip, or null. */
+function rimPoint(rnd: () => number, inset = 0.06): [number, number] | null {
+  const th = rnd() * Math.PI * 2
+  const r = islandRadius(th) - inset - rnd() * 0.5
+  const x = Math.cos(th) * r, z = Math.sin(th) * r
+  // the inward probe keeps props a rail-width away from the outer rails
+  if (findTile(x, z) || findTile(x * 0.975, z * 0.975) || blocked(x, z, 0.04)) return null
+  return [x, z]
+}
 
 /** True for the area between a tile's number token and the camera (+z), where tall props would hide the number. */
 const tokenSightline = (lx: number, lz: number) => lz > 0 && lz < 0.62 && Math.abs(lx) < 0.3 + lz * 0.15
@@ -59,7 +69,7 @@ export function useInstances(ref: React.RefObject<THREE.InstancedMesh | null>, i
     const o = new THREE.Object3D()
     items.forEach((it, i) => {
       o.position.set(it.x, it.y, it.z)
-      o.rotation.set(0, it.ry, 0)
+      o.rotation.set(it.rx ?? 0, it.ry, it.rz ?? 0, 'XZY')
       o.scale.set(it.s, it.s * (it.sy ?? 1), it.s)
       o.updateMatrix()
       m.setMatrixAt(i, o.matrix)
@@ -222,6 +232,16 @@ function Grass() {
         out.push({ x, y: tileHeight(t, x, z) - 0.005, z, s: 0.045 + rnd() * 0.04, ry: rnd() * 6.28, tint })
       }
     }
+    // turf strip around the board: clumped tufts so it is not an empty band
+    for (let k = 0; k < 4000; k++) {
+      const p = rimPoint(rnd)
+      if (!p) continue
+      const [x, z] = p
+      const clump = noise2(x * 3.5 + 11, z * 3.5)
+      if (clump < -0.2) continue
+      const tint = new THREE.Color().setHSL(0.17 + rnd() * 0.07, 0.22, 0.6 + rnd() * 0.2)
+      out.push({ x, y: -0.035, z, s: 0.045 + rnd() * 0.05 + Math.max(0, clump) * 0.03, ry: rnd() * 6.28, tint })
+    }
     return out
   }, [])
   return <InstGroup geo={geo} mat={mat} items={items} shadow={false} />
@@ -248,6 +268,11 @@ function Bushes() {
       if (blocked(x, z, 0.05)) continue
       out.push({ x, y: -0.04, z, s: 0.1 + rnd() * 0.1, ry: rnd() * 6.28, tint: new THREE.Color().setHSL(0.24, 0.35, 0.65 + rnd() * 0.2) })
     }
+    for (let k = 0; k < 60; k++) {
+      const p = rimPoint(rnd, 0.15)
+      if (!p) continue
+      out.push({ x: p[0], y: -0.04, z: p[1], s: 0.07 + rnd() * 0.08, ry: rnd() * 6.28, tint: new THREE.Color().setHSL(0.22 + rnd() * 0.06, 0.32, 0.62 + rnd() * 0.2) })
+    }
     return out
   }, [])
   return <InstGroup geo={geo} mat={mat} items={items} />
@@ -269,7 +294,13 @@ function Rocks() {
     // larger outcrops half-buried on mountain flanks break up the faceted slopes
     for (const t of TILES.filter((t) => t.biome === 'mountain')) {
       for (const [x, z] of scatter(t, 16, 0.16, { seed: 91, rMin: 0.36, dMax: 0.8, accept: (x, z) => { const h = tileHeight(t, x, z); return h > 0.05 && h < 0.42 } })) {
-        b[i(rnd)].push({ x, y: tileHeight(t, x, z) - 0.03, z, s: 0.1 + rnd() * 0.12, ry: rnd() * 6.28, sy: 0.8 + rnd() * 0.6, tint: new THREE.Color().setHSL(0.08, 0.06, 0.78 + rnd() * 0.2) })
+        // lean each outcrop into the hillside (most of the slope angle) and bury it deeper, so it
+        // reads as bedrock breaking through instead of a flat disc resting on the slope
+        const e = 0.05
+        const gx = (tileHeight(t, x + e, z) - tileHeight(t, x - e, z)) / (2 * e)
+        const gz = (tileHeight(t, x, z + e) - tileHeight(t, x, z - e)) / (2 * e)
+        const s = 0.1 + rnd() * 0.11
+        b[i(rnd)].push({ x, y: tileHeight(t, x, z) - 0.035 - s * 0.12, z, s, ry: rnd() * 6.28, sy: 1.15 + rnd() * 0.55, rx: -Math.atan(gz) * 0.75, rz: Math.atan(gx) * 0.75, tint: new THREE.Color().setHSL(0.08, 0.06, 0.74 + rnd() * 0.2) })
       }
     }
     // pebbles strewn along the rails tie neighbouring tiles together
@@ -291,6 +322,12 @@ function Rocks() {
       const th = rnd() * Math.PI * 2
       const r = islandRadius(th) + 0.12 + rnd() * 0.18
       b[i(rnd)].push({ x: Math.cos(th) * r, y: WATER_Y - rnd() * 0.05, z: Math.sin(th) * r, s: 0.08 + rnd() * 0.16, ry: rnd() * 6.28, tint: new THREE.Color().setHSL(0.08, 0.12, 0.6 + rnd() * 0.3) })
+    }
+    // small half-buried stones on the turf strip
+    for (let k = 0; k < 90; k++) {
+      const p = rimPoint(rnd)
+      if (!p) continue
+      b[i(rnd)].push({ x: p[0], y: -0.045, z: p[1], s: 0.03 + rnd() * rnd() * 0.08, ry: rnd() * 6.28, tint: new THREE.Color().setHSL(0.08, 0.08, 0.7 + rnd() * 0.25) })
     }
     return b
   }, [])
@@ -327,6 +364,11 @@ function Flowers() {
         if (noise2(x * 4 + 7, z * 4) < 0.1) continue
         out.push({ x, y: tileHeight(t, x, z), z, s: 0.011 + rnd() * 0.006, ry: rnd() * 6.28, tint: cols[Math.floor(rnd() * cols.length)] })
       }
+    }
+    for (let k = 0; k < 500; k++) {
+      const p = rimPoint(rnd)
+      if (!p || noise2(p[0] * 4 + 7, p[1] * 4) < 0.25) continue
+      out.push({ x: p[0], y: -0.03, z: p[1], s: 0.011 + rnd() * 0.006, ry: rnd() * 6.28, tint: cols[Math.floor(rnd() * cols.length)] })
     }
     return out
   }, [])

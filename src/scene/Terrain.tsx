@@ -89,9 +89,10 @@ function biomeColor(t: Tile, x: number, z: number, h: number, ny: number, out: T
       out.lerp(PAL.rockLight, ridge * 0.12) // sunlit, weathered crests
       out.lerp(PAL.rockDark, hollow * 0.35 * (1 - smoothstep(0.3, 0.45, h))) // shadowed lower gullies
       // snow: caps on gentle upper slopes, plus streaks that collect in gullies below the snow line
-      const snowLine = 0.36 + fbm(x * 1.5, z * 1.5, 2) * 0.08
-      const cap = smoothstep(snowLine, snowLine + 0.05, h) * smoothstep(0.45, 0.65, ny)
-      const streak = smoothstep(0.3, 0.6, hollow) * smoothstep(snowLine - 0.2, snowLine - 0.06, h) * smoothstep(0.25, 0.5, ny)
+      // ragged high-frequency breakup keeps the snow edge crisp instead of a soft smear
+      const snowLine = 0.36 + fbm(x * 1.5, z * 1.5, 2) * 0.08 + noise2(x * 13, z * 13) * 0.018
+      const cap = smoothstep(snowLine, snowLine + 0.022, h) * smoothstep(0.4, 0.54, ny)
+      const streak = smoothstep(0.45, 0.65, hollow) * smoothstep(snowLine - 0.16, snowLine - 0.05, h) * smoothstep(0.3, 0.45, ny) * 0.9
       const snow = Math.max(cap, streak)
       tmp.lerpColors(PAL.snowShade, PAL.snow, clamp(ny * 1.4 - 0.3))
       out.lerp(tmp, snow)

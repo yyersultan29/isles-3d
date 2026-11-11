@@ -82,13 +82,13 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 - [x] Improve roofs, timber/stone details, doors, windows and chimneys.
 - [x] Preserve distinct red, blue, orange and white player colors.
 - [x] Ensure houses sit on valid vertices and roads follow edges.
-- [ ] Keep miniature-scale detail visible at default zoom.
+- [x] Keep miniature-scale detail visible at default zoom. Verified in the V3 exit review: roofs, chimneys, lit windows, shutters and road segments are visible at the default pose at 1440×900 and 1920×1080.
 
 **Terrain and coast**
 - [x] Improve grass, clay, wheat, stone and sand material variation. Done in V3.3: olive pasture with worn-earth patches, earthier clay with dusty crests and scrub in the hollows, wheat with ripening and stubble field patches, and wind ripples on the desert.
 - [x] Soften unnatural seams while preserving tile boundaries. Done in V3.3: a ragged, narrow strip of trodden earth plus contact darkening at the rails replaces the bright dirt outline. The island lip and the plateau now share the pasture turf palette, and the lip has denser rows so the faceting is gone.
 - [x] Add tasteful shoreline rocks and improve cliff-to-water transition.
-- [ ] Preserve existing ocean shader except for necessary coastline integration.
+- [x] Preserve existing ocean shader except for necessary coastline integration. Verified: `Ocean.tsx` and `World.tsx` are unchanged since `m0-baseline`.
 
 **Exit criteria:** side-by-side screenshots show clear improvements in silhouette/material quality, with no new blur, missing pieces, broken tile placement or noticeable readability regression.
 
@@ -245,7 +245,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | Milestone | Status | Commit / PR | Screenshot | Notes |
 |---|---|---|---|---|
 | M0 — Baseline | Done | `m0-baseline` | `screenshots/baseline/` | 162 meshes, ≈1.2M tris, ~47 fps @1440×900 DPR2 |
-| V3 — Environment assets | In progress | `2c4fdb8`, `bdc6ec0`, `a10ff78`, `d8d17e8`, V3.3 | `screenshots/milestones/v3.3/` | V3.1 mountains, V3.2 cliffs and boulders, V3.3 materials and seams done; open: V3 exit review (miniature detail, readability) |
+| V3 — Environment assets | Done | `2c4fdb8`, `bdc6ec0`, `a10ff78`, `d8d17e8`, `9d1895a`, V3.4 | `screenshots/milestones/v3.4/` | V3.1 mountains, V3.2 cliffs and boulders, V3.3 materials and seams done; exit review in `screenshots/milestones/v3-exit/`: all criteria pass. V3.4 polish (`screenshots/milestones/v3.4/`): crisper snow edges, outcrops leaning into the slope, ground cover on the rim strip. 162 meshes, ≈1.26M tris, ~47 fps @1440×900 DPR2 |
 | V4 — Lighting & water | Partly done (unreviewed) | `bba5a95`, `2c4fdb8` | — | Calmer ocean, gradient, thin foam already in; formal review pending |
 | V5 — Micro-animations | Not started | — | — | Subtle motion |
 | V6 — HUD polish | Not started | — | — | Responsive |
@@ -259,4 +259,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **V3 exit review**: side-by-side comparison with the baseline, the miniature-detail check, and sign-off. Then start V4.
+**Recommended next action:** **V4**: lighting, materials and water art direction.
