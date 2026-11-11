@@ -96,14 +96,14 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 
 **Objective:** establish consistent lighting and calmer, more attractive ocean rendering.
 
-- [ ] Audit tone mapping, exposure, ambient/directional light and shadow configuration.
-- [ ] Balance warm sunlight and cooler shadows; avoid crushed blacks or overexposed wheat.
-- [ ] Reduce noisy, excessively bright ocean specular reflections.
-- [ ] Establish a deep-blue-to-turquoise coastal color gradient.
-- [ ] Improve shoreline foam without making it a thick white outline.
-- [ ] Tune roughness/metalness and material response consistently across assets.
-- [ ] Confirm number tokens, ports, and player roads stay readable.
-- [ ] Keep the entire main board sharp; **do not add DOF or motion blur**.
+- [x] Audit tone mapping, exposure, ambient/directional light and shadow configuration. The pipeline is ACES in post with a warm key sun and hemisphere, ambient, front and rim fills plus an env map. The fills were too strong and the sky fill too blue, which washed out the biomes.
+- [x] Balance warm sunlight and cooler shadows; avoid crushed blacks or overexposed wheat. V4.1 makes the sun warmer and stronger, lowers the fills and the sky dome, sets saturation to +0.08 and brightness to 0. Measured region means moved toward the reference (clay rgb 145,77,33 → 124,54,16). Forests keep detail and wheat isn't clipped.
+- [x] Reduce noisy, excessively bright ocean specular reflections. Verified: no glare at the locked pose (roughness 0.42, env 0.09, normals calmed with distance).
+- [x] Establish a deep-blue-to-turquoise coastal color gradient. The existing gradient is now visible because the foam no longer covers the shallows.
+- [x] Improve shoreline foam without making it a thick white outline. V4.2 replaces the solid band with a narrow, broken contact line, lace around the coastal boulders and sparse wave lines.
+- [x] Tune roughness/metalness and material response consistently across assets. Audited: natural materials 0.75–1, painted pieces 0.5–0.7, robber 0.32, only the brass rivets are metallic. No changes needed.
+- [x] Confirm number tokens, ports, and player roads stay readable. Verified at 1440×900 and 1920×1080.
+- [x] Keep the entire main board sharp; **do not add DOF or motion blur**. No new effects were added and the camera is unchanged.
 
 **Exit criteria:** water no longer dominates the frame, terrain has balanced contrast, screenshots remain sharp, and lighting is consistent from the locked camera.
 
@@ -246,7 +246,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 |---|---|---|---|---|
 | M0 — Baseline | Done | `m0-baseline` | `screenshots/baseline/` | 162 meshes, ≈1.2M tris, ~47 fps @1440×900 DPR2 |
 | V3 — Environment assets | Done | `2c4fdb8`, `bdc6ec0`, `a10ff78`, `d8d17e8`, `9d1895a`, V3.4 | `screenshots/milestones/v3.4/` | V3.1 mountains, V3.2 cliffs and boulders, V3.3 materials and seams done; exit review in `screenshots/milestones/v3-exit/`: all criteria pass. V3.4 polish (`screenshots/milestones/v3.4/`): crisper snow edges, outcrops leaning into the slope, ground cover on the rim strip. 162 meshes, ≈1.26M tris, ~47 fps @1440×900 DPR2 |
-| V4 — Lighting & water | Partly done (unreviewed) | `bba5a95`, `2c4fdb8` | — | Calmer ocean, gradient, thin foam already in; formal review pending |
+| V4 — Lighting & water | Done | `bba5a95`, `2c4fdb8`, V4 | `screenshots/milestones/v4/` | V4.1 warm light balance, V4.2 broken lacy foam; materials audited. 162 meshes, ≈1.26M tris, ~47 fps @1440×900 DPR2 |
 | V5 — Micro-animations | Not started | — | — | Subtle motion |
 | V6 — HUD polish | Not started | — | — | Responsive |
 | V7 — Camera & visual QA | Not started | — | — | Locked reference pose |
@@ -259,4 +259,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **V4**: lighting, materials and water art direction.
+**Recommended next action:** **V5**: ambient micro-animations.

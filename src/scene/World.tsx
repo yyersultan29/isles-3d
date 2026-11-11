@@ -111,8 +111,8 @@ function Sun() {
     <directionalLight
       ref={ref}
       position={[-7.5, 7.2, -5]}
-      intensity={3.1}
-      color="#ffc888"
+      intensity={3.3}
+      color="#ffbd78"
       castShadow
       shadow-mapSize={[4096, 4096]}
       shadow-bias={-0.0004}
@@ -133,10 +133,10 @@ function Lights() {
     <>
       <Sun />
       {/* warm sky / bounced-earth fill: lifts shadows without flattening the sun */}
-      <hemisphereLight args={['#e3e6e0', '#7a5a34', 0.72]} />
-      <ambientLight intensity={0.16} color="#ffe2b8" />
+      <hemisphereLight args={['#cdd3d6', '#6e5434', 0.5]} />
+      <ambientLight intensity={0.1} color="#ffe2b8" />
       {/* soft warm fill from the camera side so front faces of cliffs and houses read */}
-      <directionalLight position={[2, 6, 9]} intensity={0.45} color="#ffe0bc" />
+      <directionalLight position={[2, 6, 9]} intensity={0.36} color="#ffe0bc" />
       {/* cool rim from the opposite side */}
       <directionalLight position={[7, 4, 3]} intensity={0.25} color="#9fc0e8" />
       <Environment resolution={256} frames={1}>
@@ -144,7 +144,7 @@ function Lights() {
         {/* warm low sun panel */}
         <Lightformer form="rect" intensity={8} color="#ffcf8a" position={[-8, 4, -5]} scale={[6, 3, 1]} target={[0, 0, 0]} />
         {/* sky dome */}
-        <Lightformer form="rect" intensity={1.0} color="#c8d8e8" position={[0, 10, 0]} scale={[20, 20, 1]} rotation-x={Math.PI / 2} />
+        <Lightformer form="rect" intensity={0.7} color="#c8d8e8" position={[0, 10, 0]} scale={[20, 20, 1]} rotation-x={Math.PI / 2} />
         <Lightformer form="rect" intensity={1.1} color="#ffb070" position={[0, 2, -10]} scale={[20, 4, 1]} />
         <Lightformer form="rect" intensity={0.4} color="#7896b8" position={[8, 3, 8]} scale={[10, 5, 1]} target={[0, 0, 0]} />
       </Environment>
@@ -159,8 +159,8 @@ function Effects() {
     <EffectComposer multisampling={0} enableNormalPass={false}>
       {off.has('ao') ? <></> : <N8AO aoRadius={0.45} intensity={2.6} distanceFalloff={0.6} quality="medium" halfRes />}
       {off.has('bloom') ? <></> : <Bloom luminanceThreshold={1.7} luminanceSmoothing={0.3} intensity={0.5} mipmapBlur radius={0.5} />}
-      <HueSaturation saturation={0.06} />
-      <BrightnessContrast brightness={0.025} contrast={0.1} />
+      <HueSaturation saturation={0.08} />
+      <BrightnessContrast brightness={0.0} contrast={0.1} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette offset={0.32} darkness={0.5} />
       <SMAA />

@@ -131,13 +131,16 @@ function Foam() {
           vec2 p = vW.xz;
           float n = snoise(p * 4.0 + uTime * 0.2) * 0.5 + 0.5;
           float n2 = snoise(p * 11.0 - uTime * 0.35) * 0.5 + 0.5;
-          float shore = 1.0 - smoothstep(0.17 + n * 0.08, 0.3 + n * 0.1, v);
-          // waves rolling in toward the shore
+          // thin, broken contact foam right at the rocks instead of a solid white outline
+          float shore = 1.0 - smoothstep(0.09 + n * 0.07, 0.2 + n * 0.1, v);
+          shore *= 0.6 + 0.4 * smoothstep(0.3, 0.6, n2 + n * 0.2);
+          // sparse wave lines rolling in toward the shore
           float w = fract(v * 3.2 + uTime * 0.18 + n * 0.5);
-          float ring = smoothstep(0.0, 0.08, w) * (1.0 - smoothstep(0.08, 0.32, w));
-          ring *= smoothstep(0.55, 0.8, n2 + n * 0.3) * smoothstep(0.24, 0.34, v) * (1.0 - smoothstep(0.38, 0.7, v));
-          float lace = smoothstep(0.66, 0.84, n2) * smoothstep(0.2, 0.3, v) * (1.0 - smoothstep(0.3, 0.55, v)) * 0.45;
-          float a = max(shore * (0.55 + 0.35 * n2), max(ring * 0.6, lace));
+          float ring = smoothstep(0.0, 0.06, w) * (1.0 - smoothstep(0.06, 0.22, w));
+          ring *= smoothstep(0.58, 0.82, n2 + n * 0.3) * smoothstep(0.2, 0.28, v) * (1.0 - smoothstep(0.34, 0.6, v));
+          // lacy foam patches where the coastal boulders break the surface
+          float lace = smoothstep(0.62, 0.82, n2) * smoothstep(0.14, 0.22, v) * (1.0 - smoothstep(0.3, 0.45, v)) * 0.5;
+          float a = max(shore * (0.55 + 0.35 * n2), max(ring * 0.5, lace));
           gl_FragColor = vec4(vec3(0.9, 0.95, 0.97), min(1.0, a * 1.05));
         }`,
     })
