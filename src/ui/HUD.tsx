@@ -2,6 +2,9 @@ import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import gsap from 'gsap'
 import { Avatar, Brick, HexLogo, Logs, Ore, SheepIcon, WheatIcon } from './icons'
 import { BRAND_NAME } from '../brand'
+import { motion } from '../scene/motion'
+import { useViewport } from './layout'
+import { CompactHUD } from './CompactHUD'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -18,14 +21,15 @@ function useHudScale() {
   return s
 }
 
-const panel =
+// Shared HUD tokens: panels use r-12, controls and cards r-8/9; type is 14/15 UI and 20 display.
+export const panel =
   'bg-[linear-gradient(180deg,rgba(28,32,40,0.88),rgba(12,14,19,0.9))] backdrop-blur-md border border-[#c9a45c]/35 shadow-[0_10px_30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]'
 
 function Brand() {
   return (
     <div className="absolute left-[18px] top-[8px] flex items-center gap-3 rounded-[14px] pr-5 pl-1.5 py-1.5 bg-[linear-gradient(90deg,rgba(10,12,16,0.75),rgba(10,12,16,0.0))]">
       <div className="h-[50px] w-[50px] rounded-full bg-[radial-gradient(circle_at_40%_35%,#3a2a1a,#120c08)] border-2 border-[#e0a94a] shadow-[0_0_14px_rgba(224,169,74,0.45)] grid place-items-center">
-        <HexLogo className="h-[38px] w-[38px]" />
+        <HexLogo aria-hidden className="h-[38px] w-[38px]" />
       </div>
       <div className="font-display text-[27px] font-semibold tracking-tight text-[#f4efe6] drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)]">
         {BRAND_NAME} <span className="text-[#f2b544]">3D</span>
@@ -34,31 +38,37 @@ function Brand() {
   )
 }
 
-const NavIcon = ({ d }: { d: ReactNode }) => (
+/** Visible keyboard focus that reads over both water and panels. */
+export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-[#f2b544] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1018]'
+
+export const NavIcon = ({ d }: { d: ReactNode }) => (
   <svg viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="currentColor">
     {d}
   </svg>
 )
 
-function Nav() {
-  const items: [string, ReactNode][] = [
+export const NAV_ITEMS: [string, ReactNode][] = [
     ['Home', <path key="h" d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z" />],
     ['Game', <g key="g"><circle cx="8" cy="8" r="3.4" /><circle cx="16.5" cy="8.5" r="3" /><path d="M1.5 20c0-4 3-6.5 6.5-6.5s6.5 2.5 6.5 6.5z" /><path d="M14 13.6c3.6-.6 8 1.4 8.5 6.4h-6.3c0-2.4-.8-4.6-2.2-6.4z" /></g>],
     ['Stats', <g key="s"><circle cx="12" cy="6" r="3.2" /><path d="M5 21v-3.5C5 14 8 11.5 12 11.5s7 2.5 7 6V21z" /><rect x="3" y="19" width="18" height="3" rx="1" /></g>],
     ['Settings', <path key="st" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.4-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.4 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.7h4l.4-2.7a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)" />],
   ]
+
+function Nav() {
+  const items = NAV_ITEMS
   return (
-    <nav className={`absolute left-[16px] top-[82px] w-[122px] rounded-[12px] p-[5px] ${panel}`}>
+    <nav aria-label="Main" className={`absolute left-[16px] top-[82px] w-[122px] rounded-[12px] p-[5px] ${panel}`}>
       {items.map(([label, d], i) => (
         <button
           key={label}
-          className={`flex w-full items-center gap-[11px] rounded-[9px] px-[11px] h-[47px] mb-[5px] last:mb-0 text-[14.5px] font-medium transition-colors ${
+          aria-current={i === 0 ? 'page' : undefined}
+          className={`flex w-full items-center gap-[11px] rounded-[9px] px-[11px] h-[47px] mb-[5px] last:mb-0 text-[14px] font-medium transition-colors ${focusRing} ${
             i === 0
               ? 'bg-[linear-gradient(180deg,rgba(60,70,90,0.55),rgba(30,36,48,0.6))] text-white ring-1 ring-[#8fa8d0]/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-              : 'text-[#e3e1dc] hover:bg-white/5'
+              : 'text-[#e3e1dc] hover:bg-white/[0.07] hover:text-white'
           }`}
         >
-          <span className={i === 0 ? 'text-[#f1d9a8]' : 'text-[#c9ccd2]'}>
+          <span aria-hidden className={i === 0 ? 'text-[#f1d9a8]' : 'text-[#c9ccd2]'}>
             <NavIcon d={d} />
           </span>
           {label}
@@ -68,27 +78,31 @@ function Nav() {
   )
 }
 
-function IconButton({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function IconButton({ children, label, className = '' }: { children: ReactNode; label: string; className?: string }) {
   return (
-    <button className={`grid h-[38px] w-[38px] place-items-center rounded-[9px] text-[#ece8e0] ${panel} ${className}`}>
+    <button
+      aria-label={label}
+      title={label}
+      className={`grid h-[38px] w-[38px] place-items-center rounded-[9px] text-[#ece8e0] transition-[filter,transform] hover:brightness-125 active:translate-y-[1px] ${focusRing} ${panel} ${className}`}
+    >
       {children}
     </button>
   )
 }
 
-const PLAYERS = [
+export const PLAYERS = [
   { name: 'Alex', vp: 5, cards: 7, color: '#d23a2e' },
   { name: 'Maria', vp: 4, cards: 6, color: '#2f5fe0' },
   { name: 'Den', vp: 5, cards: 7, color: '#e0812f' },
   { name: 'Kate', vp: 3, cards: 5, color: '#c9ccd2' },
 ]
 
-const Trophy = () => (
+export const Trophy = () => (
   <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="#f2b544">
     <path d="M6 3h12v3h3v2a5 5 0 0 1-4.6 5A6 6 0 0 1 13 16.6V19h4v2H7v-2h4v-2.4A6 6 0 0 1 7.6 13 5 5 0 0 1 3 8V6h3zm0 5V8H5a3 3 0 0 0 1.3 2.5A6 6 0 0 1 6 8zm12 0a6 6 0 0 1-.3 2.5A3 3 0 0 0 19 8z" />
   </svg>
 )
-const CardsIco = () => (
+export const CardsIco = () => (
   <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="#e8e4dc" strokeWidth="2">
     <rect x="6" y="5" width="12" height="15" rx="2" />
     <path d="M9 5V3.5h8.5a1.5 1.5 0 0 1 1.5 1.5v12" />
@@ -97,10 +111,11 @@ const CardsIco = () => (
 
 function Players() {
   return (
-    <div className="absolute right-[18px] top-[66px] flex w-[212px] flex-col gap-[7px]">
+    <ul aria-label="Players" className="absolute right-[18px] top-[66px] flex w-[212px] flex-col gap-[7px]">
       {PLAYERS.map((p, i) => (
-        <div
+        <li
           key={p.name}
+          aria-label={`${p.name}: ${p.vp} victory points, ${p.cards} cards, online`}
           className={`relative flex h-[62px] items-center gap-[12px] overflow-hidden rounded-[8px] pl-[6px] pr-3 ${panel}`}
           style={{ boxShadow: `inset 3px 0 0 ${p.color}, inset 0 0 0 1px ${p.color}55, 0 8px 22px rgba(0,0,0,.5)` }}
         >
@@ -114,10 +129,10 @@ function Players() {
               <span className="flex items-center gap-[5px]"><CardsIco />{p.cards}</span>
             </div>
           </div>
-          <span className="absolute right-[10px] top-[9px] h-[9px] w-[9px] rounded-full bg-[#3fd25a] shadow-[0_0_8px_#3fd25a]" />
-        </div>
+          <span aria-hidden className="absolute right-[10px] top-[9px] h-[9px] w-[9px] rounded-full bg-[#3fd25a] shadow-[0_0_8px_#3fd25a]" />
+        </li>
       ))}
-    </div>
+    </ul>
   )
 }
 
@@ -138,8 +153,8 @@ function Face({ n, style }: { n: number; style: React.CSSProperties }) {
     </div>
   )
 }
-function Die({ faces, rot }: { faces: [number, number, number]; rot: string }) {
-  const S = 54
+export function Die({ faces, rot, size = 54 }: { faces: [number, number, number]; rot: string; size?: number }) {
+  const S = size
   return (
     <div className="relative" style={{ width: S, height: S, perspective: 400 }}>
       <div className="absolute inset-0" style={{ transformStyle: 'preserve-3d', transform: rot }}>
@@ -155,12 +170,12 @@ function Die({ faces, rot }: { faces: [number, number, number]; rot: string }) {
 function DiceArea() {
   const dice = useRef<HTMLDivElement>(null)
   const roll = () => {
-    if (!dice.current) return
+    if (!dice.current || motion.reduced) return
     gsap.fromTo(dice.current.children, { y: -18, rotate: -25 }, { y: 0, rotate: 0, duration: 0.7, ease: 'bounce.out', stagger: 0.08 })
   }
   return (
     <div className="absolute right-[14px] top-[420px] w-[232px]">
-      <div ref={dice} className="relative z-10 mx-auto flex w-[150px] justify-between drop-shadow-[0_10px_8px_rgba(0,0,0,0.55)]">
+      <div ref={dice} aria-hidden className="relative z-10 mx-auto flex w-[150px] justify-between drop-shadow-[0_10px_8px_rgba(0,0,0,0.55)]">
         <Die faces={[5, 1, 3]} rot="rotateX(-24deg) rotateY(-28deg) rotateZ(-4deg)" />
         <Die faces={[6, 2, 4]} rot="rotateX(-22deg) rotateY(30deg) rotateZ(6deg)" />
       </div>
@@ -169,7 +184,7 @@ function DiceArea() {
         <div className="absolute inset-x-[10px] top-[8px] h-[8px] rounded-full bg-[repeating-linear-gradient(90deg,rgba(0,0,0,0.12)_0_6px,rgba(255,255,255,0.03)_6px_14px)]" />
         <button
           onClick={roll}
-          className="absolute left-1/2 top-[30px] h-[46px] w-[176px] -translate-x-1/2 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] font-display text-[21px] font-semibold text-[#3a2208] shadow-[0_0_18px_rgba(255,190,70,0.7),0_4px_0_#8a5410,inset_0_2px_0_rgba(255,255,255,0.7)] transition-transform hover:scale-[1.03] active:translate-y-[2px]"
+          className="absolute left-1/2 top-[30px] outline-none focus-visible:ring-4 focus-visible:ring-white/80 h-[46px] w-[176px] -translate-x-1/2 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] font-display text-[21px] font-semibold text-[#3a2208] shadow-[0_0_18px_rgba(255,190,70,0.7),0_4px_0_#8a5410,inset_0_2px_0_rgba(255,255,255,0.7)] transition-transform hover:scale-[1.03] active:translate-y-[2px]"
         >
           Roll Dice
         </button>
@@ -178,12 +193,12 @@ function DiceArea() {
   )
 }
 
-const RESOURCES = [
-  { n: 3, Icon: Logs, bg: 'from-[#5f8a32] to-[#2f4a18]' },
-  { n: 2, Icon: Brick, bg: 'from-[#b9522c] to-[#6a2512]' },
-  { n: 1, Icon: SheepIcon, bg: 'from-[#8fc04e] to-[#4a7a22]' },
-  { n: 4, Icon: WheatIcon, bg: 'from-[#f0b43c] to-[#b7741a]' },
-  { n: 1, Icon: Ore, bg: 'from-[#8a96a8] to-[#4a5363]' },
+export const RESOURCES = [
+  { name: 'Wood', n: 3, Icon: Logs, bg: 'from-[#5f8a32] to-[#2f4a18]' },
+  { name: 'Brick', n: 2, Icon: Brick, bg: 'from-[#b9522c] to-[#6a2512]' },
+  { name: 'Wool', n: 1, Icon: SheepIcon, bg: 'from-[#8fc04e] to-[#4a7a22]' },
+  { name: 'Grain', n: 4, Icon: WheatIcon, bg: 'from-[#f0b43c] to-[#b7741a]' },
+  { name: 'Ore', n: 1, Icon: Ore, bg: 'from-[#8a96a8] to-[#4a5363]' },
 ]
 
 function ResourceCards() {
@@ -191,27 +206,29 @@ function ResourceCards() {
     <div className="absolute bottom-0 left-1/2 -translate-x-[54%]">
       {/* wooden tray */}
       <div className="absolute -bottom-[30px] left-1/2 h-[64px] w-[700px] -translate-x-1/2 rounded-[40px_40px_0_0] bg-[linear-gradient(180deg,#5c3d22,#2c1c10)] shadow-[0_-6px_20px_rgba(0,0,0,0.5),inset_0_2px_0_rgba(255,210,160,0.2)]" />
-      <div className="relative flex gap-[8px] pb-[12px]">
-        {RESOURCES.map(({ n, Icon, bg }, i) => (
-          <div
+      <ul aria-label="Your resources" className="relative flex gap-[8px] pb-[12px]">
+        {RESOURCES.map(({ name, n, Icon, bg }, i) => (
+          <li
             key={i}
+            aria-label={`${name}: ${n}`}
+            title={`${name}: ${n}`}
             className="relative h-[96px] w-[88px] rounded-[9px] p-[3px] bg-[linear-gradient(180deg,#ffe2a0,#b98a3a_50%,#f2cf84)] shadow-[0_10px_22px_rgba(0,0,0,0.6)] transition-transform hover:-translate-y-[4px]"
           >
             <div className={`relative h-full w-full overflow-hidden rounded-[7px] bg-gradient-to-b ${bg} shadow-[inset_0_0_14px_rgba(0,0,0,0.45)]`}>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.28),transparent_60%)]" />
-              <Icon className="absolute left-1/2 top-[54%] w-[78px] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_4px_3px_rgba(0,0,0,0.45)]" />
-              <span className="absolute left-[4px] top-[4px] grid h-[22px] w-[22px] place-items-center rounded-[5px] bg-[#1d1a16]/85 text-[14px] font-bold text-white ring-1 ring-[#f2cf84]/60">
+              <Icon aria-hidden className="absolute left-1/2 top-[54%] w-[78px] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_4px_3px_rgba(0,0,0,0.45)]" />
+              <span aria-hidden className="absolute left-[4px] top-[4px] grid h-[22px] w-[22px] place-items-center rounded-[5px] bg-[#1d1a16]/85 text-[14px] font-bold text-white ring-1 ring-[#f2cf84]/60">
                 {n}
               </span>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   )
 }
 
-const Arrow = () => (
+export const Arrow = () => (
   <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
@@ -228,46 +245,66 @@ const HouseIco = ({ city }: { city?: boolean }) => (
   </svg>
 )
 
-function BuildPanel() {
-  const rows: [ReactNode, ReactNode[]][] = [
-    [<RoadIco key="r" />, [<Logs key="a" />, <Brick key="b" />]],
-    [<HouseIco key="h" />, [<Logs key="a" />, <Brick key="b" />, <SheepIcon key="c" />, <WheatIcon key="d" />]],
-    [<HouseIco key="c" city />, [<WheatIcon key="a" />, <Ore key="b" />, <Ore key="c" />]],
+export const BUILD_ROWS: [string, ReactNode, ReactNode[]][] = [
+    ['Road: 1 wood, 1 brick', <RoadIco key="r" />, [<Logs key="a" />, <Brick key="b" />]],
+    ['Settlement: 1 wood, 1 brick, 1 wool, 1 grain', <HouseIco key="h" />, [<Logs key="a" />, <Brick key="b" />, <SheepIcon key="c" />, <WheatIcon key="d" />]],
+    ['City: 1 grain, 2 ore', <HouseIco key="c" city />, [<WheatIcon key="a" />, <Ore key="b" />, <Ore key="c" />]],
   ]
+
+/** Rows of the build menu (cost icons + arrow); shared by the desktop panel and the compact popover. */
+export function BuildRows() {
   return (
-    <div className={`absolute bottom-[42px] right-[16px] w-[246px] rounded-[14px] px-[16px] pb-[10px] pt-[12px] ${panel}`}>
-      <div className="mb-[8px] font-display text-[20px] font-medium text-[#f4efe6]">Build</div>
-      {rows.map(([ico, costs], i) => (
-        <div key={i} className="flex h-[46px] items-center gap-[12px] border-b border-white/5">
-          <span className="w-[28px]">{ico}</span>
-          <div className="flex flex-1 items-center gap-[3px]">
+    <>
+      {BUILD_ROWS.map(([label, ico, costs], i) => (
+        <button
+          key={i}
+          aria-label={`Build ${label}`}
+          title={label}
+          className={`group flex h-[46px] w-full items-center gap-[12px] rounded-[8px] border-b border-white/5 px-[6px] text-left transition-colors hover:bg-white/[0.06] ${focusRing}`}
+        >
+          <span aria-hidden className="w-[28px]">{ico}</span>
+          <span aria-hidden className="flex flex-1 items-center gap-[3px]">
             {costs.map((c, k) => (
               <span key={k} className="block h-[26px] w-[34px] [&>svg]:h-full [&>svg]:w-full">{c}</span>
             ))}
-          </div>
-          <span className="text-[#ece8e0]"><Arrow /></span>
-        </div>
+          </span>
+          <span aria-hidden className="text-[#ece8e0] transition-transform group-hover:translate-x-[2px]"><Arrow /></span>
+        </button>
       ))}
-      <div className="flex h-[46px] items-center gap-[12px]">
-        <span className="grid h-[26px] w-[24px] place-items-center rounded-[4px] border border-[#d9cbb0]/70 text-[14px] font-bold text-[#efe6d4]">?</span>
-        <div className="flex-1" />
-        <span className="text-[#ece8e0]/40"><Arrow /></span>
-      </div>
-    </div>
+      <button
+        disabled
+        aria-label="Development card (not available yet)"
+        title="Development card (not available yet)"
+        className={`flex h-[46px] w-full cursor-not-allowed items-center gap-[12px] rounded-[8px] px-[6px] ${focusRing}`}
+      >
+        <span aria-hidden className="grid h-[26px] w-[24px] place-items-center rounded-[4px] border border-[#d9cbb0]/70 text-[14px] font-bold text-[#efe6d4]">?</span>
+        <span className="flex-1" />
+        <span aria-hidden className="text-[#ece8e0]/40"><Arrow /></span>
+      </button>
+    </>
+  )
+}
+
+function BuildPanel() {
+  return (
+    <section aria-labelledby="build-title" className={`absolute bottom-[42px] right-[16px] w-[246px] rounded-[12px] px-[10px] pb-[8px] pt-[12px] ${panel}`}>
+      <h2 id="build-title" className="mb-[8px] px-[6px] font-display text-[20px] font-medium text-[#f4efe6]">Build</h2>
+      <BuildRows />
+    </section>
   )
 }
 
 function BottomLeft() {
   return (
     <div className="absolute bottom-[16px] left-[22px] flex gap-[12px]">
-      <IconButton className="!h-[52px] !w-[52px] !rounded-[14px]">
-        <svg viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
+      <IconButton label="Undo" className="!h-[52px] !w-[52px] !rounded-[12px]">
+        <svg aria-hidden viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
       </IconButton>
       <div className="relative">
-        <IconButton className="!h-[52px] !w-[52px] !rounded-[14px]">
-          <svg viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="currentColor"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.4 1.3 4.6 3.4 6L4.5 21l4.4-2.3c1 .2 2 .3 3.1.3 5.5 0 10-3.6 10-8s-4.5-8-10-8zM7.5 12.3a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6z" /></svg>
+        <IconButton label="Chat (new messages)" className="!h-[52px] !w-[52px] !rounded-[12px]">
+          <svg aria-hidden viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="currentColor"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.4 1.3 4.6 3.4 6L4.5 21l4.4-2.3c1 .2 2 .3 3.1.3 5.5 0 10-3.6 10-8s-4.5-8-10-8zM7.5 12.3a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6z" /></svg>
         </IconButton>
-        <span className="absolute right-[3px] top-[3px] h-[9px] w-[9px] rounded-full bg-[#f2a33a] shadow-[0_0_6px_#f2a33a]" />
+        <span aria-hidden className="absolute right-[3px] top-[3px] h-[9px] w-[9px] rounded-full bg-[#f2a33a] shadow-[0_0_6px_#f2a33a]" />
       </div>
     </div>
   )
@@ -275,6 +312,8 @@ function BottomLeft() {
 
 export const HUD = memo(function HUD() {
   const s = useHudScale()
+  const { compact } = useViewport()
+  if (compact) return <CompactHUD />
   return (
     <div className="pointer-events-none fixed inset-0 select-none overflow-hidden font-ui">
       <div
@@ -284,11 +323,11 @@ export const HUD = memo(function HUD() {
         <Brand />
         <Nav />
         <div className="absolute right-[18px] top-[14px] flex gap-[10px]">
-          <IconButton>
-            <svg viewBox="0 0 24 24" className="h-[20px] w-[20px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+          <IconButton label="Fullscreen">
+            <svg aria-hidden viewBox="0 0 24 24" className="h-[20px] w-[20px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
           </IconButton>
-          <IconButton>
-            <span className="text-[20px] font-bold">?</span>
+          <IconButton label="Help">
+            <span aria-hidden className="text-[20px] font-bold">?</span>
           </IconButton>
         </div>
         <Players />

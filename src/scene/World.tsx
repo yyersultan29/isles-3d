@@ -15,6 +15,7 @@ import { VERTICES, islandRadius } from './board'
 import { Ships } from './Ships'
 import { Scenery } from './Scenery'
 import { Smoke } from './Smoke'
+import { isCompact, COMPACT_SAFE } from '../ui/layout'
 
 // Debug override: ?cam=x,y,z&tgt=x,y,z
 const qp = new URLSearchParams(window.location.search)
@@ -49,14 +50,25 @@ const RIM_PTS = [
 ]
 // left edge of the west harbour signs (sign half-width ≈ 0.22 × SIGN_SCALE, plus the post)
 const WEST_SIGN_PTS = SIGN_PTS.filter((v) => v.x < -3).map((v) => v.clone().add(new THREE.Vector3(-0.4, -0.3, 0)))
+// compact layout: every harbour sign (both edges) must stay fully on screen
+const ALL_SIGN_PTS = SIGN_PTS.flatMap((v) => [v.clone().add(new THREE.Vector3(-0.4, 0, 0)), v.clone().add(new THREE.Vector3(0.4, 0, 0))])
+const DEFAULT_MAX_DIST = 22
+const DEFAULT_FOG: [number, number] = [17, 40]
 
 function CameraRig() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const size = useThree((s) => s.size)
   const controls = useThree((s) => s.controls) as unknown as OrbitControlsImpl | null
+  const scene = useThree((s) => s.scene)
   useLayoutEffect(() => {
     if (vec('cam')) return
     const w = size.width, h = size.height
+    if (isCompact(w, h)) {
+      fitCompact(camera, w, h, controls, scene)
+      return
+    }
+    if (controls) controls.maxDistance = DEFAULT_MAX_DIST
+    if (scene.fog instanceof THREE.Fog) [scene.fog.near, scene.fog.far] = DEFAULT_FOG
     const s = Math.min(w / HUD_W, h / HUD_H)
     const right = w - SAFE.right * s, top = SAFE.top * s, bottom = h - SAFE.bottom * s
     camera.fov = FOV
@@ -94,8 +106,54 @@ function CameraRig() {
     camera.position.copy(target).addScaledVector(VIEW_DIR, dist)
     camera.lookAt(target)
     if (controls) { controls.target.copy(target); controls.update() }
-  }, [camera, size, controls])
+  }, [camera, size, controls, scene])
   return null
+}
+
+/**
+ * Compact (narrow or portrait) framing: same fixed angle, but the board and all harbour signs are
+ * fitted between the compact HUD's top bar and bottom dock. A narrow aspect needs a much longer
+ * camera distance, so the orbit limit and the fog are pushed out with it; otherwise the controls
+ * would clamp the distance (cropping the board) and the fog would wash it out.
+ */
+function fitCompact(camera: THREE.PerspectiveCamera, w: number, h: number, controls: OrbitControlsImpl | null, scene: THREE.Scene) {
+  camera.fov = FOV
+  camera.aspect = w / h
+  camera.updateProjectionMatrix()
+  const L = COMPACT_SAFE.side, R = w - COMPACT_SAFE.side, T = COMPACT_SAFE.top, B = h - COMPACT_SAFE.bottom
+  const target = new THREE.Vector3(0.3, -0.35, 0.3)
+  let dist = 13.6
+  const p = new THREE.Vector3(), camRight = new THREE.Vector3(), camUp = new THREE.Vector3()
+  const pts = [...BOARD_PTS, ...ALL_SIGN_PTS]
+  for (let it = 0; it < 14; it++) {
+    camera.position.copy(target).addScaledVector(VIEW_DIR, dist)
+    camera.lookAt(target)
+    camera.updateMatrixWorld()
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+    for (const v of pts) {
+      p.copy(v).project(camera)
+      const x = (p.x * 0.5 + 0.5) * w, y = (-p.y * 0.5 + 0.5) * h
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+    }
+    const k = Math.max((maxX - minX) / (R - L), (maxY - minY) / (B - T))
+    const wpp = (2 * dist * Math.tan(THREE.MathUtils.degToRad(FOV / 2))) / h
+    camRight.setFromMatrixColumn(camera.matrixWorld, 0)
+    camUp.setFromMatrixColumn(camera.matrixWorld, 1)
+    target.addScaledVector(camRight, -((L + R) / 2 - (minX + maxX) / 2) * wpp).addScaledVector(camUp, ((T + B) / 2 - (minY + maxY) / 2) * wpp)
+    dist *= k
+  }
+  camera.position.copy(target).addScaledVector(VIEW_DIR, dist)
+  camera.lookAt(target)
+  if (controls) {
+    controls.maxDistance = Math.max(DEFAULT_MAX_DIST, dist * 1.25)
+    controls.target.copy(target)
+    controls.update()
+  }
+  if (scene.fog instanceof THREE.Fog) {
+    const extra = Math.max(0, dist - 14)
+    scene.fog.near = DEFAULT_FOG[0] + extra
+    scene.fog.far = DEFAULT_FOG[1] + extra
+  }
 }
 
 function Sun() {

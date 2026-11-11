@@ -125,13 +125,13 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 
 **Objective:** refine the existing React overlay without sacrificing board visibility.
 
-- [ ] Standardize spacing, typography, panel radii, border weights, and iconography.
-- [ ] Improve resource-card illustration consistency and legibility.
-- [ ] Refine player cards, dice tray, build menu, left navigation, and hover/focus states.
-- [ ] Ensure sufficient contrast over bright/dark water.
-- [ ] Add responsive layouts for 1440×900, 1920×1080, tablet and narrow screens.
-- [ ] Keep HUD as DOM for accessibility and crisp text.
-- [ ] Preserve current visual hierarchy; avoid covering tile numbers or ports.
+- [x] Standardize spacing, typography, panel radii, border weights, and iconography. V6.1 adds shared tokens (`panel`, `focusRing`), sets panels to r-12 and controls/cards to r-8/9, and uses 14/15 px for UI text and 20 px for display text.
+- [ ] Improve resource-card illustration consistency and legibility. Deferred at the V6 sign-off; tracked as a follow-up.
+- [x] Refine player cards, dice tray, build menu, left navigation, and hover/focus states. Build rows are now real buttons with hover. Nav has `aria-current`, icon buttons have labels and hover, and every control has a gold `focus-visible` ring. Dice skip the bounce under reduced motion.
+- [x] Ensure sufficient contrast over bright/dark water. Panels are opaque (88–90%), and the focus ring uses an offset so it reads over water and over panels.
+- [x] Add responsive layouts for 1440×900, 1920×1080, tablet and narrow screens. V6.2 adds `CompactHUD` for narrow or portrait screens: a top bar with the menu, players and help, plus a bottom dock with Roll, Undo, Chat, a Build popover and the resource hand. Text is ≥ 12 px. Camera fitting keeps the whole board and every port between the bars, with the orbit limit and fog pushed out to match. Desktop framing is unchanged.
+- [x] Keep HUD as DOM for accessibility and crisp text.
+- [x] Preserve current visual hierarchy; avoid covering tile numbers or ports. The desktop layout is identical to V5. In compact mode only the user-opened Build or menu popovers overlap the board.
 
 **Exit criteria:** crisp, consistent UI at desktop sizes; usable smaller-screen fallback; keyboard-visible focus and no overlapping panels.
 
@@ -248,7 +248,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | V3 — Environment assets | Done | `2c4fdb8`, `bdc6ec0`, `a10ff78`, `d8d17e8`, `9d1895a`, V3.4 | `screenshots/milestones/v3.4/` | V3.1 mountains, V3.2 cliffs and boulders, V3.3 materials and seams done; exit review in `screenshots/milestones/v3-exit/`: all criteria pass. V3.4 polish (`screenshots/milestones/v3.4/`): crisper snow edges, outcrops leaning into the slope, ground cover on the rim strip. 162 meshes, ≈1.26M tris, ~47 fps @1440×900 DPR2 |
 | V4 — Lighting & water | Done | `bba5a95`, `2c4fdb8`, V4 | `screenshots/milestones/v4/` | V4.1 warm light balance, V4.2 broken lacy foam; materials audited. 162 meshes, ≈1.26M tris, ~47 fps @1440×900 DPR2 |
 | V5 — Micro-animations | Done | V5 | `screenshots/milestones/v5/` | Shared clock and reduced-motion, chimney smoke, sheep idle, softer lanterns. 163 meshes (+1), ~47 fps @1440×900 DPR2 (unchanged) |
-| V6 — HUD polish | Not started | — | — | Responsive |
+| V6 — HUD polish | Done | V6 | `screenshots/milestones/v6/` | V6.1 a11y, focus and tokens; V6.2 compact HUD and camera fit for tablet/phone. Open: resource-card illustration pass, larger board on landscape phones |
 | V7 — Camera & visual QA | Not started | — | — | Locked reference pose |
 | V8 — Performance | Started | `bdc6ec0` | — | Static batching 820→162 meshes; point lights removed |
 | G1–G4 — Gameplay | Backlog | — | — | After visual approval |
@@ -259,4 +259,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **V6**: HUD and interface polish.
+**Recommended next action:** **V7**: camera, interaction and visual QA.

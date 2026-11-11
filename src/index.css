@@ -7,3 +7,8 @@
 
 html, body, #root { height: 100%; margin: 0; background: #0b2236; overflow: hidden; }
 canvas { display: block; }
+
+/* Respect reduced-motion for HUD transitions too (the 3D scene handles its own; see scene/motion.ts). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

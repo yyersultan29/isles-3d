@@ -1,0 +1,134 @@
+import { useEffect, useRef, useState } from 'react'
+import gsap from 'gsap'
+import { Avatar, HexLogo } from './icons'
+import { BuildRows, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PLAYERS, RESOURCES, Trophy, focusRing, panel } from './HUD'
+import { COMPACT_SAFE } from './layout'
+import { motion } from '../scene/motion'
+
+/**
+ * HUD for narrow and portrait screens. It uses real CSS pixels (no global down-scaling), so text
+ * stays at 12px or larger. A top bar holds the menu, players and help; a bottom dock holds the
+ * actions and the resource hand. Heights must match COMPACT_SAFE (layout.ts), which the camera
+ * uses to keep the whole board between the bars.
+ */
+export function CompactHUD() {
+  const [menu, setMenu] = useState(false)
+  const [build, setBuild] = useState(false)
+  const dice = useRef<HTMLDivElement>(null)
+  const roll = () => {
+    if (!dice.current || motion.reduced) return
+    gsap.fromTo(dice.current.children, { y: -10, rotate: -25 }, { y: 0, rotate: 0, duration: 0.6, ease: 'bounce.out', stagger: 0.08 })
+  }
+  // Escape closes any open popover
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMenu(false); setBuild(false) } }
+    window.addEventListener('keydown', f)
+    return () => window.removeEventListener('keydown', f)
+  }, [])
+
+  return (
+    <div className="pointer-events-none fixed inset-0 select-none overflow-hidden font-ui text-[#f4efe6] [&_button]:pointer-events-auto">
+      {/* ---------- top bar ---------- */}
+      <div className="absolute inset-x-[8px] top-[8px] flex items-start gap-[8px]" style={{ height: COMPACT_SAFE.top - 8 }}>
+        <div className="relative">
+          <button
+            aria-label="Menu"
+            aria-expanded={menu}
+            aria-controls="compact-menu"
+            onClick={() => { setMenu((v) => !v); setBuild(false) }}
+            className={`grid h-[46px] w-[46px] place-items-center rounded-full border-2 border-[#e0a94a] bg-[radial-gradient(circle_at_40%_35%,#3a2a1a,#120c08)] shadow-[0_0_10px_rgba(224,169,74,0.4)] ${focusRing}`}
+          >
+            <HexLogo aria-hidden className="h-[34px] w-[34px]" />
+          </button>
+          {menu && (
+            <nav id="compact-menu" aria-label="Main" className={`pointer-events-auto absolute left-0 top-[54px] w-[180px] rounded-[12px] p-[5px] ${panel}`}>
+              {NAV_ITEMS.map(([label, d], i) => (
+                <button
+                  key={label}
+                  aria-current={i === 0 ? 'page' : undefined}
+                  className={`mb-[4px] flex h-[44px] w-full items-center gap-[10px] rounded-[9px] px-[10px] text-[14px] font-medium last:mb-0 ${focusRing} ${i === 0 ? 'bg-white/[0.08] text-white' : 'text-[#e3e1dc] hover:bg-white/[0.07]'}`}
+                >
+                  <span aria-hidden className={i === 0 ? 'text-[#f1d9a8]' : 'text-[#c9ccd2]'}><NavIcon d={d} /></span>
+                  {label}
+                </button>
+              ))}
+            </nav>
+          )}
+        </div>
+
+        <ul aria-label="Players" className="flex min-w-0 flex-1 gap-[6px]">
+          {PLAYERS.map((p, i) => (
+            <li
+              key={p.name}
+              aria-label={`${p.name}: ${p.vp} victory points, ${p.cards} cards, online`}
+              className={`flex h-[46px] min-w-0 flex-1 items-center gap-[5px] overflow-hidden rounded-[8px] pl-[4px] pr-[4px] ${panel}`}
+              style={{ boxShadow: `inset 3px 0 0 ${p.color}, inset 0 0 0 1px ${p.color}55` }}
+            >
+              <div className="h-[30px] w-[30px] shrink-0 overflow-hidden rounded-[6px] ring-2 min-[560px]:h-[36px] min-[560px]:w-[36px]" style={{ ['--tw-ring-color' as string]: p.color }}>
+                <Avatar i={i} className="h-full w-full" />
+              </div>
+              <div aria-hidden className="min-w-0 leading-none [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:shrink-0">
+                <div className="mb-[4px] hidden truncate text-[13px] font-semibold text-white min-[560px]:block">{p.name}</div>
+                <div className="flex items-center gap-[3px] text-[13px] font-semibold"><Trophy />{p.vp}</div>
+                <div className="mt-[2px] flex items-center gap-[3px] text-[12px] text-[#d6d2ca] min-[560px]:hidden"><CardsIco />{p.cards}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <IconButton label="Help" className="!h-[46px] !w-[40px] shrink-0">
+          <span aria-hidden className="text-[18px] font-bold">?</span>
+        </IconButton>
+      </div>
+
+      {/* ---------- bottom dock ---------- */}
+      <div className="absolute inset-x-[8px] bottom-[8px] flex flex-col items-center gap-[8px]" style={{ height: COMPACT_SAFE.bottom - 8 }}>
+        <div className="relative flex w-full max-w-[560px] items-center gap-[8px]">
+          <button
+            onClick={roll}
+            className="flex h-[48px] items-center gap-[8px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] pl-[6px] pr-[16px] font-display text-[17px] font-semibold text-[#3a2208] shadow-[0_0_12px_rgba(255,190,70,0.6),0_3px_0_#8a5410] outline-none focus-visible:ring-4 focus-visible:ring-white/80 active:translate-y-[2px]"
+          >
+            <span ref={dice} aria-hidden className="flex gap-[6px] pl-[2px]">
+              <Die faces={[5, 1, 3]} rot="rotateX(-24deg) rotateY(-28deg)" size={24} />
+              <Die faces={[6, 2, 4]} rot="rotateX(-22deg) rotateY(30deg)" size={24} />
+            </span>
+            Roll
+          </button>
+          <IconButton label="Undo" className="!h-[44px] !w-[44px] shrink-0">
+            <svg aria-hidden viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
+          </IconButton>
+          <IconButton label="Chat (new messages)" className="relative !h-[44px] !w-[44px] shrink-0">
+            <svg aria-hidden viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="currentColor"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.4 1.3 4.6 3.4 6L4.5 21l4.4-2.3c1 .2 2 .3 3.1.3 5.5 0 10-3.6 10-8s-4.5-8-10-8z" /></svg>
+            <span aria-hidden className="absolute right-[4px] top-[4px] h-[8px] w-[8px] rounded-full bg-[#f2a33a]" />
+          </IconButton>
+          <div className="flex-1" />
+          <button
+            aria-expanded={build}
+            aria-controls="compact-build"
+            onClick={() => { setBuild((v) => !v); setMenu(false) }}
+            className={`flex h-[44px] items-center gap-[6px] rounded-[10px] px-[14px] font-display text-[17px] font-medium ${focusRing} ${panel}`}
+          >
+            Build
+            <svg aria-hidden viewBox="0 0 24 24" className={`h-[16px] w-[16px] transition-transform ${build ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6" /></svg>
+          </button>
+          {build && (
+            <section id="compact-build" aria-label="Build" className={`pointer-events-auto absolute bottom-[54px] right-0 w-[246px] rounded-[12px] px-[10px] py-[8px] ${panel}`}>
+              <BuildRows />
+            </section>
+          )}
+        </div>
+
+        <ul aria-label="Your resources" className="flex gap-[6px]">
+          {RESOURCES.map(({ name, n, Icon, bg }, i) => (
+            <li key={i} aria-label={`${name}: ${n}`} title={`${name}: ${n}`} className="relative h-[72px] w-[62px] rounded-[8px] p-[2px] bg-[linear-gradient(180deg,#ffe2a0,#b98a3a_50%,#f2cf84)] shadow-[0_6px_14px_rgba(0,0,0,0.55)]">
+              <div className={`relative h-full w-full overflow-hidden rounded-[6px] bg-gradient-to-b ${bg} shadow-[inset_0_0_10px_rgba(0,0,0,0.45)]`}>
+                <Icon aria-hidden className="absolute left-1/2 top-[56%] w-[54px] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_3px_2px_rgba(0,0,0,0.45)]" />
+                <span aria-hidden className="absolute left-[3px] top-[3px] grid h-[20px] w-[20px] place-items-center rounded-[5px] bg-[#1d1a16]/85 text-[13px] font-bold text-white ring-1 ring-[#f2cf84]/60">{n}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
