@@ -171,35 +171,78 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 
 ## 5. Gameplay milestones — only after visual sign-off
 
-### G1 — Board model and rules foundation
+Specification: `GAME_DESIGN.md` v1.2 (systems review of the v1.1 rules audit, 2026-11-11; changes are listed in its §0.2). Section numbers below (§) refer to it. All engine code lives in `src/game/`, which is pure TypeScript and may not import React, three.js or `src/scene`/`src/ui`. Every milestone ends with typecheck, unit tests, a production build, and a screenshot check that the scene didn't change.
 
-- [ ] Represent 19 tiles with axial/cube coordinates, terrain type and number token.
-- [ ] Model vertices, edges, roads, settlements, cities and ports independently of rendering.
-- [ ] Define deterministic seeded board generation and validation.
-- [ ] Add pure rules functions with unit tests.
-- [ ] Separate game state from scene presentation.
+**Decisions needed before G1 starts** (`GAME_DESIGN.md` §15):
+1. Approve adding `vitest` as a dev dependency. The project has no test runner today.
+2. Accept or override the default choices: no trading or building before the roll; Friendly Robber off; how off-turn wins and broken Longest Road ties are handled.
+3. Board: keep the current showcase layout as a "demo" preset, or render the standard or generated board in G4 (§2.5: the scene has 5 pastures and 3 fields, non-standard tokens, and 7 ports instead of 9).
+4. (v1.2) Accept or override: seating order by seeded shuffle; discards, Monopoly and Year of Plenty shown to all players (§15 items 8–9).
+5. (v1.2) Not needed until G5: timer lengths, absent-player handling and hosting (§15 item 11). GitHub Pages is static hosting and can't run game rooms, so G5 needs a separate server or a managed WebSocket service.
 
-### G2 — Turn loop and resource production
+### G1 — Engine foundation: board, state, setup and production
 
-- [ ] Implement player turns and dice rolls.
-- [ ] Produce resources from eligible tiles and settlements/cities.
-- [ ] Implement robber behavior and seven-roll rules as specified by the chosen game design.
-- [ ] Display clear visual feedback without compromising the art direction.
-- [ ] Unit-test edge cases and resource accounting.
+- [ ] **G1.1 Tooling.** Add `vitest` (pending approval) and an `npm test` script. Add an import-boundary test that fails if `src/game/**` imports react, three, `@react-three/*`, `src/scene` or `src/ui`.
+- [ ] **G1.2 Types** (`src/game/types.ts`): `Resource`, `Terrain`, `TileId`/`VertexId`/`EdgeId`, `GameSettings`, `GameState`, `Phase`, `Action`, `GameEvent`, `Result`, `ErrorCode`, `RESOURCE_ORDER` (§3.3, §4.1, §11, §19). The actor is the `player` argument, never a field of the action. `roadBuilding` carries `resume`.
+- [ ] **G1.3 RNG** (`rng.ts`): seeded mulberry32 kept inside the state (`rngState`), plus `shuffle`, `d6`, `pick`. Tests: determinism and a uniformity smoke test. The RNG consumption order in §11 is part of the replay format. No `Math.random` or `Date.now` in `src/game`.
+- [ ] **G1.4 Topology** (`topology.ts`): axial pointy-top hexes, canonical `N/S` vertex and `NE/NW/W` edge IDs, adjacency maps built once (§2.2–2.3). Tests: 19/54/72 counts, 30 coastal edges, every edge has 2 vertices, vertex degree is 2–3, the corner table matches the scene's `corner(k)`, and the `(row,col)`↔axial mapping round-trips.
+- [ ] **G1.5 Board generation** (`board.ts`): `standard-fixed` and `random(seed)` presets with the standard terrain, token and port multisets. `standard-fixed` and the 9 port edges are copied exactly from §2.6; tiles are assigned in canonical order (by `r`, then `q`). 6 and 8 never adjacent; bounded retries; robber starts on the desert (§2.1, §2.4). Tests: `standard-fixed` equals §2.6, multisets, constraints over 1,000 seeds, same seed gives the same board.
+- [ ] **G1.6 Game creation**: bank of 19×5, a shuffled 25-card dev deck, piece supplies of 15/5/4, seating order by seeded shuffle (§4.2), `settings` defaults (10 VP, discard limit 7, Friendly Robber off) and settings validation with `INVALID_SETTINGS` (§3.3).
+- [ ] **G1.7 Setup phase**: snake order, settlement then road, distance rule, the road must touch the settlement just placed, starting resources from the 2nd settlement (§4.2). Tests per §13 "Setup".
+- [ ] **G1.8 Turn skeleton and dice**: `preRoll → actions → END_TURN`, `ROLL` from the RNG, and the `apply`/`validate`/`legalActions` API returning `Result`: invalid → unchanged state plus an `ErrorCode` from `errors.ts` (§4.1, §11, §19). Includes the who-may-act table in §4.1.
+- [ ] **G1.9 Production**: settlements yield 1 and cities 2; the robber's tile and the desert are skipped; per-resource bank shortage rule (a single recipient takes the rest, several recipients get none) (§5). Tests per §13 "Production" and "Bank shortage", plus a conservation invariant checked after every action.
+- [ ] **G1.10 Scene adapter test only**: map `src/scene/board.ts` `Building{tile,corner}` and `Road{tile,edge}` to engine IDs and back. No rendering changes.
+- [ ] **G1.11 View skeleton** (`view.ts`): `viewFor` and `eventsFor` exist from the start and never expose `rngState` or the deck (§17). Completed in G3.6.
 
-### G3 — Building, trading and victory
+**Exit criteria:** a seeded script can play the full setup and N rolled turns headlessly; all tests pass; build passes; the scene is untouched.
 
-- [ ] Validate placement rules and resource costs.
-- [ ] Implement roads, settlements and cities with animated placement.
-- [ ] Implement bank/port trading and optional player trading.
-- [ ] Add development cards and scoring only after rules are finalized.
-- [ ] Implement victory conditions and endgame UI.
+### G2 — Construction, robber and awards
 
-### G4 — Multiplayer and deployment
+- [ ] **G2.1 Costs and supply**: road, settlement, city and dev card costs; piece limits 15/5/4; a city returns its settlement piece (§3.1, §7).
+- [ ] **G2.2 Placement validation**: road connectivity; no extending through an opponent's building; distance rule; a settlement must touch your own road after setup; a city only on your own settlement (§7).
+- [ ] **G2.3 Seven**: discards for more than `discardLimit` cards, `floor(n/2)`, exact count and only cards held, accepted in any order; robber must move to a different tile (desert allowed); steal one card at random, weighted by hand, from an adjacent opponent who has cards; skip when nobody qualifies (§6).
+- [ ] **G2.4 Friendly Robber setting**: tiles touching players with fewer than 3 public VP are excluded; desert fallback; if no other tile is legal the robber stays and nothing is stolen (§6).
+- [ ] **G2.5 Longest Road**: trail DFS that can't pass through opponent buildings; 5 minimum; must be strictly longer to take it; recompute after roads and settlements; award decided by the single `resolveLongestRoad` function, which also covers broken roads (§10.2).
+- [ ] **G2.6 Largest Army**: 3 minimum, strictly more to take it, via `resolveLargestArmy` (§10.3). Played knights are tracked (the Knight card itself comes in G3).
+- [ ] **G2.7 Scoring**: `publicVP` and `totalVP` (§10.1).
+- [ ] **G2.8 Tests** per §13 "Seven", "Building", "Longest Road" and "Largest Army", including a loop of 6, a fork, a broken 7→3+4, and the tie cases.
 
-- [ ] Choose server-authoritative architecture and transport.
-- [ ] Implement lobby, room state, reconnect and turn synchronization.
-- [ ] Validate actions server-side and prevent client-authoritative cheating.
+**Exit criteria:** every construction and robber path is validated and tested, including the edge cases; invariants hold under a randomized action fuzzer seeded from `legalActions`.
+
+### G3 — Trading, development cards, victory and a local hot-seat game
+
+- [ ] **G3.1 Bank and port trades**: 4:1, 3:1 and 2:1 at the best rate a settlement or city earns; the bank must have stock; `count` is the number of cards received (§9).
+- [ ] **G3.2 Player trades**: propose, respond, confirm; the active player is always a party; nothing given for free; not the same type on both sides; re-validated at confirm (`TRADE_STALE`); one open proposal with a `tradeId`; the proposer must hold the offer; any hand change by the active player cancels it; at most 20 proposals per turn; open offers cancel at turn end (§9).
+- [ ] **G3.3 Dev cards**: buy (own turn, any number, not from an empty deck); one non-VP card per turn; never on the turn it was bought; every non-VP type is playable before the roll and returns to `preRoll`, so the roll still happens (§4.1, §8).
+- [ ] **G3.4 Card effects**: Knight (robber and steal, +1 army), Road Building (up to 2, placed one at a time, only legal edges), Year of Plenty (`take` of 1–2 cards, limited by bank stock), Monopoly (§8).
+- [ ] **G3.5 Victory**: the `checkVictory` procedure runs after every successful action and at the start of each turn, for the active player only; hidden VP cards count and are revealed in `GAME_WON`; off-turn rule (§10.4).
+- [ ] **G3.6 `viewFor(player)` and `eventsFor(player)`**: full visibility matrix and event redaction (§17). Test: no view produced during a full playout contains a secret field.
+- [ ] **G3.7 Replay**: seed plus action log gives an identical state. Replay file format and `schemaVersion` per §22; a few golden replays with a final-state hash stored in the repo.
+- [ ] **G3.8 Full-game simulation test**: a random-legal-move bot finishes 1,000 seeded games with no invariant violations or stuck states. Assertions per §23.2; a 2,000-turn cap is reported, not failed (§23.3).
+
+**Exit criteria:** complete local games are possible through the engine API alone; tests cover every §13 scenario.
+
+### G4 — 3D and UI integration (hot-seat)
+
+- [ ] **G4.1 Store**: one small state container (React context with `useSyncExternalStore`) holding `GameState`, dispatching `Action`s to the engine. Animations listen to `GameEvent`s; no per-frame React state.
+- [ ] **G4.2 Board from state**: the scene reads tiles, tokens, ports, robber, buildings and roads from engine state through the G1.10 adapter. The art direction is unchanged (needs the board decision above).
+- [ ] **G4.3 Valid-placement highlights**: extend the visual-only hover (`TileHover`) to vertices and edges taken from `legalActions`; robber target tiles in `moveRobber`.
+- [ ] **G4.4 HUD wiring** (flows per phase in §18): dice, resource hand, build menu (enabled only when legal and affordable), player cards (public VP, card counts, awards), bank and trade dialogs, discard dialog, dev card hand, turn and phase indicator.
+- [ ] **G4.5 Feedback**: placement animations, production particles or tags from the source tile, robber move, steal notice, award changes, victory screen; all respect reduced motion. Animations follow events and never delay state. Every rejected action shows the i18n message for its `ErrorCode` (§19).
+- [ ] **G4.6 Accessibility**: every action reachable by keyboard; phase changes announced through a live region.
+- [ ] **G4.7 Regression**: fixed-pose screenshots against the V8 baseline (no blur or camera changes); perf within 10% of V8; no console errors.
+- [ ] **G4.8 Hot-seat privacy and resume**: a "pass the device" screen hides the previous hand before the next player's view renders, including between sequential discards (§18); autosave the replay after each action and offer "resume game" (§22).
+
+**Exit criteria:** a full 4-player hot-seat game is playable in the browser; the scene stays as sharp and readable as at visual sign-off.
+
+### G5 — Multiplayer and deployment (later)
+
+Design targets are in `GAME_DESIGN.md` §20 (timers and absent players), §21 (architecture and protocol) and §22 (persistence). They are our own design and need the decisions in item 5 above before work starts.
+
+- [ ] Choose a server-authoritative architecture and transport. The engine runs unchanged on the server. Decide hosting first: the current GitHub Pages deployment can serve the client only.
+- [ ] Implement lobby, room state, reconnect and turn synchronization (events plus `viewFor` projections; message set in §21).
+- [ ] Turn timers and absent-player fallback as ordinary logged actions, outside the pure engine (§20).
+- [ ] Validate actions server-side and prevent client-authoritative cheating; dice and shuffles come from server RNG.
 - [ ] Add error handling, logging, basic analytics and accessibility QA.
 - [ ] Deploy and load-test realistic room sizes.
 
@@ -253,7 +296,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | V6 — HUD polish | Done | V6 | `screenshots/milestones/v6/` | V6.1 a11y, focus and tokens; V6.2 compact HUD and camera fit for tablet/phone. Open: resource-card illustration pass, larger board on landscape phones |
 | V7 — Camera & visual QA | Done | V7 | `screenshots/milestones/v7/` | Pan clamp, reset (dbl-click/R), view presets, tile hover, QA at 10 viewports and DPR 1–3; docs in CAMERA.md |
 | V8 — Performance | Done | `bdc6ec0`, V8 | `screenshots/milestones/v8/` | Shadow-map throttling, quality presets, WebGL fallback, ASSETS.md, perf probe. 52.6 fps @1440×900 DPR2 (was 46.6); identical image on `high` |
-| G1–G4 — Gameplay | Backlog | — | — | After visual approval |
+| G1–G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2 (v1.1 defects fixed, §17–§25 added); G1 waits for approval and the decisions in §5 |
 
 ## 9. How to instruct Claude Code
 
@@ -261,4 +304,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** review the gameplay specification, then **G1** (only with explicit approval).
+**Recommended next action:** answer G1 decisions 1–4 in §5, then start **G1**: engine foundation (only with explicit approval).
