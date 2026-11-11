@@ -153,15 +153,17 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 
 **Objective:** make the visual build robust and maintainable.
 
-- [ ] Measure FPS, draw calls, triangles, memory, shader compile and load times.
-- [ ] Consolidate materials, instance repeated meshes and remove invisible objects where appropriate.
-- [ ] Optimize textures and GLB/GLTF assets; document compression strategy.
-- [ ] Add quality presets if needed (low/medium/high) without changing game logic.
-- [ ] Add fallback behavior for WebGL errors or unsupported devices.
-- [ ] Document asset sources, licenses, attribution and ownership.
-- [ ] Validate production build and GitHub Pages deployment paths.
+- [x] Measure FPS, draw calls, triangles, memory, shader compile and load times. New `scripts/perf.mjs`; results in `screenshots/milestones/v8/PERF.md`. The app is GPU fill-rate bound: post-processing is ≈59% of the frame at DPR 2, AO ≈37%, the shadow pass ≈20%. The main thread is ~10% busy and React makes 0 commits while idle.
+- [x] Consolidate materials, instance repeated meshes and remove invisible objects where appropriate. Batching (820→162 meshes) and instancing were already in place. The audit shows that cutting draw calls further would not change FPS because the CPU isn't the bottleneck. The measurable win was re-rendering the static sun shadow map every 2nd frame instead of every frame, plus dropping `preserveDrawingBuffer`. Result: 46.6→52.6 fps at 1440×900 DPR 2 (vsync) and 33.6→37.4 at 1920×1080 DPR 2. The pixel diff against V7 is at the noise floor.
+- [x] Optimize textures and GLB/GLTF assets; document compression strategy. There are no GLB/image assets: everything is procedural, with 21 small canvas textures (64²–512²). The bundle is 534 KB gzip, mostly three.js. The compression pipeline for future assets (gltf-transform with meshopt/Draco, KTX2 ETC1S/UASTC) and budgets are in `ASSETS.md`.
+- [x] Add quality presets if needed (low/medium/high) without changing game logic. `?quality=low|medium|high` in `src/scene/quality.ts`; the default `high` is the signed-off look. At 1920×1080 DPR 2: high 37 fps, medium 58, low 60 (vsync).
+- [x] Add fallback behavior for WebGL errors or unsupported devices. `src/scene/SceneGuard.tsx` handles three cases: no WebGL 2 (or `?nowebgl`) shows a notice, a scene exception goes to an error boundary that offers Reload, and context loss shows a notice until the context is restored automatically. All three were tested in headless Chrome, including with WebGL disabled.
+- [x] Document asset sources, licenses, attribution and ownership. See `ASSETS.md`: all art is project-original procedural or SVG, fonts are OFL, and dependencies are MIT/ISC/Zlib plus the GSAP standard license. The reference image is never shipped.
+- [x] Validate production build and GitHub Pages deployment paths. `vite build --base=/isles-3d/` with `vite preview` serves the page and assets with 200 and no console errors. The actual `npm run deploy` (force-push to `gh-pages`) was not run; it needs approval.
 
 **Suggested targets (validate on real devices):** aim for 60 FPS on a modern desktop at 1080p; accept 30+ FPS on lower-tier devices when using a reduced quality preset. Treat these as goals, not promises.
+
+**Measured on the dev Mac:** 1080p at DPR 1 runs at 60 fps capped (105 uncapped) on `high`. A 1080p window at DPR 2 (a 4K buffer) runs at ~37 fps on `high` and 58 fps on `medium`. No real lower-tier devices have been tested yet.
 
 **Exit criteria:** measured performance and documented asset pipeline; no material visual regression.
 
@@ -250,7 +252,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | V5 — Micro-animations | Done | V5 | `screenshots/milestones/v5/` | Shared clock and reduced-motion, chimney smoke, sheep idle, softer lanterns. 163 meshes (+1), ~47 fps @1440×900 DPR2 (unchanged) |
 | V6 — HUD polish | Done | V6 | `screenshots/milestones/v6/` | V6.1 a11y, focus and tokens; V6.2 compact HUD and camera fit for tablet/phone. Open: resource-card illustration pass, larger board on landscape phones |
 | V7 — Camera & visual QA | Done | V7 | `screenshots/milestones/v7/` | Pan clamp, reset (dbl-click/R), view presets, tile hover, QA at 10 viewports and DPR 1–3; docs in CAMERA.md |
-| V8 — Performance | Started | `bdc6ec0` | — | Static batching 820→162 meshes; point lights removed |
+| V8 — Performance | Done | `bdc6ec0`, V8 | `screenshots/milestones/v8/` | Shadow-map throttling, quality presets, WebGL fallback, ASSETS.md, perf probe. 52.6 fps @1440×900 DPR2 (was 46.6); identical image on `high` |
 | G1–G4 — Gameplay | Backlog | — | — | After visual approval |
 
 ## 9. How to instruct Claude Code
@@ -259,4 +261,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **V8**: performance and asset pipeline.
+**Recommended next action:** review the gameplay specification, then **G1** (only with explicit approval).

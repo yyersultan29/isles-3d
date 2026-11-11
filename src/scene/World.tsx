@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useLayoutEffect, useRef } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, Lightformer } from '@react-three/drei'
 import { EffectComposer, Bloom, N8AO, Vignette, ToneMapping, HueSaturation, BrightnessContrast, SMAA } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
@@ -18,6 +18,9 @@ import { Smoke } from './Smoke'
 import { isCompact, COMPACT_SAFE } from '../ui/layout'
 import { CameraInteraction, setHome, applyViewPreset } from './CameraInteraction'
 import { TileHover } from './TileHover'
+import { quality } from './quality'
+import { motion } from './motion'
+import { ContextLossGuard } from './SceneGuard'
 
 // Debug override: ?cam=x,y,z&tgt=x,y,z
 const qp = new URLSearchParams(window.location.search)
@@ -183,7 +186,7 @@ function Sun() {
       intensity={3.3}
       color="#ffbd78"
       castShadow
-      shadow-mapSize={[4096, 4096]}
+      shadow-mapSize={[quality.shadowMapSize, quality.shadowMapSize]}
       shadow-bias={-0.0004}
       shadow-normalBias={0.02}
       shadow-radius={3}
@@ -226,8 +229,8 @@ const off = new Set((qp.get('off') ?? '').split(','))
 function Effects() {
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
-      {off.has('ao') ? <></> : <N8AO aoRadius={0.45} intensity={2.6} distanceFalloff={0.6} quality="medium" halfRes />}
-      {off.has('bloom') ? <></> : <Bloom luminanceThreshold={1.7} luminanceSmoothing={0.3} intensity={0.5} mipmapBlur radius={0.5} />}
+      {off.has('ao') || !quality.ao ? <></> : <N8AO aoRadius={0.45} intensity={2.6} distanceFalloff={0.6} quality={quality.ao} halfRes />}
+      {off.has('bloom') || !quality.bloom ? <></> : <Bloom luminanceThreshold={1.7} luminanceSmoothing={0.3} intensity={0.5} mipmapBlur radius={0.5} />}
       <HueSaturation saturation={0.08} />
       <BrightnessContrast brightness={0.0} contrast={0.1} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
@@ -237,13 +240,33 @@ function Effects() {
   )
 }
 
+/**
+ * The sun's shadow map is camera-independent and almost every caster is static, so it is
+ * re-rendered every `quality.shadowEvery` frames (more rarely under reduced motion) instead of
+ * every frame. Measured: the shadow pass is ~20% of the frame at 1440×900 DPR 2.
+ */
+function ShadowThrottle() {
+  const gl = useThree((s) => s.gl)
+  const n = useRef(0)
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    gl.shadowMap.needsUpdate = true
+    return () => void (gl.shadowMap.autoUpdate = true)
+  }, [gl])
+  useFrame(() => {
+    const every = quality.shadowEvery * (motion.reduced ? 4 : 1)
+    if (++n.current % every === 0) gl.shadowMap.needsUpdate = true
+  })
+  return null
+}
+
 export function World() {
   const controls = useRef<OrbitControlsImpl>(null)
   return (
     <Canvas
       shadows={{ type: THREE.PCFSoftShadowMap }}
-      dpr={[1, 2]}
-      gl={{ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: true }}
+      dpr={quality.dpr}
+      gl={{ antialias: false, powerPreference: 'high-performance' }}
       camera={{ position: CAMERA_POS, fov: 30, near: 0.1, far: 120 }}
       onCreated={({ gl, scene }) => {
         gl.toneMapping = THREE.NoToneMapping
@@ -254,6 +277,8 @@ export function World() {
       }}
     >
       <CameraRig />
+      <ShadowThrottle />
+      <ContextLossGuard />
       <CameraInteraction />
       <Suspense fallback={null}>
         <Lights />
