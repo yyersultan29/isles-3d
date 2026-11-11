@@ -691,15 +691,15 @@ are decided at the start of G1.
 
 ## 15. Open questions (to confirm in-app or decide before G1)
 
-1. Win timing off-turn (§10.4) — [COMMUNITY] reports conflict; the newer one matches our rule. Confirm with a hands-on test.
-2. Broken Longest Road tie handling — Colonist only documents "keep on tie".
-3. Whether Colonist allows trading or building before the roll — we chose no.
-4. Friendly Robber default for 4-player rooms; we chose off.
+1. Win timing off-turn (§10.4) — [COMMUNITY] reports conflict; the newer one matches our rule. Confirm with a hands-on test. **Our rule accepted 2026-11-11.**
+2. Broken Longest Road tie handling — Colonist only documents "keep on tie". **Accepted 2026-11-11: tie → award unheld (§10.2).**
+3. Whether Colonist allows trading or building before the roll — we chose no. **Decided 2026-11-11: no.**
+4. Friendly Robber default for 4-player rooms; we chose off. **Decided 2026-11-11: off.**
 5. Board generator constraints (6/8 adjacency, port placement) — undocumented.
-6. Whether the scene keeps its showcase layout or renders generated boards (§2.5).
-7. Test runner: the project has none. Proposal: add `vitest` as a dev dependency in G1, pending approval.
-8. (v1.2) Whether Colonist shows discarded cards and Monopoly/Year of Plenty details to all players. We chose public (§17).
-9. (v1.2) Seating order method on Colonist. We chose a seeded shuffle.
+6. Whether the scene keeps its showcase layout or renders generated boards (§2.5). **Decided 2026-11-11: the showcase stays as a `demo` scene preset; games use `standard-fixed`/`random`, rendered in G4.**
+7. Test runner: the project has none. **Decided 2026-11-11: add `vitest` as a dev dependency in G1.**
+8. (v1.2) Whether Colonist shows discarded cards and Monopoly/Year of Plenty details to all players. We chose public (§17). **Decided 2026-11-11: public.**
+9. (v1.2) Seating order method on Colonist. We chose a seeded shuffle. **Decided 2026-11-11: seeded shuffle.**
 10. (v1.2) Re-read [OFFICIAL], [BLOG-FAQ] and [BLOG-RULES] directly; this pass could not fetch them.
 11. (v1.2) Product decisions for G5 in §20–§21: timer lengths, what happens to an absent player, hosting.
 

@@ -9,7 +9,8 @@
     "typecheck": "tsc -b",
     "preview": "vite preview",
     "shot": "node scripts/screenshot.mjs",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy": "bash scripts/deploy.sh",
+    "test": "vitest run"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",
@@ -30,6 +31,7 @@
     "playwright-core": "^1.56.1",
     "tailwindcss": "^4.1.16",
     "typescript": "^5.9.3",
-    "vite": "^6.4.1"
+    "vite": "^6.4.1",
+    "vitest": "^5.1.0"
   }
 }

@@ -173,28 +173,30 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 
 Specification: `GAME_DESIGN.md` v1.2 (systems review of the v1.1 rules audit, 2026-11-11; changes are listed in its §0.2). Section numbers below (§) refer to it. All engine code lives in `src/game/`, which is pure TypeScript and may not import React, three.js or `src/scene`/`src/ui`. Every milestone ends with typecheck, unit tests, a production build, and a screenshot check that the scene didn't change.
 
-**Decisions needed before G1 starts** (`GAME_DESIGN.md` §15):
-1. Approve adding `vitest` as a dev dependency. The project has no test runner today.
-2. Accept or override the default choices: no trading or building before the roll; Friendly Robber off; how off-turn wins and broken Longest Road ties are handled.
-3. Board: keep the current showcase layout as a "demo" preset, or render the standard or generated board in G4 (§2.5: the scene has 5 pastures and 3 fields, non-standard tokens, and 7 ports instead of 9).
-4. (v1.2) Accept or override: seating order by seeded shuffle; discards, Monopoly and Year of Plenty shown to all players (§15 items 8–9).
+**G1 decisions** (`GAME_DESIGN.md` §15), decided 2026-11-11:
+1. ✅ `vitest` approved as a dev dependency.
+2. ✅ Defaults accepted: no trading or building before the roll; Friendly Robber off; an off-turn 10th point wins at the start of that player's next turn; a broken Longest Road tie leaves the award unheld.
+3. ✅ The current showcase layout stays as a separate `demo` preset for the scene; games use `standard-fixed` or `random`. Rendering engine boards is G4 work.
+4. ✅ Seating order by seeded shuffle; discards, Monopoly and Year of Plenty are public.
 5. (v1.2) Not needed until G5: timer lengths, absent-player handling and hosting (§15 item 11). GitHub Pages is static hosting and can't run game rooms, so G5 needs a separate server or a managed WebSocket service.
 
 ### G1 — Engine foundation: board, state, setup and production
 
-- [ ] **G1.1 Tooling.** Add `vitest` (pending approval) and an `npm test` script. Add an import-boundary test that fails if `src/game/**` imports react, three, `@react-three/*`, `src/scene` or `src/ui`.
-- [ ] **G1.2 Types** (`src/game/types.ts`): `Resource`, `Terrain`, `TileId`/`VertexId`/`EdgeId`, `GameSettings`, `GameState`, `Phase`, `Action`, `GameEvent`, `Result`, `ErrorCode`, `RESOURCE_ORDER` (§3.3, §4.1, §11, §19). The actor is the `player` argument, never a field of the action. `roadBuilding` carries `resume`.
-- [ ] **G1.3 RNG** (`rng.ts`): seeded mulberry32 kept inside the state (`rngState`), plus `shuffle`, `d6`, `pick`. Tests: determinism and a uniformity smoke test. The RNG consumption order in §11 is part of the replay format. No `Math.random` or `Date.now` in `src/game`.
-- [ ] **G1.4 Topology** (`topology.ts`): axial pointy-top hexes, canonical `N/S` vertex and `NE/NW/W` edge IDs, adjacency maps built once (§2.2–2.3). Tests: 19/54/72 counts, 30 coastal edges, every edge has 2 vertices, vertex degree is 2–3, the corner table matches the scene's `corner(k)`, and the `(row,col)`↔axial mapping round-trips.
-- [ ] **G1.5 Board generation** (`board.ts`): `standard-fixed` and `random(seed)` presets with the standard terrain, token and port multisets. `standard-fixed` and the 9 port edges are copied exactly from §2.6; tiles are assigned in canonical order (by `r`, then `q`). 6 and 8 never adjacent; bounded retries; robber starts on the desert (§2.1, §2.4). Tests: `standard-fixed` equals §2.6, multisets, constraints over 1,000 seeds, same seed gives the same board.
-- [ ] **G1.6 Game creation**: bank of 19×5, a shuffled 25-card dev deck, piece supplies of 15/5/4, seating order by seeded shuffle (§4.2), `settings` defaults (10 VP, discard limit 7, Friendly Robber off) and settings validation with `INVALID_SETTINGS` (§3.3).
-- [ ] **G1.7 Setup phase**: snake order, settlement then road, distance rule, the road must touch the settlement just placed, starting resources from the 2nd settlement (§4.2). Tests per §13 "Setup".
-- [ ] **G1.8 Turn skeleton and dice**: `preRoll → actions → END_TURN`, `ROLL` from the RNG, and the `apply`/`validate`/`legalActions` API returning `Result`: invalid → unchanged state plus an `ErrorCode` from `errors.ts` (§4.1, §11, §19). Includes the who-may-act table in §4.1.
-- [ ] **G1.9 Production**: settlements yield 1 and cities 2; the robber's tile and the desert are skipped; per-resource bank shortage rule (a single recipient takes the rest, several recipients get none) (§5). Tests per §13 "Production" and "Bank shortage", plus a conservation invariant checked after every action.
-- [ ] **G1.10 Scene adapter test only**: map `src/scene/board.ts` `Building{tile,corner}` and `Road{tile,edge}` to engine IDs and back. No rendering changes.
-- [ ] **G1.11 View skeleton** (`view.ts`): `viewFor` and `eventsFor` exist from the start and never expose `rngState` or the deck (§17). Completed in G3.6.
+- [x] **G1.1 Tooling.** Add `vitest` (pending approval) and an `npm test` script. Add an import-boundary test that fails if `src/game/**` imports react, three, `@react-three/*`, `src/scene` or `src/ui`.
+- [x] **G1.2 Types** (`src/game/types.ts`): `Resource`, `Terrain`, `TileId`/`VertexId`/`EdgeId`, `GameSettings`, `GameState`, `Phase`, `Action`, `GameEvent`, `Result`, `ErrorCode`, `RESOURCE_ORDER` (§3.3, §4.1, §11, §19). The actor is the `player` argument, never a field of the action. `roadBuilding` carries `resume`.
+- [x] **G1.3 RNG** (`rng.ts`): seeded mulberry32 kept inside the state (`rngState`), plus `shuffle`, `d6`, `pick`. Tests: determinism and a uniformity smoke test. The RNG consumption order in §11 is part of the replay format. No `Math.random` or `Date.now` in `src/game`.
+- [x] **G1.4 Topology** (`topology.ts`): axial pointy-top hexes, canonical `N/S` vertex and `NE/NW/W` edge IDs, adjacency maps built once (§2.2–2.3). Tests: 19/54/72 counts, 30 coastal edges, every edge has 2 vertices, vertex degree is 2–3, the corner table matches the scene's `corner(k)`, and the `(row,col)`↔axial mapping round-trips.
+- [x] **G1.5 Board generation** (`board.ts`): `standard-fixed` and `random(seed)` presets with the standard terrain, token and port multisets. `standard-fixed` and the 9 port edges are copied exactly from §2.6; tiles are assigned in canonical order (by `r`, then `q`). 6 and 8 never adjacent; bounded retries; robber starts on the desert (§2.1, §2.4). Tests: `standard-fixed` equals §2.6, multisets, constraints over 1,000 seeds, same seed gives the same board.
+- [x] **G1.6 Game creation**: bank of 19×5, a shuffled 25-card dev deck, piece supplies of 15/5/4, seating order by seeded shuffle (§4.2), `settings` defaults (10 VP, discard limit 7, Friendly Robber off) and settings validation with `INVALID_SETTINGS` (§3.3).
+- [x] **G1.7 Setup phase**: snake order, settlement then road, distance rule, the road must touch the settlement just placed, starting resources from the 2nd settlement (§4.2). Tests per §13 "Setup".
+- [x] **G1.8 Turn skeleton and dice**: `preRoll → actions → END_TURN`, `ROLL` from the RNG, and the `apply`/`validate`/`legalActions` API returning `Result`: invalid → unchanged state plus an `ErrorCode` from `errors.ts` (§4.1, §11, §19). Includes the who-may-act table in §4.1.
+- [x] **G1.9 Production**: settlements yield 1 and cities 2; the robber's tile and the desert are skipped; per-resource bank shortage rule (a single recipient takes the rest, several recipients get none) (§5). Tests per §13 "Production" and "Bank shortage", plus a conservation invariant checked after every action.
+- [x] **G1.10 Scene adapter test only**: map `src/scene/board.ts` `Building{tile,corner}` and `Road{tile,edge}` to engine IDs and back. No rendering changes.
+- [x] **G1.11 View skeleton** (`view.ts`): `viewFor` and `eventsFor` exist from the start and never expose `rngState` or the deck (§17). Completed in G3.6.
 
 **Exit criteria:** a seeded script can play the full setup and N rolled turns headlessly; all tests pass; build passes; the scene is untouched.
+
+**G1 result (2026-11-11):** `src/game/` holds about 1.5k lines including tests: `types`, `errors`, `rng`, `topology`, `board`, `state`, `rules/{setup,production,turn,victory}`, `engine`, `view`. `npm test` runs 65 vitest tests in about 0.3 s. Mutation checks pass: breaking the shortage rule, the distance rule or round-1 resources makes a test fail. 20 seeds × setup + 200 rolled turns keep every invariant. The scene is unchanged: no diff in `src/scene`/`src/ui`, and the screenshot matches V8 within animation noise. Known G1 limit: a rolled 7 produces nothing and goes straight to `actions`. Discards, robber and steal arrive in G2.3, marked `TODO(G2.3)` in `rules/turn.ts`.
 
 ### G2 — Construction, robber and awards
 
@@ -296,7 +298,8 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | V6 — HUD polish | Done | V6 | `screenshots/milestones/v6/` | V6.1 a11y, focus and tokens; V6.2 compact HUD and camera fit for tablet/phone. Open: resource-card illustration pass, larger board on landscape phones |
 | V7 — Camera & visual QA | Done | V7 | `screenshots/milestones/v7/` | Pan clamp, reset (dbl-click/R), view presets, tile hover, QA at 10 viewports and DPR 1–3; docs in CAMERA.md |
 | V8 — Performance | Done | `bdc6ec0`, V8 | `screenshots/milestones/v8/` | Shadow-map throttling, quality presets, WebGL fallback, ASSETS.md, perf probe. 52.6 fps @1440×900 DPR2 (was 46.6); identical image on `high` |
-| G1–G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2 (v1.1 defects fixed, §17–§25 added); G1 waits for approval and the decisions in §5 |
+| G1 — Engine foundation | Done | G1 | — | 65 tests; setup, dice, production, views, replay; 7 → robber deferred to G2 |
+| G2–G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2; G2 starts after G1 sign-off |
 
 ## 9. How to instruct Claude Code
 
@@ -304,4 +307,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** answer G1 decisions 1–4 in §5, then start **G1**: engine foundation (only with explicit approval).
+**Recommended next action:** **G2**: construction, robber and awards (in progress).
