@@ -230,7 +230,7 @@ Specification: `GAME_DESIGN.md` v1.2 (systems review of the v1.1 rules audit, 20
 
 ### G4 — 3D and UI integration (hot-seat)
 
-- [ ] **G4.1 Store**: one small state container (React context with `useSyncExternalStore`) holding `GameState`, dispatching `Action`s to the engine. Animations listen to `GameEvent`s; no per-frame React state.
+- [x] **G4.1 Store**: one small state container (React context with `useSyncExternalStore`) holding `GameState`, dispatching `Action`s to the engine. Animations listen to `GameEvent`s; no per-frame React state.
 - [ ] **G4.2 Board from state**: the scene reads tiles, tokens, ports, robber, buildings and roads from engine state through the G1.10 adapter. The art direction is unchanged (needs the board decision above).
 - [ ] **G4.3 Valid-placement highlights**: extend the visual-only hover (`TileHover`) to vertices and edges taken from `legalActions`; robber target tiles in `moveRobber`.
 - [ ] **G4.4 HUD wiring** (flows per phase in §18): dice, resource hand, build menu (enabled only when legal and affordable), player cards (public VP, card counts, awards), bank and trade dialogs, discard dialog, dev card hand, turn and phase indicator.
@@ -240,6 +240,10 @@ Specification: `GAME_DESIGN.md` v1.2 (systems review of the v1.1 rules audit, 20
 - [ ] **G4.8 Hot-seat privacy and resume**: a "pass the device" screen hides the previous hand before the next player's view renders, including between sequential discards (§18); autosave the replay after each action and offer "resume game" (§22).
 
 **Exit criteria:** a full 4-player hot-seat game is playable in the browser; the scene stays as sharp and readable as at visual sign-off.
+
+**Board decision for G4 (2026-11-11):** games render `standard-fixed` only (no random-board rendering in G4); the showcase layout stays as the `demo` scene preset. G4 is done in small steps, each verified and committed separately.
+
+**G4.1 result (2026-11-11):** `src/store/gameStore.ts` is a plain-TS store: `getState`, `subscribe`, `onEvents` (events reach listeners before state listeners), `dispatch` (a rejected action changes nothing and notifies nobody), `reset`, `replayFile` (for autosave in G4.8). `src/store/GameProvider.tsx` adds `useGame(selector)` via `useSyncExternalStore`, `useDispatch`, `useGameEvents` (ref-based, no per-frame state) and `?seed=`. `App` is wrapped in the provider; nothing reads it yet. A dev-only `window.__islesStore` exists for browser checks and is absent from the production bundle. Tests: 7 store tests (141 total), including replay-hash equality with the store state. Browser: a live dispatch through the store works with no console errors. Pixel diff at 1440×900 DPR 2 `?nohover`: mean 0.05 against V8, noise floor 0.06 (`screenshots/milestones/g4.1/`); ~51 fps headless before and after. The JS bundle grew by 26 KB (9.4 KB gzip) because the engine is now included.
 
 ### G5 — Multiplayer and deployment (later)
 
@@ -304,8 +308,9 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | V8 — Performance | Done | `bdc6ec0`, V8 | `screenshots/milestones/v8/` | Shadow-map throttling, quality presets, WebGL fallback, ASSETS.md, perf probe. 52.6 fps @1440×900 DPR2 (was 46.6); identical image on `high` |
 | G1 — Engine foundation | Done | `861b562` | — | 65 tests; setup, dice, production, views, replay |
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
-| G3 — Trades, dev cards, victory | Done | G3 | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
-| G4–G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2 |
+| G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
+| G4 — 3D/UI integration | In progress | G4.1 | `screenshots/milestones/g4.1/` | G4.1 store done; scene unchanged (pixel diff within noise) |
+| G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -313,4 +318,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **G4**: 3D and UI integration (hot-seat), after the G3 review.
+**Recommended next action:** **G4.2**: board from engine state (`standard-fixed`), after the G4.1 review.
