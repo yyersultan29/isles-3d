@@ -1,8 +1,8 @@
 // Engine API (GAME_DESIGN.md §11): createGame, validate, apply, legalActions.
 // Pure and deterministic: all randomness comes from state.rngState; inputs are never mutated.
 //
-// G1 scope: setup, ROLL with production, END_TURN. Construction, robber, trades and dev cards
-// arrive in G2/G3; until then those actions are rejected with WRONG_PHASE.
+// Implemented: setup, ROLL with production, seven/discard/robber/steal, construction, END_TURN.
+// Trades and dev cards arrive in G3; until then those actions are rejected with WRONG_PHASE.
 
 import type { Action, ActionType, Check, DevCard, DevCardType, GameEvent, GameSettings, GameState, LegalAction, PlayerId, Result } from './types'
 import { PLAYER_IDS, RESOURCE_ORDER } from './types'
@@ -12,6 +12,8 @@ import { desertTile, generateBoard } from './board'
 import { activeId, draft, emptyCounts } from './state'
 import { placeSetupRoad, placeSetupSettlement, setupRoadSpots, setupSettlementSpots } from './rules/setup'
 import { endTurn, roll } from './rules/turn'
+import { buildCity, buildRoad, buildSettlement, legalCities, legalRoads, legalSettlements } from './rules/build'
+import { discard, discardWaitingFor, moveRobber, robberTargets, steal } from './rules/robber'
 import { checkVictory } from './rules/victory'
 
 export const DEFAULT_SETTINGS: Omit<GameSettings, 'seed'> = {
@@ -129,15 +131,21 @@ function schemaError(a: unknown): string | null {
 
 // ---------------------------------------------------------------- dispatch
 
-/** Which action types each phase accepts (§4.1 who-may-act table), G1 subset. */
+/** Which action types each phase accepts (§4.1 who-may-act table). Trades and dev cards: G3. */
 function allowedInPhase(s: GameState): ActionType[] {
   switch (s.phase.kind) {
     case 'setup': return s.phase.step === 'settlement' ? ['PLACE_SETTLEMENT'] : ['PLACE_ROAD']
     case 'preRoll': return ['ROLL']
-    case 'actions': return ['END_TURN']
-    default: return [] // discard, moveRobber, steal, roadBuilding: G2/G3
+    case 'discard': return ['DISCARD']
+    case 'moveRobber': return ['MOVE_ROBBER']
+    case 'steal': return ['STEAL']
+    case 'actions': return ['BUILD_ROAD', 'BUILD_SETTLEMENT', 'BUILD_CITY', 'END_TURN']
+    default: return [] // roadBuilding: G3
   }
 }
+
+/** Who the current phase is waiting for. */
+const waitingFor = (s: GameState): PlayerId[] => (s.phase.kind === 'discard' ? discardWaitingFor(s) : [activeId(s)])
 
 /** Validates and performs `action` on a draft. Throws RuleError on the first failed check. */
 function step(state: GameState, player: PlayerId, action: Action): { state: GameState; events: GameEvent[] } {
@@ -147,7 +155,7 @@ function step(state: GameState, player: PlayerId, action: Action): { state: Game
   if (!isPlayer(player)) fail('MALFORMED_ACTION', `unknown player ${String(player)}`)
   if (state.phase.kind === 'gameOver') fail('GAME_OVER', 'the game has ended')
   if (!allowedInPhase(state).includes(action.type)) fail('WRONG_PHASE', `${action.type} is not legal in ${state.phase.kind}`)
-  if (player !== activeId(state)) fail('NOT_YOUR_TURN', `waiting for ${activeId(state)}`)
+  if (!waitingFor(state).includes(player)) fail('NOT_YOUR_TURN', `waiting for ${waitingFor(state).join(', ')}`)
 
   const s = draft(state)
   const rng = createRng(state.rngState)
@@ -156,6 +164,12 @@ function step(state: GameState, player: PlayerId, action: Action): { state: Game
     case 'PLACE_SETTLEMENT': placeSetupSettlement(s, player, action.vertex, events); break
     case 'PLACE_ROAD': placeSetupRoad(s, player, action.edge, events); break
     case 'ROLL': roll(s, player, rng, events); break
+    case 'DISCARD': discard(s, player, action.cards, events); break
+    case 'MOVE_ROBBER': moveRobber(s, player, action.tile, rng, events); break
+    case 'STEAL': steal(s, player, action.victim, rng, events); break
+    case 'BUILD_ROAD': buildRoad(s, player, action.edge, false, events); break
+    case 'BUILD_SETTLEMENT': buildSettlement(s, player, action.vertex, events); break
+    case 'BUILD_CITY': buildCity(s, player, action.vertex, events); break
     case 'END_TURN': endTurn(s, player, events); break
     default: fail('WRONG_PHASE', `${action.type} is not implemented yet`)
   }
@@ -186,14 +200,22 @@ export function validate(state: GameState, player: PlayerId, action: Action): Ch
 
 /** Every concrete legal action for `player` (§11). Contract: each one passes validate. */
 export function legalActions(s: GameState, player: PlayerId): LegalAction[] {
-  if (s.phase.kind === 'gameOver' || player !== activeId(s)) return []
+  if (s.phase.kind === 'gameOver' || !waitingFor(s).includes(player)) return []
   switch (s.phase.kind) {
     case 'setup':
       return s.phase.step === 'settlement'
         ? setupSettlementSpots(s).map((vertex) => ({ type: 'PLACE_SETTLEMENT' as const, vertex }))
         : setupRoadSpots(s).map((edge) => ({ type: 'PLACE_ROAD' as const, edge }))
     case 'preRoll': return [{ type: 'ROLL' }]
-    case 'actions': return [{ type: 'END_TURN' }]
+    case 'discard': return [{ type: 'DISCARD', count: s.phase.pending[player]! }]
+    case 'moveRobber': return robberTargets(s, player).map((tile) => ({ type: 'MOVE_ROBBER' as const, tile }))
+    case 'steal': return s.phase.candidates.map((victim) => ({ type: 'STEAL' as const, victim }))
+    case 'actions': return [
+      ...legalRoads(s, player, false).map((edge) => ({ type: 'BUILD_ROAD' as const, edge })),
+      ...legalSettlements(s, player).map((vertex) => ({ type: 'BUILD_SETTLEMENT' as const, vertex })),
+      ...legalCities(s, player).map((vertex) => ({ type: 'BUILD_CITY' as const, vertex })),
+      { type: 'END_TURN' },
+    ]
     default: return []
   }
 }

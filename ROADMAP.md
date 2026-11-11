@@ -200,16 +200,18 @@ Specification: `GAME_DESIGN.md` v1.2 (systems review of the v1.1 rules audit, 20
 
 ### G2 — Construction, robber and awards
 
-- [ ] **G2.1 Costs and supply**: road, settlement, city and dev card costs; piece limits 15/5/4; a city returns its settlement piece (§3.1, §7).
-- [ ] **G2.2 Placement validation**: road connectivity; no extending through an opponent's building; distance rule; a settlement must touch your own road after setup; a city only on your own settlement (§7).
-- [ ] **G2.3 Seven**: discards for more than `discardLimit` cards, `floor(n/2)`, exact count and only cards held, accepted in any order; robber must move to a different tile (desert allowed); steal one card at random, weighted by hand, from an adjacent opponent who has cards; skip when nobody qualifies (§6).
-- [ ] **G2.4 Friendly Robber setting**: tiles touching players with fewer than 3 public VP are excluded; desert fallback; if no other tile is legal the robber stays and nothing is stolen (§6).
-- [ ] **G2.5 Longest Road**: trail DFS that can't pass through opponent buildings; 5 minimum; must be strictly longer to take it; recompute after roads and settlements; award decided by the single `resolveLongestRoad` function, which also covers broken roads (§10.2).
-- [ ] **G2.6 Largest Army**: 3 minimum, strictly more to take it, via `resolveLargestArmy` (§10.3). Played knights are tracked (the Knight card itself comes in G3).
-- [ ] **G2.7 Scoring**: `publicVP` and `totalVP` (§10.1).
-- [ ] **G2.8 Tests** per §13 "Seven", "Building", "Longest Road" and "Largest Army", including a loop of 6, a fork, a broken 7→3+4, and the tie cases.
+- [x] **G2.1 Costs and supply**: road, settlement, city and dev card costs; piece limits 15/5/4; a city returns its settlement piece (§3.1, §7).
+- [x] **G2.2 Placement validation**: road connectivity; no extending through an opponent's building; distance rule; a settlement must touch your own road after setup; a city only on your own settlement (§7).
+- [x] **G2.3 Seven**: discards for more than `discardLimit` cards, `floor(n/2)`, exact count and only cards held, accepted in any order; robber must move to a different tile (desert allowed); steal one card at random, weighted by hand, from an adjacent opponent who has cards; skip when nobody qualifies (§6).
+- [x] **G2.4 Friendly Robber setting**: tiles touching players with fewer than 3 public VP are excluded; desert fallback; if no other tile is legal the robber stays and nothing is stolen (§6).
+- [x] **G2.5 Longest Road**: trail DFS that can't pass through opponent buildings; 5 minimum; must be strictly longer to take it; recompute after roads and settlements; award decided by the single `resolveLongestRoad` function, which also covers broken roads (§10.2).
+- [x] **G2.6 Largest Army**: 3 minimum, strictly more to take it, via `resolveLargestArmy` (§10.3). Played knights are tracked (the Knight card itself comes in G3).
+- [x] **G2.7 Scoring**: `publicVP` and `totalVP` (§10.1).
+- [x] **G2.8 Tests** per §13 "Seven", "Building", "Longest Road" and "Largest Army", including a loop of 6, a fork, a broken 7→3+4, and the tie cases.
 
 **Exit criteria:** every construction and robber path is validated and tested, including the edge cases; invariants hold under a randomized action fuzzer seeded from `legalActions`.
+
+**G2 result (2026-11-11):** new `rules/build.ts`, `rules/robber.ts` and `rules/awards.ts`, wired into the engine's phase table. Discards on a 7 come from every owing player in any order (`NOT_YOUR_TURN` for the others). The robber then moves; a single candidate is robbed automatically, two or more go to the `steal` phase. Friendly Robber includes the D14 fallback, tested with an exact 6-vertex cover of the 18 non-desert tiles. `npm test`: 97 tests in about 5.6 s. Seven mutations are caught: tie keeps the holder, no passing through opponents, road blocked by a building, exact discard, Friendly threshold, robber same tile, city returns its settlement. The fuzzer plays 150 seeded games × 60 turns (over 500 builds, over 50 robber moves) with invariants and award idempotence checked after every action. Speed in a mid-game `actions` position: `legalActions` ≈ 0.45 ms, `apply` ≈ 0.016 ms on desktop (targets 5 ms and 1 ms). The scene is unchanged (no diff in `src/scene`/`src/ui`). The Knight card that drives Largest Army arrives in G3; `resolveLargestArmy` is already unit-tested.
 
 ### G3 — Trading, development cards, victory and a local hot-seat game
 
@@ -298,8 +300,9 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | V6 — HUD polish | Done | V6 | `screenshots/milestones/v6/` | V6.1 a11y, focus and tokens; V6.2 compact HUD and camera fit for tablet/phone. Open: resource-card illustration pass, larger board on landscape phones |
 | V7 — Camera & visual QA | Done | V7 | `screenshots/milestones/v7/` | Pan clamp, reset (dbl-click/R), view presets, tile hover, QA at 10 viewports and DPR 1–3; docs in CAMERA.md |
 | V8 — Performance | Done | `bdc6ec0`, V8 | `screenshots/milestones/v8/` | Shadow-map throttling, quality presets, WebGL fallback, ASSETS.md, perf probe. 52.6 fps @1440×900 DPR2 (was 46.6); identical image on `high` |
-| G1 — Engine foundation | Done | G1 | — | 65 tests; setup, dice, production, views, replay; 7 → robber deferred to G2 |
-| G2–G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2; G2 starts after G1 sign-off |
+| G1 — Engine foundation | Done | `861b562` | — | 65 tests; setup, dice, production, views, replay |
+| G2 — Construction & robber | Done | G2 | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
+| G3–G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -307,4 +310,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **G2**: construction, robber and awards (in progress).
+**Recommended next action:** **G3**: trading, development cards, victory and a local hot-seat game (in progress).

@@ -5,6 +5,7 @@ import type { EdgeId, GameEvent, GameState, PlayerId, Resource, VertexId } from 
 import { fail } from '../errors'
 import { activeId, addCounts, bankPay, playerOf } from '../state'
 import { resourceOf } from '../board'
+import { updateLongestRoad } from './awards'
 
 export function checkSettlementSpot(s: GameState, v: VertexId) {
   const topo = s.board.topo
@@ -49,6 +50,7 @@ export function placeSetupRoad(s: GameState, player: PlayerId, e: EdgeId, events
   s.roads[e] = player
   p.pieces.roads -= 1
   events.push({ type: 'SETUP_PLACED', what: 'road', at: e, by: player })
+  updateLongestRoad(s, events)
 
   // advance the snake: round 1 forward, round 2 reverse, then the first turn starts
   const last = s.order.length - 1

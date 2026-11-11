@@ -6,7 +6,7 @@ import { produce } from '../rules/production'
 import { activeId, draft } from '../state'
 import type { Action, EdgeId, GameEvent, GameState, PlayerId, VertexId } from '../types'
 import { PLAYER_IDS } from '../types'
-import { act, assertInvariants, deepFreeze, must, newGame, playSetup } from './helpers'
+import { act, assertInvariants, concretize, deepFreeze, must, newGame, playSetup, playTurn, resolvePending, waiting } from './helpers'
 
 const code = (r: { ok: boolean; error?: { code: string } }) => (r.ok ? 'OK' : r.error!.code)
 
@@ -99,9 +99,10 @@ describe('turns and dice (G1.8)', () => {
     const first = activeId(s)
     const r = must(apply(s, first, { type: 'ROLL' }))
     expect(r.state.dice).not.toBeNull()
-    expect(r.state.phase.kind).toBe('actions')
-    expect(code(apply(r.state, first, { type: 'ROLL' }))).toBe('WRONG_PHASE')
-    s = act(r.state, { type: 'END_TURN' })
+    const after = resolvePending(r.state)
+    expect(after.phase.kind).toBe('actions')
+    expect(code(apply(after, first, { type: 'ROLL' }))).toBe('WRONG_PHASE')
+    s = act(after, { type: 'END_TURN' })
     expect(s.turn).toBe(2)
     expect(activeId(s)).toBe(s.order[1])
     expect(s.phase).toEqual({ kind: 'preRoll' })
@@ -115,7 +116,7 @@ describe('turns and dice (G1.8)', () => {
       const [a, b] = r.state.dice!
       expect(a).toBeGreaterThanOrEqual(1); expect(b).toBeLessThanOrEqual(6)
       sums.add(a + b)
-      s = act(r.state, { type: 'END_TURN' })
+      s = act(resolvePending(r.state), { type: 'END_TURN' })
     }
     expect(sums.size).toBe(11)
   })
@@ -191,18 +192,25 @@ describe('legalActions contract, views and determinism (G1.8, G1.11)', () => {
   it('every legal action validates, through setup and 50 turns', () => {
     let s = newGame(11, { boardPreset: 'random' })
     let steps = 0
-    while (s.turn < 50 && steps++ < 1000) {
-      const legal = legalActions(s, activeId(s)) as Action[]
-      for (const a of legal) expect(validate(s, activeId(s), a).ok).toBe(true)
-      for (const p of PLAYER_IDS) if (p !== activeId(s)) expect(legalActions(s, p)).toEqual([])
-      s = act(s, legal[0])
+    while (s.turn < 50 && steps++ < 5000) {
+      const who = waiting(s)
+      for (const p of PLAYER_IDS) {
+        const legal = legalActions(s, p)
+        if (!who.includes(p)) { expect(legal).toEqual([]); continue }
+        for (const a of legal) expect(validate(s, p, concretize(s, p, a)).ok).toBe(true)
+      }
+      const p = who[0]
+      const legal = legalActions(s, p)
+      // prefer ending the turn so the game advances; builds are covered by the G2 fuzzer
+      const pickA = legal.find((a) => a.type === 'END_TURN') ?? legal[0]
+      s = act(s, concretize(s, p, pickA), p)
       assertInvariants(s)
     }
     expect(s.turn).toBe(50)
   })
   it('views never contain secrets; own hand is visible only to its owner', () => {
     let s = playSetup(newGame(12))
-    s = act(s, { type: 'ROLL' })
+    s = resolvePending(act(s, { type: 'ROLL' }))
     for (const viewer of [...PLAYER_IDS, 'spectator' as const]) {
       const v = viewFor(s, viewer)
       const json = JSON.stringify(v)
@@ -240,9 +248,7 @@ describe('legalActions contract, views and determinism (G1.8, G1.11)', () => {
         : { type: 'PLACE_ROAD', edge: (Object.keys(s.roads) as EdgeId[]).find((e) => !r.roads[e] && s.roads[e] === activeId(r) && legalActions(r, activeId(r)).some((x) => (x as { edge?: string }).edge === e))! }
       log.push([activeId(r), a]); r = act(r, a)
     }
-    for (let i = 0; i < 40; i++) {
-      for (const a of [{ type: 'ROLL' }, { type: 'END_TURN' }] as Action[]) { log.push([activeId(r), a]); r = act(r, a) }
-    }
+    for (let i = 0; i < 40; i++) r = playTurn(r, log)
     let replay = newGame(21, { boardPreset: 'random' })
     for (const [p, a] of log) replay = must(apply(replay, p, a)).state
     expect(replay).toEqual(r)
@@ -255,8 +261,7 @@ describe('G1 exit: headless seeded playout', () => {
     for (let seed = 100; seed < 120; seed++) {
       let s = playSetup(newGame(seed, { boardPreset: 'random' }), seed)
       for (let t = 0; t < 200; t++) {
-        s = act(s, { type: 'ROLL' }); assertInvariants(s)
-        s = act(s, { type: 'END_TURN' })
+        s = playTurn(s); assertInvariants(s)
       }
       expect(s.turn).toBe(201)
       // production happened

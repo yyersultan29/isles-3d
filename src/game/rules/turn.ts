@@ -5,17 +5,14 @@ import { RESOURCE_ORDER } from '../types'
 import { d6, type Rng } from '../rng'
 import { activeId, bankPay } from '../state'
 import { produce } from './production'
+import { startSeven } from './robber'
 
 export function roll(s: GameState, player: PlayerId, rng: Rng, events: GameEvent[]) {
   const dice: [number, number] = [d6(rng), d6(rng)] // d1 then d2: part of the replay format
   s.dice = dice
   events.push({ type: 'DICE_ROLLED', by: player, dice })
   const sum = dice[0] + dice[1]
-  if (sum === 7) {
-    // TODO(G2.3): discards, robber move and steal. Until then a 7 produces nothing and the turn goes on.
-    s.phase = { kind: 'actions' }
-    return
-  }
+  if (sum === 7) return startSeven(s, events) // discards → robber → steal (§6)
   const { gains, shortfall } = produce(s, sum)
   for (const p of s.order) {
     const g = gains[p]
