@@ -6,11 +6,11 @@ import { fbm, noise2, smoothstep, clamp } from './noise'
 
 const C = (hex: string) => new THREE.Color(hex)
 const PAL = {
-  grass: C('#4f7624'), grassLight: C('#7f963a'), grassDark: C('#324d18'), meadow: C('#6f7f30'),
+  grass: C('#527027'), grassLight: C('#7f8f3c'), grassDark: C('#30481a'), meadow: C('#7a7a38'),
   forest: C('#3d5a20'), forestDark: C('#263813'),
-  wheat: C('#c48a24'), wheatLight: C('#e6b444'),
+  wheat: C('#c48a24'), wheatLight: C('#e6b444'), wheatGreen: C('#a3902f'), wheatStubble: C('#a8732a'),
   sand: C('#d8b47a'), sandLight: C('#efd6a4'), sandDark: C('#b08752'),
-  clay: C('#a24a2a'), clayLight: C('#c8783f'), clayDark: C('#61291a'), clayGreen: C('#66762c'),
+  clay: C('#96442a'), clayLight: C('#b86c3e'), clayDark: C('#5a2818'), clayGreen: C('#5f6e2c'), clayDust: C('#a5805c'),
   rock: C('#776f66'), rockDark: C('#423c37'), rockLight: C('#9d958a'), snow: C('#f4f6f8'), snowShade: C('#cfd8e2'),
   dirt: C('#9b744a'), dirtDark: C('#6e5032'),
 }
@@ -28,6 +28,8 @@ function biomeColor(t: Tile, x: number, z: number, h: number, ny: number, out: T
       // drier meadow patches and darker clover clumps break up the green
       out.lerp(PAL.meadow, smoothstep(0.6, 0.85, fbm(x * 1.7 - t.seed, z * 1.7, 2) * 0.5 + 0.5) * 0.5)
       out.lerp(PAL.grassDark, smoothstep(0.72, 0.95, noise2(x * 22, z * 22) * 0.5 + 0.5) * 0.35)
+      // rare worn earth patches where sheep graze
+      out.lerp(PAL.dirt, smoothstep(0.78, 0.92, fbm(x * 4.5 + t.seed, z * 4.5 - t.seed, 2) * 0.5 + 0.5) * 0.45)
       break
     case 'forest':
       out.lerpColors(PAL.forestDark, PAL.forest, n1)
@@ -36,18 +38,33 @@ function biomeColor(t: Tile, x: number, z: number, h: number, ny: number, out: T
       break
     case 'wheat':
       out.lerpColors(PAL.wheat, PAL.wheatLight, n1 * 0.7 + n2 * 0.3)
+      // field-scale patches: some still ripening (greener), some harvested (stubble)
+      {
+        const patch = fbm(x * 2.2 - t.seed, z * 2.2 + t.seed, 2)
+        out.lerp(PAL.wheatGreen, smoothstep(0.25, 0.55, patch) * 0.35)
+        out.lerp(PAL.wheatStubble, smoothstep(-0.25, -0.55, patch) * 0.4)
+      }
       // furrows between the field patches
       out.multiplyScalar(0.82 + 0.18 * smoothstep(-0.6, 0.4, Math.sin((x + z * 0.4) * 38 + n1 * 4)))
       break
     case 'desert':
       out.lerpColors(PAL.sandDark, PAL.sand, clamp(ny * ny * 1.1 + (n1 - 0.5) * 0.4))
       out.lerp(PAL.sandLight, smoothstep(0.6, 1, n2 * 0.5 + h * 3) * 0.6)
+      // wind ripples running across the dunes, fading out on the central mound
+      {
+        const rip = Math.sin((x * 3 - z * 6) * 7 + fbm(x * 2, z * 2, 2) * 5) * 0.5 + 0.5
+        const rc = Math.hypot(x - t.x, z - t.z)
+        out.multiplyScalar(1 - 0.09 * rip * smoothstep(0.18, 0.35, rc))
+      }
       break
     case 'hills': {
       const crev = smoothstep(0.95, 0.55, ny)
       out.lerpColors(PAL.clay, PAL.clayLight, clamp(h * 2.5 + (n1 - 0.5) * 0.6))
       out.lerp(PAL.clayDark, crev * 0.8)
       out.lerp(PAL.clayGreen, smoothstep(0.62, 0.8, n1) * smoothstep(0.12, 0.05, h) * 0.8)
+      // dry dusty crusts on the crests, scrubby grass in the hollows
+      out.lerp(PAL.clayDust, smoothstep(0.9, 1, ny) * smoothstep(0.16, 0.24, h) * 0.3)
+      out.lerp(PAL.clayGreen, smoothstep(0.55, 0.75, fbm(x * 3.5 + t.seed, z * 3.5, 2) * 0.5 + 0.5) * smoothstep(0.16, 0.08, h) * 0.45)
       break
     }
     case 'mountain': {
@@ -82,11 +99,14 @@ function biomeColor(t: Tile, x: number, z: number, h: number, ny: number, out: T
       break
     }
   }
-  // dirt band just inside the rails
+  // soft seam toward the rails: the biome fades through a ragged, narrow strip of
+  // trodden earth, with contact darkening right at the rail instead of a hard outline
   const d = hexDist(x - t.x, z - t.z)
-  const band = smoothstep(0.84, 0.95, d + (n2 - 0.5) * 0.06)
-  tmp.lerpColors(PAL.dirt, PAL.dirtDark, n2 * 0.6)
-  out.lerp(tmp, band * 0.85)
+  const ragged = (fbm(x * 9 + t.seed, z * 9, 2) * 0.5 + (n2 - 0.5)) * 0.07
+  const band = smoothstep(0.87, 0.97, d + ragged)
+  tmp.lerpColors(PAL.dirt, PAL.dirtDark, 0.35 + n2 * 0.5)
+  out.lerp(tmp, band * 0.7)
+  out.multiplyScalar(1 - 0.22 * smoothstep(0.9, 0.995, d))
 }
 
 /** Subdivided pointy-top hex surface displaced by the tile height function. */
