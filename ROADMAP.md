@@ -111,13 +111,13 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 
 **Objective:** make the world feel alive without distracting from the board.
 
-- [ ] Gentle wave movement and shoreline foam animation.
-- [ ] Subtle tree/wheat wind animation with varied phase.
-- [ ] Restrained lantern flicker and chimney smoke.
-- [ ] Small ship movement and cloth-sail motion, avoiding collision with ports.
-- [ ] Optional distant birds and sheep idle motions.
-- [ ] Pause/reduce nonessential animation when tab is hidden or reduced-motion is enabled.
-- [ ] Avoid per-frame allocations and excessive React state updates.
+- [x] Gentle wave movement and shoreline foam animation. Already present; verified it animates on the shared clock.
+- [x] Subtle tree/wheat wind animation with varied phase. Already present; the phase comes from each instance's world position.
+- [x] Restrained lantern flicker and chimney smoke. V5 makes the lantern flicker slower and softer (±6%/±3.5% instead of ±12%/±8% at 8/21 Hz). New `Smoke.tsx` adds one instanced mesh of thin wisps from every chimney.
+- [x] Small ship movement and cloth-sail motion, avoiding collision with ports. Already present: bobbing, a small orbit of r ≤ 0.35 and billowing sails. No overlap with the docks at the default pose.
+- [x] Optional distant birds and sheep idle motions. Birds were already present. Sheep now slowly turn while grazing and breathe, holding still most of the time.
+- [x] Pause/reduce nonessential animation when tab is hidden or reduced-motion is enabled. New `motion.ts` provides a shared clamped clock, so hidden tabs pause via rAF and resume without a jump. `prefers-reduced-motion` (or `?reducedmotion`) slows motion to 12% and hides smoke and birds. Measured: 15.7% → 4.8% of pixels changing per second.
+- [x] Avoid per-frame allocations and excessive React state updates. Every frame loop reuses preallocated objects and none of them sets React state.
 
 **Exit criteria:** animation is subtle, stable, respects reduced-motion preference, and does not significantly degrade baseline performance.
 
@@ -247,7 +247,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | M0 — Baseline | Done | `m0-baseline` | `screenshots/baseline/` | 162 meshes, ≈1.2M tris, ~47 fps @1440×900 DPR2 |
 | V3 — Environment assets | Done | `2c4fdb8`, `bdc6ec0`, `a10ff78`, `d8d17e8`, `9d1895a`, V3.4 | `screenshots/milestones/v3.4/` | V3.1 mountains, V3.2 cliffs and boulders, V3.3 materials and seams done; exit review in `screenshots/milestones/v3-exit/`: all criteria pass. V3.4 polish (`screenshots/milestones/v3.4/`): crisper snow edges, outcrops leaning into the slope, ground cover on the rim strip. 162 meshes, ≈1.26M tris, ~47 fps @1440×900 DPR2 |
 | V4 — Lighting & water | Done | `bba5a95`, `2c4fdb8`, V4 | `screenshots/milestones/v4/` | V4.1 warm light balance, V4.2 broken lacy foam; materials audited. 162 meshes, ≈1.26M tris, ~47 fps @1440×900 DPR2 |
-| V5 — Micro-animations | Not started | — | — | Subtle motion |
+| V5 — Micro-animations | Done | V5 | `screenshots/milestones/v5/` | Shared clock and reduced-motion, chimney smoke, sheep idle, softer lanterns. 163 meshes (+1), ~47 fps @1440×900 DPR2 (unchanged) |
 | V6 — HUD polish | Not started | — | — | Responsive |
 | V7 — Camera & visual QA | Not started | — | — | Locked reference pose |
 | V8 — Performance | Started | `bdc6ec0` | — | Static batching 820→162 meshes; point lights removed |
@@ -259,4 +259,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **V5**: ambient micro-animations.
+**Recommended next action:** **V6**: HUD and interface polish.

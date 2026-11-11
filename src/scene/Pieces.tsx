@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { animTime } from './motion'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { TILES, tileHeight, corner, tileAt, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight } from './board'
@@ -355,6 +356,23 @@ export function Buildings() {
   )
 }
 
+/**
+ * World positions of the chimney tops. This mirrors the transforms in Buildings, Settlement and
+ * Chimney above, so keep the numbers in sync when those change.
+ */
+export function chimneyTops(): [number, number, number][] {
+  return BUILDINGS.map((b, i) => {
+    const t = tileAt(...b.tile)
+    const [x, z] = corner(t, b.corner)
+    const ry = Math.atan2(x, z) + Math.PI / 2 + (i % 2) * 0.3
+    const S = b.city ? 1.38 : 1.6
+    // local chimney-top position inside the settlement group (cap sits 0.089 above the chimney origin)
+    const [lx, ly, lz] = b.city ? [-0.05 - 0.045, 0.012 + 0.016 + 0.13 + 0.04 + 0.09, 0.06] : [0.035, 0.012 + 0.016 + 0.11 + 0.035 + 0.09, -0.05]
+    const c = Math.cos(ry), s = Math.sin(ry)
+    return [x + (lx * c + lz * s) * S, 0.02 + ly * S, z + (-lx * s + lz * c) * S]
+  })
+}
+
 function Roads() {
   const items = useMemo(
     () =>
@@ -402,10 +420,10 @@ function Lanterns() {
     [],
   )
   const mats = useRef<THREE.MeshStandardMaterial[]>([])
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
+  useFrame(() => {
+    const t = animTime.value
     mats.current.forEach((m, i) => {
-      if (m) m.emissiveIntensity = 5 + Math.sin(t * 9 + i * 3) * 0.8 + Math.sin(t * 23 + i) * 0.5
+      if (m) m.emissiveIntensity = 5 + Math.sin(t * 2.6 + i * 3) * 0.35 + Math.sin(t * 6.7 + i) * 0.2
     })
   })
   return (

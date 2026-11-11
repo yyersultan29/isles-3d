@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { animTime } from './motion'
 import * as THREE from 'three'
 import { WATER_Y } from './board'
 
@@ -126,8 +127,8 @@ const SHIPS = [
 
 export function Ships() {
   const refs = useRef<(THREE.Group | null)[]>([])
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
+  useFrame(() => {
+    const t = animTime.value
     shipTime.value = t
     SHIPS.forEach((s, i) => {
       const g = refs.current[i]

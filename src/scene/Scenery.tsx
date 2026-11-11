@@ -7,6 +7,7 @@ import { fbm, mulberry32, noise2, smoothstep } from './noise'
 import { pineGeometry, bushGeometry } from './models'
 import { SIMPLEX_GLSL, addWind } from './shaders'
 import { oceanTime } from './Ocean'
+import { animTime, motion } from './motion'
 
 /** Large faceted sea-cliff mass with grassy top. */
 function cliffGeometry(seed: number, sx: number, sy: number, sz: number) {
@@ -107,8 +108,10 @@ function Birds() {
     const r = mulberry32(8)
     return Array.from({ length: 6 }, (_, i) => ({ cx: (r() - 0.5) * 10, cz: -4 + r() * 8, rad: 1 + r() * 2, h: 2.4 + r() * 1.2, sp: 0.15 + r() * 0.15, ph: i * 1.3 }))
   }, [])
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
+  const group = useRef<THREE.Group>(null)
+  useFrame(() => {
+    if (group.current) group.current.visible = !motion.reduced
+    const t = animTime.value
     birds.forEach((b, i) => {
       const m = refs.current[i]
       if (!m) return
@@ -119,7 +122,7 @@ function Birds() {
     })
   })
   return (
-    <group>
+    <group ref={group}>
       {birds.map((_, i) => (
         <mesh key={i} ref={(m) => { refs.current[i] = m }} geometry={geo} castShadow>
           <meshStandardMaterial color="#f5f5f2" side={THREE.DoubleSide} />

@@ -1,10 +1,12 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { TILES, Tile, tileHeight, hexDist, corner, tileAt, BUILDINGS, ROADS, HARBORS, islandRadius, WATER_Y, EDGES, findTile } from './board'
 import { mulberry32, noise2, fbm } from './noise'
 import { pineGeometry, broadleafGeometry, bushGeometry, rockGeometry, wheatGeometry, grassTuftGeometry, sheepGeometries } from './models'
 import { addWind } from './shaders'
 import { oceanTime } from './Ocean'
+import { animTime } from './motion'
 
 export interface Inst { x: number; y: number; z: number; s: number; ry: number; sy?: number; rx?: number; rz?: number; tint?: THREE.Color }
 
@@ -398,6 +400,29 @@ function Sheep() {
   const r2 = useRef<THREE.InstancedMesh>(null)
   useInstances(r1, items)
   useInstances(r2, items)
+  // idle grazing: each sheep slowly turns a little to either side and breathes; most of the time it
+  // holds still, so the pasture stays calm (smoothstep plateaus instead of a constant wobble)
+  const o = useMemo(() => new THREE.Object3D(), [])
+  useFrame(() => {
+    const a = r1.current, b = r2.current
+    if (!a || !b) return
+    const t = animTime.value
+    for (let k = 0; k < items.length; k++) {
+      const it = items[k]
+      const w = Math.sin(t * 0.21 + k * 1.93)
+      const q = Math.min(1, Math.max(0, (Math.abs(w) - 0.55) / 0.35))
+      const turn = (w > 0 ? 1 : -1) * q * q * (3 - 2 * q) * 0.45
+      const breathe = 1 + Math.sin(t * 1.7 + k * 2.3) * 0.012
+      o.position.set(it.x, it.y, it.z)
+      o.rotation.set(0, it.ry + turn, 0)
+      o.scale.set(it.s, it.s * breathe, it.s)
+      o.updateMatrix()
+      a.setMatrixAt(k, o.matrix)
+      b.setMatrixAt(k, o.matrix)
+    }
+    a.instanceMatrix.needsUpdate = true
+    b.instanceMatrix.needsUpdate = true
+  })
   return (
     <>
       <instancedMesh ref={r1} args={[wool, undefined, items.length]} castShadow receiveShadow>

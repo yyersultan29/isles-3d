@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { animTime } from './motion'
 import * as THREE from 'three'
 import { HARBORS, corner, tileAt, WATER_Y, islandRadius } from './board'
 import { signTexture } from './textures'
@@ -92,9 +93,10 @@ const LANTERN_POOL = (() => {
 
 function Lantern({ phase }: { phase: number }) {
   const mat = useRef<THREE.MeshStandardMaterial>(null)
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
-    const f = 1 + Math.sin(t * 8 + phase) * 0.12 + Math.sin(t * 21 + phase * 2) * 0.08
+  useFrame(() => {
+    const t = animTime.value
+    // restrained candle flicker: slow breathing plus a faint quicker waver
+    const f = 1 + Math.sin(t * 2.3 + phase) * 0.06 + Math.sin(t * 6.1 + phase * 2) * 0.035
     if (mat.current) mat.current.emissiveIntensity = 6 * f
   })
   return (

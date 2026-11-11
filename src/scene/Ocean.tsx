@@ -1,10 +1,11 @@
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { islandRadius, WATER_Y, ISLAND_APOTHEM } from './board'
 import { SIMPLEX_GLSL } from './shaders'
+import { animTime, stepAnimTime } from './motion'
 
-const time = { value: 0 }
+const time = animTime
 
 /** Lit PBR ocean with procedural swell normals and depth-based colouring. */
 function Water() {
@@ -150,11 +151,8 @@ function Foam() {
 }
 
 export function Ocean() {
-  const t0 = useRef(0)
-  useFrame((_, dt) => {
-    t0.current += Math.min(dt, 0.05)
-    time.value = t0.current
-  })
+  // owns the shared ambient clock (see motion.ts)
+  useFrame((_, dt) => stepAnimTime(dt))
   return (
     <group>
       <Water />

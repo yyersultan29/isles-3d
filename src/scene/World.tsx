@@ -14,6 +14,7 @@ import { Harbors, harborSignTops } from './Harbors'
 import { VERTICES, islandRadius } from './board'
 import { Ships } from './Ships'
 import { Scenery } from './Scenery'
+import { Smoke } from './Smoke'
 
 // Debug override: ?cam=x,y,z&tgt=x,y,z
 const qp = new URLSearchParams(window.location.search)
@@ -193,6 +194,7 @@ export function World() {
         <Tokens />
         <Robber />
         <Buildings />
+        <Smoke />
         <Harbors />
         <Ocean />
         <Ships />
