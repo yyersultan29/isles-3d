@@ -16,6 +16,8 @@ import { Ships } from './Ships'
 import { Scenery } from './Scenery'
 import { Smoke } from './Smoke'
 import { isCompact, COMPACT_SAFE } from '../ui/layout'
+import { CameraInteraction, setHome, applyViewPreset } from './CameraInteraction'
+import { TileHover } from './TileHover'
 
 // Debug override: ?cam=x,y,z&tgt=x,y,z
 const qp = new URLSearchParams(window.location.search)
@@ -67,7 +69,6 @@ function CameraRig() {
       fitCompact(camera, w, h, controls, scene)
       return
     }
-    if (controls) controls.maxDistance = DEFAULT_MAX_DIST
     if (scene.fog instanceof THREE.Fog) [scene.fog.near, scene.fog.far] = DEFAULT_FOG
     const s = Math.min(w / HUD_W, h / HUD_H)
     const right = w - SAFE.right * s, top = SAFE.top * s, bottom = h - SAFE.bottom * s
@@ -105,7 +106,14 @@ function CameraRig() {
     }
     camera.position.copy(target).addScaledVector(VIEW_DIR, dist)
     camera.lookAt(target)
-    if (controls) { controls.target.copy(target); controls.update() }
+    setHome(camera.position, target)
+    applyViewPreset(camera, qp.get('view'))
+    if (controls) {
+      // the zoom-out limit must never be closer than the home pose, or the controls would crop the board
+      controls.maxDistance = Math.max(DEFAULT_MAX_DIST, dist * 1.25)
+      controls.target.copy(target)
+      controls.update()
+    }
   }, [camera, size, controls, scene])
   return null
 }
@@ -144,6 +152,8 @@ function fitCompact(camera: THREE.PerspectiveCamera, w: number, h: number, contr
   }
   camera.position.copy(target).addScaledVector(VIEW_DIR, dist)
   camera.lookAt(target)
+  setHome(camera.position, target)
+  applyViewPreset(camera, qp.get('view'))
   if (controls) {
     controls.maxDistance = Math.max(DEFAULT_MAX_DIST, dist * 1.25)
     controls.target.copy(target)
@@ -244,6 +254,7 @@ export function World() {
       }}
     >
       <CameraRig />
+      <CameraInteraction />
       <Suspense fallback={null}>
         <Lights />
         <Island />
@@ -253,6 +264,7 @@ export function World() {
         <Robber />
         <Buildings />
         <Smoke />
+        {!qp.has('nohover') && <TileHover />}
         <Harbors />
         <Ocean />
         <Ships />

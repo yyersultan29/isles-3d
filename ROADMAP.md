@@ -139,13 +139,13 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 
 **Objective:** make the finished scene comfortable to inspect without implementing gameplay.
 
-- [ ] Lock and document the default camera pose and zoom.
-- [ ] Smooth orbit/zoom with bounds preventing clipping and under-board views.
-- [ ] Optional hover highlight for tiles, edges and vertices (visual only).
-- [ ] Add screenshot/debug presets and a way to reset the camera.
-- [ ] Verify no accidental DOF, blur, stretching or low-resolution render target.
-- [ ] Test common aspect ratios and high-DPI screens.
-- [ ] Compare fixed-pose screenshots to reference for composition, terrain, water, pieces and HUD.
+- [x] Lock and document the default camera pose and zoom. See `screenshots/milestones/v7/CAMERA.md`: the fixed angle is auto-fitted per viewport and HUD layout, and the home pose is recorded for reset.
+- [x] Smooth orbit/zoom with bounds preventing clipping and under-board views. Damped orbit, distance 6–22 (the zoom-out limit is never closer than home), tilt ≥ 21° above the horizon, and pan clamped to 2.6 units around home. Tested by dragging and zooming to the extremes.
+- [x] Optional hover highlight for tiles, edges and vertices (visual only). `TileHover.tsx` adds a soft ring inside the rails using math picking with no mesh raycasts. Fine pointers only, hidden while dragging, `?nohover` turns it off. Tiles only, no edges or vertices; those wait for gameplay.
+- [x] Add screenshot/debug presets and a way to reset the camera. `?view=top|low|close`, `?nohover`, and reset with double-click or `R`.
+- [x] Verify no accidental DOF, blur, stretching or low-resolution render target. Buffer = CSS × min(DPR, 2), verified at DPR 1, 2 and 3. The post chain was audited and has no blur effects.
+- [x] Test common aspect ratios and high-DPI screens. Tested 21:9 (2560×1080), 16:9 (2560×1440, 1920×1080, 1366×768, 1280×720), 16:10, 4:3, portrait tablet and phone, landscape phone, and DPR 1, 2 and 3.
+- [x] Compare fixed-pose screenshots to reference for composition, terrain, water, pieces and HUD. The default pose matches V6 pixel-for-pixel in composition. Remaining gaps vs the reference are wheat hue and denser forest canopy; see the V7 notes.
 
 **Exit criteria:** visually approved scene and reproducible screenshots, with no camera/blur regressions.
 
@@ -249,7 +249,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | V4 — Lighting & water | Done | `bba5a95`, `2c4fdb8`, V4 | `screenshots/milestones/v4/` | V4.1 warm light balance, V4.2 broken lacy foam; materials audited. 162 meshes, ≈1.26M tris, ~47 fps @1440×900 DPR2 |
 | V5 — Micro-animations | Done | V5 | `screenshots/milestones/v5/` | Shared clock and reduced-motion, chimney smoke, sheep idle, softer lanterns. 163 meshes (+1), ~47 fps @1440×900 DPR2 (unchanged) |
 | V6 — HUD polish | Done | V6 | `screenshots/milestones/v6/` | V6.1 a11y, focus and tokens; V6.2 compact HUD and camera fit for tablet/phone. Open: resource-card illustration pass, larger board on landscape phones |
-| V7 — Camera & visual QA | Not started | — | — | Locked reference pose |
+| V7 — Camera & visual QA | Done | V7 | `screenshots/milestones/v7/` | Pan clamp, reset (dbl-click/R), view presets, tile hover, QA at 10 viewports and DPR 1–3; docs in CAMERA.md |
 | V8 — Performance | Started | `bdc6ec0` | — | Static batching 820→162 meshes; point lights removed |
 | G1–G4 — Gameplay | Backlog | — | — | After visual approval |
 
@@ -259,4 +259,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **V7**: camera, interaction and visual QA.
+**Recommended next action:** **V8**: performance and asset pipeline.
