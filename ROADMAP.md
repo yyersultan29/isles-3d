@@ -298,6 +298,35 @@ Design targets are in `GAME_DESIGN.md` §20 (timers and absent players), §21 (a
 
 > Gameplay scope and rules should be reviewed before implementation. Avoid copying proprietary assets, branding or interface text from other products.
 
+**Decision (2026-11-12):** start with a local server. A small Node WebSocket server lives in the repo (`src/server/`) and runs the unchanged engine. It is local only: no accounts and no running costs. Hosting is decided at G5.7. The protocol (`src/net/protocol.ts`) is shared by the server and the client.
+
+Steps (each verified and reviewed before the next):
+
+- [x] **G5.1 Room core (no network).**
+  - Protocol types from §21 and envelope validation of untrusted frames: 8 KB limit, id format, integer `clientSeq`; payloads are checked by the engine (MALFORMED_ACTION).
+  - A transport-free `Room` with seats p1–p4 and secret seat tokens. The first claimer is the host; others join as spectators.
+  - The host starts once all four seats are taken, with a seed from Web Crypto.
+  - Actions are applied one at a time for the seat bound to the connection. Retries are idempotent by `clientSeq`.
+  - Each recipient gets only its own `viewFor`/`eventsFor` projection and its own legal actions.
+- [ ] G5.2 WebSocket transport and a server start script (needs `ws` and a TS runner; approve the dependencies first).
+- [ ] G5.3 Client online mode: lobby, joining by link, rendering server views.
+- [ ] G5.4 Reconnect and presence (seat token, snapshot resync on a `seq` gap).
+- [ ] G5.5 Turn timers and absent-player fallback as logged actions (§20).
+- [ ] G5.6 Hardening: rate limits, logging, error handling, accessibility QA.
+- [ ] G5.7 Hosting decision, deployment and a load test.
+
+**G5.1 result (2026-11-12):** `src/net/protocol.ts`, `src/server/room.ts` and 8 tests in `src/server/__tests__/room.test.ts`, 183 tests in total.
+- Covered: envelope rejection, seats, tokens and rejoin, the lobby broadcast, the start rules, and wrong-seat and malformed intents (rejected to the sender only, state unchanged). Also covered: spectators cannot act, and a retried `clientSeq` is applied once.
+- A full bot game played only through room messages (4 seats plus a spectator) reaches gameOver with no rejections.
+- Every message to every connection was checked:
+  - no `rngState` or deck, and no seed before gameOver;
+  - no other player's hand or dev cards;
+  - stolen cards and bought dev cards redacted for third parties;
+  - empty legal actions for the spectator;
+  - `seq` without gaps.
+- After gameOver the seed is visible to a newly joined spectator.
+- Not yet run over a real socket (G5.2).
+
 ---
 
 ## 6. Suggested code organization (adapt to actual repo)
@@ -350,7 +379,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
-| G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2 |
+| G5 — Multiplayer | In progress | G5.1 | — | G5.1 room core (local server first); `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -358,4 +387,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** the user's review of G4 (exit check above). G5 (online multiplayer) starts only after approval.
+**Recommended next action:** review G5.1, then G5.2 (WebSocket transport; needs approval for the `ws` and `tsx` dev dependencies).
