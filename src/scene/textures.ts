@@ -129,9 +129,41 @@ function drawWheat(g: CanvasRenderingContext2D, x: number, y: number, s: number)
   g.restore()
 }
 
+function drawOre(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  g.save()
+  g.translate(x, y)
+  g.scale(s, s)
+  const rock = (pts: [number, number][], fill: string, hi: string) => {
+    g.fillStyle = fill
+    g.beginPath(); pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.closePath(); g.fill()
+    g.strokeStyle = '#3f444c'; g.lineWidth = 2; g.stroke()
+    g.fillStyle = hi
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); g.lineTo(pts[1][0], pts[1][1]); g.lineTo((pts[0][0] + pts[2][0]) / 2, (pts[0][1] + pts[2][1]) / 2); g.closePath(); g.fill()
+  }
+  rock([[-40, 26], [-30, -4], [-8, -12], [4, 10], [-6, 28]], '#7d848e', '#b9c0c9')
+  rock([[-2, 28], [8, -18], [28, -26], [40, 4], [32, 28]], '#8a919b', '#c8ced6')
+  rock([[-20, 30], [-14, 12], [4, 8], [10, 30]], '#6b727c', '#a4abb4')
+  g.restore()
+}
+/** Generic 3:1 port: a neutral "any resource" mark (question mark in a coin). */
+function drawAny(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  g.save()
+  g.translate(x, y)
+  g.scale(s, s)
+  g.fillStyle = '#e9d6a6'; g.strokeStyle = '#6b4524'; g.lineWidth = 4
+  g.beginPath(); g.arc(0, 0, 34, 0, Math.PI * 2); g.fill(); g.stroke()
+  g.fillStyle = '#6b4524'
+  g.font = '700 50px Fredoka, "Trebuchet MS", sans-serif'
+  g.textAlign = 'center'; g.textBaseline = 'middle'
+  g.fillText('?', 0, 3)
+  g.restore()
+}
+
 export const ICONS: Record<HarborKind, (g: CanvasRenderingContext2D, x: number, y: number, s: number) => void> = {
   sheep3: drawSheep,
+  generic: drawAny,
   sheep: drawSheep,
+  ore: drawOre,
   wood: drawLogs,
   brick: drawBrick,
   wheat: drawWheat,

@@ -1,5 +1,5 @@
 import { fbm, noise2, ridged, smoothstep, clamp, mulberry32 } from './noise'
-import { STANDARD_FIXED, axialToScene, sceneToAxial, type Terrain, type TileId } from '../game'
+import { PORT_EDGES, STANDARD_FIXED, axialToScene, buildTopology, hexSides, sceneToAxial, type EdgeId, type PortKind, type Terrain, type TileId } from '../game'
 
 export type Biome = 'forest' | 'wheat' | 'mountain' | 'pasture' | 'hills' | 'desert'
 export type Player = 'red' | 'blue' | 'white' | 'orange'
@@ -300,10 +300,11 @@ export const PLAYER_COLORS: Record<Player, { wall: string; roof: string }> = {
 
 // ---------- harbours ----------
 
-export type HarborKind = 'sheep3' | 'wood' | 'brick' | 'wheat' | 'sheep'
+/** `sheep3` is the showcase's generic sign (kept for `?board=demo`); games use `generic`. */
+export type HarborKind = 'sheep3' | 'generic' | 'wood' | 'brick' | 'wheat' | 'sheep' | 'ore'
 export interface Harbor { tile: [number, number]; edge: number; kind: HarborKind; ratio: string }
 
-export const HARBORS: Harbor[] = [
+const DEMO_HARBORS: Harbor[] = [
   { tile: [0, 0], edge: 5, kind: 'sheep3', ratio: '3:1' },
   { tile: [0, 2], edge: 5, kind: 'sheep3', ratio: '3:1' },
   { tile: [1, 3], edge: 0, kind: 'sheep3', ratio: '3:1' },
@@ -312,6 +313,24 @@ export const HARBORS: Harbor[] = [
   { tile: [3, 3], edge: 0, kind: 'wheat', ratio: '2:1' },
   { tile: [4, 1], edge: 2, kind: 'sheep', ratio: '2:1' },
 ]
+
+export const PORT_HARBOR_KIND: Record<PortKind, HarborKind> = {
+  generic: 'generic', lumber: 'wood', brick: 'brick', wool: 'sheep', grain: 'wheat', ore: 'ore',
+}
+
+/** Engine port edges → scene (tile row/col, side k). The coastal edge touches exactly one land hex. */
+export function engineHarbors(ports: readonly { edge: EdgeId; kind: PortKind }[]): Harbor[] {
+  const topo = buildTopology()
+  return ports.map(({ edge, kind }) => {
+    const [tile] = topo.edgeTiles[edge]
+    if (!tile || topo.edgeTiles[edge].length !== 1) throw new Error(`port edge ${edge} is not coastal`)
+    const [q, r] = tile.split(',').map(Number)
+    const k = hexSides(q, r).indexOf(edge)
+    return { tile: axialToScene(q, r), edge: k, kind: PORT_HARBOR_KIND[kind], ratio: kind === 'generic' ? '3:1' : '2:1' }
+  })
+}
+
+export const HARBORS: Harbor[] = BOARD_MODE === 'demo' ? DEMO_HARBORS : engineHarbors(PORT_EDGES)
 
 // ---------- island outline ----------
 

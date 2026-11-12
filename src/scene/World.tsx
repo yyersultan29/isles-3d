@@ -57,6 +57,8 @@ const RIM_PTS = [
 const WEST_SIGN_PTS = SIGN_PTS.filter((v) => v.x < -3).map((v) => v.clone().add(new THREE.Vector3(-0.4, -0.3, 0)))
 // compact layout: every harbour sign (both edges) must stay fully on screen
 const ALL_SIGN_PTS = SIGN_PTS.flatMap((v) => [v.clone().add(new THREE.Vector3(-0.4, 0, 0)), v.clone().add(new THREE.Vector3(0.4, 0, 0))])
+// sign posts reach the pier deck ~0.47×SIGN_SCALE below the sign top
+const SIGN_FEET = SIGN_PTS.map((v) => v.clone().add(new THREE.Vector3(0, -0.5, 0)))
 const DEFAULT_MAX_DIST = 22
 const DEFAULT_FOG: [number, number] = [17, 40]
 
@@ -90,6 +92,9 @@ function CameraRig() {
       const board = BOARD_PTS.map(toPx)
       for (const [x, y] of board) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); minY = Math.min(minY, y) }
       for (const v of SIGN_PTS) minY = Math.min(minY, toPx(v)[1])
+      // G4.2b: every harbour sign (both edges, and its foot) stays inside the safe area, clear of the side and bottom HUD
+      for (const v of ALL_SIGN_PTS) { const [x, y] = toPx(v); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y) }
+      for (const v of SIGN_FEET) maxY = Math.max(maxY, toPx(v)[1])
       // the left edge must clear the nav panel wherever the board reaches up beside it
       const rim = RIM_PTS.map(toPx)
       const signs = WEST_SIGN_PTS.map(toPx)
