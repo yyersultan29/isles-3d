@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "shot": "node scripts/screenshot.mjs",
     "deploy": "bash scripts/deploy.sh",
-    "test": "vitest run"
+    "test": "vitest run",
+    "server": "tsx src/server/main.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",
@@ -24,14 +25,18 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.16",
+    "@types/node": "^22.20.5",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/three": "^0.180.0",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^4.7.0",
     "playwright-core": "^1.56.1",
     "tailwindcss": "^4.1.16",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vite": "^6.4.1",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "ws": "^8.22.2"
   }
 }

@@ -308,7 +308,7 @@ Steps (each verified and reviewed before the next):
   - The host starts once all four seats are taken, with a seed from Web Crypto.
   - Actions are applied one at a time for the seat bound to the connection. Retries are idempotent by `clientSeq`.
   - Each recipient gets only its own `viewFor`/`eventsFor` projection and its own legal actions.
-- [ ] G5.2 WebSocket transport and a server start script (needs `ws` and a TS runner; approve the dependencies first).
+- [x] G5.2 WebSocket transport and a server start script.
 - [ ] G5.3 Client online mode: lobby, joining by link, rendering server views.
 - [ ] G5.4 Reconnect and presence (seat token, snapshot resync on a `seq` gap).
 - [ ] G5.5 Turn timers and absent-player fallback as logged actions (§20).
@@ -326,6 +326,19 @@ Steps (each verified and reviewed before the next):
   - `seq` without gaps.
 - After gameOver the seed is visible to a newly joined spectator.
 - Not yet run over a real socket (G5.2).
+
+**G5.2 result (2026-11-12):** `src/server/server.ts` and `src/server/main.ts`; `npm run server` starts the server.
+- Dev dependencies added (approved): `ws` 8.22, `tsx` 4.23, `@types/ws`, `@types/node` 22. None of them reach the client bundle: the build output is byte-identical.
+- The server listens on 127.0.0.1:8787 by default (local only).
+  - `POST /rooms` creates a room with a random id; `GET /health` reports the room count.
+  - WebSocket frames go to `/ws`. The first message must be a `join` to an existing room, which binds the socket to that room. After that, every frame goes to `Room`, and its messages are delivered to the sockets they name.
+  - Binary frames are rejected; frames over 16 KB close the socket (1009).
+  - A closed socket updates lobby presence.
+- 4 integration tests on a random port in `src/server/__tests__/server.test.ts`, 187 tests in total.
+  - Covered: HTTP routes, join-first, unknown rooms, junk, binary and oversized frames, and rejoining a lobby seat with its token.
+  - A full bot game over five real sockets (4 seats plus a spectator) reaches gameOver. Every socket received every update in order, saw only its own hand and saw the seed only in the final update.
+- Manual check: `npm run server` in its own process; health, room creation, four joins and start (4 snapshots) worked from a separate Node client; stops cleanly on SIGINT.
+- Not yet covered: a browser client (G5.3); reconnect during a game is only covered at the Room level (G5.4).
 
 ---
 
@@ -379,7 +392,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
-| G5 — Multiplayer | In progress | G5.1 | — | G5.1 room core (local server first); `GAME_DESIGN.md` v1.2 |
+| G5 — Multiplayer | In progress | `71f775f`, G5.2 | — | G5.1 room core (local server first); G5.2 WebSocket server; `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -387,4 +400,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** review G5.1, then G5.2 (WebSocket transport; needs approval for the `ws` and `tsx` dev dependencies).
+**Recommended next action:** review G5.2, then G5.3 (client online mode: lobby, join by link, rendering server views).

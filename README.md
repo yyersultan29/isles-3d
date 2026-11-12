@@ -6,6 +6,7 @@ A real-time React Three Fiber recreation of `references/colonist-reference.png`.
 npm install
 npm run dev          # http://localhost:5173
 npm run build        # tsc + vite production build
+npm run server       # local game server (G5): http://127.0.0.1:8787, WebSocket at /ws; PORT/HOST override
 npm run shot -- http://localhost:5173/ shots/out.png 2000 1130   # headless Chrome screenshot (dev server must be running)
 ```
 
