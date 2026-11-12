@@ -19,6 +19,7 @@ import { isCompact, COMPACT_SAFE } from '../ui/layout'
 import { CameraInteraction, setHome, applyViewPreset } from './CameraInteraction'
 import { TileHover } from './TileHover'
 import { Placement } from './Placement'
+import { Feedback } from './Feedback'
 import { quality } from './quality'
 import { motion } from './motion'
 import { ContextLossGuard } from './SceneGuard'
@@ -297,6 +298,7 @@ export function World() {
         <Smoke />
         {!qp.has('nohover') && <TileHover />}
         {BOARD_MODE === 'game' && <Placement />}
+        {BOARD_MODE === 'game' && <Feedback />}
         <Harbors />
         <Ocean />
         <Ships />

@@ -8,6 +8,7 @@ import { tokenTexture } from './textures'
 import { StaticBatch } from './StaticBatch'
 import { mulberry32 } from './noise'
 import { useGame } from '../store/GameProvider'
+import { buildingKey, roadKey, useArrivals } from './arrivals'
 
 // ---------------- Number tokens ----------------
 const TOKEN_R = 0.27
@@ -393,21 +394,28 @@ const piecesKey = ({ buildings, roads }: { buildings: Building[]; roads: Road[] 
 
 const buildingYaw = (b: Building, x: number, z: number) => Math.atan2(x, z) + Math.PI / 2 + (b.turn ?? 0) * 0.3
 
+/** One building at its corner, facing roughly toward the board centre. Shared with the drop animation. */
+export function BuildingPiece({ b }: { b: Building }) {
+  const t = tileAt(...b.tile)
+  const [x, z] = corner(t, b.corner)
+  return (
+    <group position={[x, 0.02, z]} rotation-y={buildingYaw(b, x, z)} scale={b.city ? 1.38 : 1.6}>
+      <Settlement player={b.player} city={b.city} />
+    </group>
+  )
+}
+
 export function Buildings() {
-  const pieces = usePieces()
+  const all = usePieces()
+  // G4.5c: a piece that is still dropping in is drawn by Feedback.tsx and rejoins the batch after
+  const arriving = useArrivals()
+  const pieces = useMemo(() => arriving.size
+    ? { buildings: all.buildings.filter((b) => !arriving.has(buildingKey(b))), roads: all.roads.filter((r) => !arriving.has(roadKey(r))) }
+    : all, [all, arriving])
   // a new key remounts the batch, so the merged meshes always match the current pieces
   return (
     <StaticBatch key={piecesKey(pieces)}>
-      {pieces.buildings.map((b, i) => {
-        const t = tileAt(...b.tile)
-        const [x, z] = corner(t, b.corner)
-        // face roughly toward the board centre for a pleasing composition
-        return (
-          <group key={i} position={[x, 0.02, z]} rotation-y={buildingYaw(b, x, z)} scale={b.city ? 1.38 : 1.6}>
-            <Settlement player={b.player} city={b.city} />
-          </group>
-        )
-      })}
+      {pieces.buildings.map((b, i) => <BuildingPiece key={i} b={b} />)}
       <Roads roads={pieces.roads} />
       <Lanterns buildings={pieces.buildings} />
     </StaticBatch>
@@ -431,7 +439,7 @@ export function chimneyTops(buildings: Building[]): [number, number, number][] {
   })
 }
 
-function Roads({ roads }: { roads: Road[] }) {
+export function Roads({ roads }: { roads: Road[] }) {
   const items = useMemo(
     () =>
       roads.map((r) => {
