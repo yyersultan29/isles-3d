@@ -7,6 +7,8 @@ import { Avatar } from './icons'
 import { RESOURCES, focusRing, panel } from './HUD'
 import { SEATS, useGameView } from './gameView'
 import { useGameStore } from '../store/GameProvider'
+import { useTradeOpen } from '../store/ui'
+import { TradeDialog } from './TradeDialog'
 import { RESOURCE_ORDER, type Resource } from '../game'
 
 const zero = (): Record<Resource, number> => ({ lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 })
@@ -98,9 +100,13 @@ function StealDialog() {
   )
 }
 
-/** Whichever seven-dialog the current phase needs, positioned above the hand. */
+/** Whichever dialog the current phase needs (seven, or the open trade panel), positioned above the hand. */
 export function GameDialogs({ compact = false, className = '', style }: { compact?: boolean; className?: string; style?: React.CSSProperties }) {
   const { phaseKind } = useGameView()
-  if (phaseKind !== 'discard' && phaseKind !== 'steal') return null
-  return <div className={className} style={style}>{phaseKind === 'discard' ? <DiscardDialog compact={compact} /> : <StealDialog />}</div>
+  const trade = useTradeOpen()
+  const body = phaseKind === 'discard' ? <DiscardDialog compact={compact} />
+    : phaseKind === 'steal' ? <StealDialog />
+    : phaseKind === 'actions' && trade ? <TradeDialog compact={compact} />
+    : null
+  return body && <div className={className} style={style}>{body}</div>
 }

@@ -1,7 +1,7 @@
 // G4.4a: HUD data is derived from state and shows only public information for everyone.
 import { describe, expect, it } from 'vitest'
 import { act, fixture, newGame, playSetup } from '../../game/__tests__/helpers'
-import { buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
+import { bankMax, bankView, buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
 import { COSTS, legalActions } from '../../game'
 
 describe('G4.4a HUD view', () => {
@@ -73,5 +73,31 @@ describe('G4.4a HUD view', () => {
       { id: 'p2', name: 'Blue', color: SEATS.p2.color, avatar: SEATS.p2.avatar, cards: 2 },
       { id: 'p3', name: 'White', color: SEATS.p3.color, avatar: SEATS.p3.avatar, cards: 1 },
     ] })
+  })
+
+  it('G4.4d: bank rates follow ports and the engine; max respects hand and bank', () => {
+    const plain = fixture({ hands: { p1: { lumber: 9, ore: 3 } }, buildings: [['0,0,N', 'p1']] })
+    const v = bankView(plain)
+    expect(v).toMatchObject({ player: 'p1', open: true, reason: null })
+    expect(v.rows.map((r) => r.rate)).toEqual([4, 4, 4, 4, 4])
+    expect(v.rows.find((r) => r.res === 'lumber')).toMatchObject({ have: 9, canGive: true })
+    expect(v.rows.find((r) => r.res === 'ore')).toMatchObject({ have: 3, canGive: false })
+    expect(bankMax(v, 'lumber', 'brick')).toBe(2)
+    expect(bankMax(v, 'lumber', 'lumber')).toBe(0)
+    // every give the panel allows is one the engine offers, and vice versa
+    const legal = new Set(legalActions(plain, 'p1').filter((a) => a.type === 'BANK_TRADE').map((a) => (a as { give: string }).give))
+    expect(new Set(v.rows.filter((r) => r.canGive).map((r) => r.res))).toEqual(legal)
+
+    // a settlement on a port: 2:1 for its resource, or 3:1 for every resource on a generic port
+    for (const port of plain.board.ports) {
+      const s = fixture({ hands: { p1: { wool: 3 } }, buildings: [[port.vertices[0], 'p1']] })
+      const rows = bankView(s).rows
+      if (port.kind === 'generic') expect(rows.every((r) => r.rate === 3)).toBe(true)
+      else expect(rows.find((r) => r.res === port.kind)!.rate).toBe(2)
+    }
+    const empty = fixture({ hands: { p1: { lumber: 8 } } })
+    empty.bank.brick = 1
+    expect(bankMax(bankView(empty), 'lumber', 'brick')).toBe(1)
+    expect(bankView(fixture({ phase: { kind: 'preRoll' } }))).toMatchObject({ open: false, reason: 'Roll the dice first' })
   })
 })

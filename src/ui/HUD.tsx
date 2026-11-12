@@ -7,7 +7,7 @@ import { useViewport } from './layout'
 import { CompactHUD } from './CompactHUD'
 import { GameDialogs } from './Dialogs'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
-import { setPlacementMode, usePlacementMode } from '../store/ui'
+import { setPlacementMode, setTradeOpen, usePlacementMode, useTradeOpen } from '../store/ui'
 import type { Resource } from '../game'
 import { useGameStore, useGameEvents } from '../store/GameProvider'
 
@@ -83,12 +83,13 @@ function Nav() {
   )
 }
 
-export function IconButton({ children, label, className = '' }: { children: ReactNode; label: string; className?: string }) {
+export function IconButton({ children, label, className = '', ...rest }: { children: ReactNode; label: string; className?: string } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className'>) {
   return (
     <button
       aria-label={label}
       title={label}
-      className={`grid h-[38px] w-[38px] place-items-center rounded-[9px] text-[#ece8e0] transition-[filter,transform] hover:brightness-125 active:translate-y-[1px] ${focusRing} ${panel} ${className}`}
+      {...rest}
+      className={`grid h-[38px] w-[38px] place-items-center rounded-[9px] text-[#ece8e0] transition-[filter,transform] hover:brightness-125 active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:brightness-100 ${focusRing} ${panel} ${className}`}
     >
       {children}
     </button>
@@ -254,13 +255,13 @@ export function useHand() {
   return { counts: hand.counts, ownerName: owner.name, ownerColor: owner.color }
 }
 
-/** Clears the build choice when the turn or phase moves on, and on Escape. Mount once per HUD. */
+/** Clears the build choice and closes the trade panel when the turn or phase moves on, and on Escape. Mount once per HUD. */
 export function usePlacementAutoReset() {
   const { phaseKind, active, turn } = useGameView()
-  useEffect(() => { if (phaseKind !== 'actions') setPlacementMode(null) }, [phaseKind])
-  useEffect(() => { setPlacementMode(null) }, [active, turn])
+  useEffect(() => { if (phaseKind !== 'actions') { setPlacementMode(null); setTradeOpen(false) } }, [phaseKind])
+  useEffect(() => { setPlacementMode(null); setTradeOpen(false) }, [active, turn])
   useEffect(() => {
-    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') setPlacementMode(null) }
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { setPlacementMode(null); setTradeOpen(false) } }
     window.addEventListener('keydown', f)
     return () => window.removeEventListener('keydown', f)
   }, [])
@@ -372,9 +373,27 @@ function BuildPanel() {
   )
 }
 
+const TradeIco = ({ size }: { size: number }) => (
+  <svg aria-hidden viewBox="0 0 24 24" style={{ width: size, height: size }} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h14l-4-4" /><path d="M20 16H6l4 4" /></svg>
+)
+
+/** Opens the bank/port trade panel (G4.4d); enabled in the active player's `actions` phase. */
+export function TradeButton({ className = '', icon = 24 }: { className?: string; icon?: number }) {
+  const { bank } = useGameView()
+  const open = useTradeOpen()
+  const label = `Trade with the bank${bank.reason ? ` (${bank.reason})` : ''}`
+  return (
+    <IconButton label={label} aria-pressed={open} disabled={!bank.open} onClick={() => setTradeOpen(!open)}
+      className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
+      <TradeIco size={icon} />
+    </IconButton>
+  )
+}
+
 function BottomLeft() {
   return (
     <div className="absolute bottom-[16px] left-[22px] flex gap-[12px]">
+      <TradeButton className="!h-[52px] !w-[52px] !rounded-[12px]" />
       <IconButton label="Undo" className="!h-[52px] !w-[52px] !rounded-[12px]">
         <svg aria-hidden viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
       </IconButton>

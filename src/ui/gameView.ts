@@ -3,7 +3,7 @@
 // opponents: public VP (never hidden VP cards), hand and dev-card counts, awards.
 
 import { useMemo } from 'react'
-import { COSTS, legalActions, RESOURCE_ORDER, type Action, type GameState, type PlayerId, type Resource } from '../game'
+import { COSTS, legalActions, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource } from '../game'
 import { useGame } from '../store/GameProvider'
 
 /** Seat names and colours; colours match the 3D pieces (scene/board.ts PLAYER_COLORS walls). */
@@ -92,7 +92,7 @@ export function primaryAction(s: GameState): { label: string; short: string; act
 
 export function useGameView() {
   const s = useGame((x) => x)
-  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s) }), [s])
+  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s), bank: bankView(s) }), [s])
 }
 
 // ---------- G4.4b: hand and build menu ----------
@@ -155,4 +155,29 @@ export function stealPrompt(s: GameState): StealPrompt | null {
     player: s.order[s.active],
     candidates: s.phase.candidates.map((id) => ({ id, ...SEATS[id], cards: count(s.players.find((p) => p.id === id)!.resources) })),
   }
+}
+
+// ---------- G4.4d: bank and port trades ----------
+
+export interface BankRow { res: Resource; rate: 2 | 3 | 4; have: number; bank: number; canGive: boolean }
+export interface BankView { player: PlayerId; open: boolean; reason: string | null; rows: BankRow[] }
+
+/** The bank-trade panel: the active player's rate per resource (ports included) and what the bank holds. */
+export function bankView(s: GameState): BankView {
+  const player = s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]
+  const pl = s.players.find((p) => p.id === player)!
+  const open = s.phase.kind === 'actions'
+  const reason = open ? null : s.phase.kind === 'preRoll' ? 'Roll the dice first' : 'Not now'
+  const rows = RESOURCE_ORDER.map((res) => {
+    const rate = tradeRate(s, player, res)
+    return { res, rate, have: pl.resources[res], bank: s.bank[res], canGive: open && pl.resources[res] >= rate }
+  })
+  return { player, open, reason, rows }
+}
+
+/** How many cards of `get` the player can buy with `give` right now (0 if none). */
+export function bankMax(v: BankView, give: Resource, get: Resource) {
+  if (give === get) return 0
+  const g = v.rows.find((r) => r.res === give)!, t = v.rows.find((r) => r.res === get)!
+  return Math.min(Math.floor(g.have / g.rate), t.bank)
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { AwardBadges, BuildRows, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, useHand } from './HUD'
+import { AwardBadges, BuildRows, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, useHand } from './HUD'
 import { useGameView } from './gameView'
 import { GameDialogs } from './Dialogs'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
@@ -93,11 +93,11 @@ export function CompactHUD() {
 
       {/* ---------- bottom dock ---------- */}
       <div className="absolute inset-x-[8px] bottom-[8px] flex flex-col items-center gap-[8px]" style={{ height: COMPACT_SAFE.bottom - 8 }}>
-        <div className="relative flex w-full max-w-[560px] items-center gap-[8px]">
+        <div className="relative flex w-full max-w-[560px] items-center gap-[6px]">
           <button
             onClick={act}
             disabled={!primary.action}
-            className="flex h-[48px] disabled:grayscale-[0.7] disabled:brightness-75 items-center gap-[8px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] pl-[6px] pr-[16px] font-display text-[17px] font-semibold text-[#3a2208] shadow-[0_0_12px_rgba(255,190,70,0.6),0_3px_0_#8a5410] outline-none focus-visible:ring-4 focus-visible:ring-white/80 active:translate-y-[2px]"
+            className="flex h-[48px] disabled:grayscale-[0.7] disabled:brightness-75 items-center gap-[8px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] pl-[6px] pr-[14px] font-display text-[17px] font-semibold text-[#3a2208] shadow-[0_0_12px_rgba(255,190,70,0.6),0_3px_0_#8a5410] outline-none focus-visible:ring-4 focus-visible:ring-white/80 active:translate-y-[2px]"
           >
             <span ref={dice} aria-hidden className="flex gap-[6px] pl-[2px]">
               <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg)" size={24} />
@@ -105,19 +105,20 @@ export function CompactHUD() {
             </span>
             <span className="whitespace-nowrap">{primary.short}</span>
           </button>
-          <IconButton label="Undo" className="!h-[44px] !w-[44px] shrink-0">
+          <TradeButton icon={22} className="!h-[44px] !w-[40px] shrink-0" />
+          <IconButton label="Undo" className="!h-[44px] !w-[40px] shrink-0">
             <svg aria-hidden viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
           </IconButton>
-          <IconButton label="Chat (new messages)" className="relative !h-[44px] !w-[44px] shrink-0">
+          {/* chat is still a placeholder: dropped below 390 px so the dock fits with Trade (G4.4d) */}
+          <IconButton label="Chat (new messages)" className="relative !h-[44px] !w-[40px] shrink-0 max-[389px]:!hidden">
             <svg aria-hidden viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="currentColor"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.4 1.3 4.6 3.4 6L4.5 21l4.4-2.3c1 .2 2 .3 3.1.3 5.5 0 10-3.6 10-8s-4.5-8-10-8z" /></svg>
             <span aria-hidden className="absolute right-[4px] top-[4px] h-[8px] w-[8px] rounded-full bg-[#f2a33a]" />
           </IconButton>
-          <div className="flex-1" />
           <button
             aria-expanded={build}
             aria-controls="compact-build"
             onClick={() => { setBuild((v) => !v); setMenu(false) }}
-            className={`flex h-[44px] items-center gap-[6px] rounded-[10px] px-[14px] font-display text-[17px] font-medium ${focusRing} ${panel}`}
+            className={`ml-auto flex h-[44px] shrink-0 items-center gap-[6px] rounded-[10px] px-[12px] font-display text-[17px] font-medium ${focusRing} ${panel}`}
           >
             Build
             <svg aria-hidden viewBox="0 0 24 24" className={`h-[16px] w-[16px] transition-transform ${build ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6" /></svg>
