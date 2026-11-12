@@ -6,13 +6,14 @@ import { useEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
 import { focusRing, panel } from './HUD'
 import { useGameView } from './gameView'
-import { useGameStore } from '../store/GameProvider'
+import { useGameStore, useOnline } from '../store/GameProvider'
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 31)
 
 export function Victory({ compact = false }: { compact?: boolean }) {
   const { final } = useGameView()
   const store = useGameStore()
+  const online = useOnline()
   const [hidden, setHidden] = useState(false)
   const again = useRef<HTMLButtonElement>(null)
   const pill = useRef<HTMLButtonElement>(null)
@@ -79,10 +80,13 @@ export function Victory({ compact = false }: { compact?: boolean }) {
         </table>
         <div className="mt-[14px] flex items-center justify-between gap-[10px] [@media(max-height:560px)]:mt-[6px]">
           <button onClick={() => setHidden(true)} className={`h-[36px] rounded-[9px] bg-white/10 px-[14px] text-[14px] font-semibold text-white hover:bg-white/20 ${focusRing}`}>View board</button>
-          <button ref={again} onClick={newGame}
+          {online ? <a ref={again as unknown as React.Ref<HTMLAnchorElement>} href="?online"
+            className={`grid h-[40px] place-items-center rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[24px] font-display text-[18px] font-semibold text-[#3a2208] ${focusRing}`}>
+            New room
+          </a> : <button ref={again} onClick={newGame}
             className={`h-[40px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[24px] font-display text-[18px] font-semibold text-[#3a2208] ${focusRing}`}>
             New game
-          </button>
+          </button>}
         </div>
       </section>
     </div>

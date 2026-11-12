@@ -2,7 +2,7 @@
 // legalActions, never from scene geometry, so the highlights can't disagree with the rules.
 
 import { legalActions } from '../game'
-import type { Action, EdgeId, GameState, PlayerId, TileId, VertexId } from '../game'
+import type { Action, EdgeId, GameState, PlayerId, TileId, VertexId, Viewer } from '../game'
 import type { PlacementMode } from './ui'
 
 export interface PlacementTargets {
@@ -14,10 +14,12 @@ export interface PlacementTargets {
 
 const NONE: PlacementTargets = { player: null, vertices: [], edges: [], tiles: [] }
 
-export function placementTargets(s: GameState, mode: PlacementMode): PlacementTargets {
+/** `me`: null in hot-seat (the active player places); online only this seat's own placements show. */
+export function placementTargets(s: GameState, mode: PlacementMode, me: Viewer | null = null): PlacementTargets {
   const kind = s.phase.kind
   if (kind !== 'setup' && kind !== 'roadBuilding' && kind !== 'moveRobber' && kind !== 'actions') return NONE
   const player = s.order[s.active]
+  if (me !== null && me !== player) return NONE
   const legal = legalActions(s, player) as Action[]
   const out: PlacementTargets = { player, vertices: [], edges: [], tiles: [] }
   // in `actions` only the chosen build shows; the other phases have exactly one kind of placement

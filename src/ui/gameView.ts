@@ -3,8 +3,16 @@
 // opponents: public VP (never hidden VP cards), hand and dev-card counts, awards.
 
 import { useMemo } from 'react'
-import { COSTS, legalActions, MAX_PROPOSALS_PER_TURN, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource } from '../game'
-import { useGame } from '../store/GameProvider'
+import { COSTS, legalActions, MAX_PROPOSALS_PER_TURN, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource, type Viewer } from '../game'
+import { useGame, useSeat } from '../store/GameProvider'
+
+/**
+ * G5.3b: whose screen it is. `null` is hot-seat (the screen follows whoever the game waits for);
+ * online it is this connection's seat, or 'spectator', and only that seat's controls are live.
+ */
+export type Me = Viewer | null
+/** whether `p` may act from this screen */
+const mine = (me: Me, p: PlayerId) => me === null || me === p
 
 /** Seat names and colours; colours match the 3D pieces (scene/board.ts PLAYER_COLORS walls). */
 export const SEATS: Record<PlayerId, { name: string; color: string; avatar: number }> = {
@@ -78,9 +86,14 @@ export function phaseText(s: GameState): string {
 }
 
 /** The plinth's main button: Roll in preRoll, End Turn in actions, otherwise a disabled hint. */
-export function primaryAction(s: GameState): { label: string; short: string; action: Action | null; player: PlayerId | null } {
+export function primaryAction(s: GameState, me: Me = null): { label: string; short: string; action: Action | null; player: PlayerId | null } {
   if (s.phase.kind === 'gameOver') return { label: 'Game over', short: 'Over', action: null, player: null }
   const player = s.order[s.active]
+  if (!mine(me, player)) {
+    // online, someone else's move; during a seven this seat may still owe a discard (its dialog)
+    const label = s.phase.kind === 'discard' ? 'Discarding…' : `${SEATS[player].name}’s turn`
+    return { label, short: 'Wait', action: null, player: null }
+  }
   const legal = legalActions(s, player)
   if (s.phase.kind === 'preRoll' && legal.some((a) => a.type === 'ROLL')) return { label: 'Roll Dice', short: 'Roll', action: { type: 'ROLL' }, player }
   if (s.phase.kind === 'actions' && legal.some((a) => a.type === 'END_TURN')) return { label: 'End Turn', short: 'End', action: { type: 'END_TURN' }, player }
@@ -92,7 +105,18 @@ export function primaryAction(s: GameState): { label: string; short: string; act
 
 export function useGameView() {
   const s = useGame((x) => x)
-  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s), bank: bankView(s), offer: offerView(s), dev: devView(s), final: finalScores(s), opponents: s.order.filter((p) => p !== s.order[s.active]) }), [s])
+  const me = useSeat()
+  return useMemo(() => gameView(s, me), [s, me])
+}
+
+/** Everything the HUD shows, from one state and one point of view. */
+export function gameView(s: GameState, me: Me = null) {
+  const self = me && me !== 'spectator' ? me : s.order[s.active]
+  return {
+    seats: seats(s), phase: phaseText(s), primary: primaryAction(s, me), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s, me), build: buildOptions(s, me),
+    active: s.order[s.active], turn: s.turn, discard: discardPrompt(s, me), steal: stealPrompt(s, me), bank: bankView(s, me), offer: offerView(s, me), dev: devView(s, me),
+    final: finalScores(s), opponents: s.order.filter((p) => p !== self), me,
+  }
 }
 
 // ---------- G4.4b: hand and build menu ----------
@@ -129,14 +153,21 @@ export const needsPass = (s: GameState, seen: PlayerId | null): boolean => {
 }
 
 /** The hand the HUD shows: the viewer's (the discarding player during a seven), the winner's at the end. */
-export function handOf(s: GameState): { owner: PlayerId; counts: Record<Resource, number> } {
-  const owner = s.phase.kind === 'gameOver' ? s.phase.winner : viewerOf(s)!
+export function handOf(s: GameState, me: Me = null): { owner: PlayerId; counts: Record<Resource, number> } {
+  // online: always this seat's own hand; a spectator sees no hand
+  if (me === 'spectator') return { owner: s.order[s.active], counts: { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 } }
+  const owner = me ?? (s.phase.kind === 'gameOver' ? s.phase.winner : viewerOf(s)!)
   return { owner, counts: { ...s.players.find((p) => p.id === owner)!.resources } }
 }
 
 /** Build menu rows: enabled exactly when legalActions offers that build; otherwise the first reason that applies. */
-export function buildOptions(s: GameState): BuildOption[] {
-  const p = s.order[s.active]
+export function buildOptions(s: GameState, me: Me = null): BuildOption[] {
+  const active = s.order[s.active]
+  if (!mine(me, active)) {
+    const reason = me === 'spectator' ? 'Watching' : 'Wait for your turn'
+    return (['road', 'settlement', 'city', 'dev'] as BuildKind[]).map((kind) => ({ kind, enabled: false, reason, cost: COSTS[kind] }))
+  }
+  const p = active
   const pl = s.players.find((x) => x.id === p)!
   const legal = s.phase.kind === 'gameOver' ? [] : legalActions(s, p)
   const type: Record<BuildKind, string> = { road: 'BUILD_ROAD', settlement: 'BUILD_SETTLEMENT', city: 'BUILD_CITY', dev: 'BUY_DEV' }
@@ -162,19 +193,21 @@ export function buildOptions(s: GameState): BuildOption[] {
 export interface DiscardPrompt { player: PlayerId; count: number; hand: Record<Resource, number>; waiting: PlayerId[] }
 
 /** The next player who still owes a discard (turn order), with their hand; null outside `discard`. */
-export function discardPrompt(s: GameState): DiscardPrompt | null {
+export function discardPrompt(s: GameState, me: Me = null): DiscardPrompt | null {
   if (s.phase.kind !== 'discard') return null
   const pending = s.phase.pending
   const waiting = s.order.filter((p) => pending[p])
   if (!waiting.length) return null
-  const player = waiting[0]
+  // hot-seat collects discards one at a time in turn order; online every seat discards at once
+  const player = me === null ? waiting[0] : me !== 'spectator' && pending[me] ? me : null
+  if (!player) return null
   return { player, count: pending[player]!, hand: { ...s.players.find((p) => p.id === player)!.resources }, waiting }
 }
 
 export interface StealPrompt { player: PlayerId; candidates: { id: PlayerId; name: string; color: string; avatar: number; cards: number }[] }
 
-export function stealPrompt(s: GameState): StealPrompt | null {
-  if (s.phase.kind !== 'steal') return null
+export function stealPrompt(s: GameState, me: Me = null): StealPrompt | null {
+  if (s.phase.kind !== 'steal' || !mine(me, s.order[s.active])) return null
   return {
     player: s.order[s.active],
     candidates: s.phase.candidates.map((id) => ({ id, ...SEATS[id], cards: count(s.players.find((p) => p.id === id)!.resources) })),
@@ -187,11 +220,13 @@ export interface BankRow { res: Resource; rate: 2 | 3 | 4; have: number; bank: n
 export interface BankView { player: PlayerId; open: boolean; reason: string | null; rows: BankRow[] }
 
 /** The bank-trade panel: the active player's rate per resource (ports included) and what the bank holds. */
-export function bankView(s: GameState): BankView {
-  const player = s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]
+export function bankView(s: GameState, me: Me = null): BankView {
+  const active = s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]
+  const player = me && me !== 'spectator' ? me : active
   const pl = s.players.find((p) => p.id === player)!
-  const open = s.phase.kind === 'actions'
-  const reason = open ? null : s.phase.kind === 'preRoll' ? 'Roll the dice first' : 'Not now'
+  const myTurn = mine(me, s.order[s.active])
+  const open = s.phase.kind === 'actions' && myTurn
+  const reason = open ? null : !myTurn ? (me === 'spectator' ? 'Watching' : 'Wait for your turn') : s.phase.kind === 'preRoll' ? 'Roll the dice first' : 'Not now'
   const rows = RESOURCE_ORDER.map((res) => {
     const rate = tradeRate(s, player, res)
     return { res, rate, have: pl.resources[res], bank: s.bank[res], canGive: open && pl.resources[res] >= rate }
@@ -225,24 +260,28 @@ export function proposeCheck(s: GameState, offer: Counts, request: Counts, to: P
   return null
 }
 
-export interface OfferRow { id: PlayerId; name: string; color: string; avatar: number; response: 'pending' | 'accept' | 'reject'; canAccept: boolean; canConfirm: boolean; reason: string | null }
-export interface OfferView { id: number; from: PlayerId; offer: Counts; request: Counts; rows: OfferRow[] }
+export interface OfferRow { id: PlayerId; name: string; color: string; avatar: number; response: 'pending' | 'accept' | 'reject'; canRespond: boolean; canAccept: boolean; canConfirm: boolean; reason: string | null }
+/** `canManage`: this screen may confirm or cancel (the proposer's) */
+export interface OfferView { id: number; from: PlayerId; offer: Counts; request: Counts; rows: OfferRow[]; canManage: boolean }
 
 /** The open offer and where each addressed player stands; buttons follow legalActions. */
-export function offerView(s: GameState): OfferView | null {
+export function offerView(s: GameState, me: Me = null): OfferView | null {
   const t = s.trade
   if (!t || s.phase.kind !== 'actions') return null
-  const confirmable = new Set(legalActions(s, t.from).flatMap((a) => (a.type === 'CONFIRM_TRADE' ? [a.with] : [])))
+  const canManage = mine(me, t.from)
+  const confirmable = new Set(canManage ? legalActions(s, t.from).flatMap((a) => (a.type === 'CONFIRM_TRADE' ? [a.with] : [])) : [])
   const rows = t.to.map((id) => {
-    const canAccept = legalActions(s, id).some((a) => a.type === 'RESPOND_TRADE' && a.accept)
+    // online only the addressed seat answers, and only its own hand is known
+    const canRespond = mine(me, id)
+    const canAccept = canRespond && legalActions(s, id).some((a) => a.type === 'RESPOND_TRADE' && a.accept)
     const res = s.players.find((p) => p.id === id)!.resources
     const short = RESOURCE_ORDER.filter((r) => res[r] < (t.request[r] ?? 0))
     return {
-      id, ...SEATS[id], response: t.responses[id] ?? 'pending', canAccept, canConfirm: confirmable.has(id),
-      reason: canAccept ? null : short.length ? `Needs ${short.map((r) => `${(t.request[r] ?? 0) - res[r]} more ${RES_NAME[r]}`).join(', ')}` : null,
+      id, ...SEATS[id], response: t.responses[id] ?? 'pending', canRespond, canAccept, canConfirm: confirmable.has(id),
+      reason: canAccept || !canRespond ? null : short.length ? `Needs ${short.map((r) => `${(t.request[r] ?? 0) - res[r]} more ${RES_NAME[r]}`).join(', ')}` : null,
     } as OfferRow
   })
-  return { id: t.id, from: t.from, offer: { ...t.offer }, request: { ...t.request }, rows }
+  return { id: t.id, from: t.from, offer: { ...t.offer }, request: { ...t.request }, rows, canManage }
 }
 
 // ---------- G4.4e: development cards ----------
@@ -255,10 +294,10 @@ const DEV_ORDER: DevKind[] = ['knight', 'roadBuilding', 'yearOfPlenty', 'monopol
 const PLAY_TYPE: Record<Exclude<DevKind, 'victoryPoint'>, Action['type']> = { knight: 'PLAY_KNIGHT', roadBuilding: 'PLAY_ROAD_BUILDING', yearOfPlenty: 'PLAY_YEAR_OF_PLENTY', monopoly: 'PLAY_MONOPOLY' }
 
 /** The active player's development cards by type; a row is playable exactly when legalActions offers it. */
-export function devView(s: GameState): DevView {
-  const player = s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]
+export function devView(s: GameState, me: Me = null): DevView {
+  const player = me && me !== 'spectator' ? me : s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]
   const pl = s.players.find((p) => p.id === player)!
-  const legal = s.phase.kind === 'gameOver' ? [] : legalActions(s, player)
+  const legal = s.phase.kind === 'gameOver' || me === 'spectator' ? [] : legalActions(s, player)
   const rows = DEV_ORDER.flatMap((type): DevRow[] => {
     const cards = pl.devCards.filter((c) => c.type === type)
     if (!cards.length) return []
@@ -266,7 +305,8 @@ export function devView(s: GameState): DevView {
     const playable = legal.some((a) => a.type === PLAY_TYPE[type])
     let reason: string | null = null
     if (!playable) {
-      if (s.phase.kind !== 'preRoll' && s.phase.kind !== 'actions') reason = 'Not now'
+      if (!mine(me, s.order[s.active])) reason = 'Wait for your turn'
+      else if (s.phase.kind !== 'preRoll' && s.phase.kind !== 'actions') reason = 'Not now'
       else if (pl.playedDevThisTurn) reason = 'One card per turn'
       else if (cards.every((c) => c.boughtOnTurn >= s.turn)) reason = 'Bought this turn'
       else if (type === 'roadBuilding') reason = 'No legal road'
@@ -276,7 +316,8 @@ export function devView(s: GameState): DevView {
     return [{ type, count: cards.length, playable, reason }]
   })
   const bankTotal = RESOURCE_ORDER.reduce((a, r) => a + s.bank[r], 0)
-  return { player, total: pl.devCards.length, rows, yopTake: Math.min(2, bankTotal), bank: { ...s.bank }, canOpen: s.phase.kind === 'preRoll' || s.phase.kind === 'actions' }
+  const canOpen = me !== 'spectator' && (s.phase.kind === 'preRoll' || s.phase.kind === 'actions')
+  return { player, total: me === 'spectator' ? 0 : pl.devCards.length, rows: me === 'spectator' ? [] : rows, yopTake: Math.min(2, bankTotal), bank: { ...s.bank }, canOpen }
 }
 
 // ---------- G4.5d: final scores ----------

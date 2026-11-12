@@ -309,9 +309,9 @@ Steps (each verified and reviewed before the next):
   - Actions are applied one at a time for the seat bound to the connection. Retries are idempotent by `clientSeq`.
   - Each recipient gets only its own `viewFor`/`eventsFor` projection and its own legal actions.
 - [x] G5.2 WebSocket transport and a server start script.
-- [ ] G5.3 Client online mode: lobby, joining by link, rendering server views.
+- [x] G5.3 Client online mode: lobby, joining by link, rendering server views.
   - [x] G5.3a Online store: the GameStore contract over a socket, fed by server views (no UI yet).
-  - [ ] G5.3b Seat-aware HUD, lobby screen, join by link; hot-seat-only parts (pass screen, autosave) off online.
+  - [x] G5.3b Seat-aware HUD, lobby screen, join by link; hot-seat-only parts (pass screen, autosave) off online.
 - [ ] G5.4 Reconnect and presence (seat token, snapshot resync on a `seq` gap).
 - [ ] G5.5 Turn timers and absent-player fallback as logged actions (§20).
 - [ ] G5.6 Hardening: rate limits, logging, error handling, accessibility QA.
@@ -356,6 +356,39 @@ Steps (each verified and reviewed before the next):
   - 0 rejections; every store heard the same number of events; the seed was revealed at the end.
   - Negative control: without the accepted-responder filler, the test fails on CONFIRM_TRADE as expected.
 - Not yet: a browser client. The HUD still assumes the active player is the viewer; G5.3b makes it seat-aware.
+
+**G5.3b result (2026-11-12):** online play works in the browser; see the README for how to play.
+- Entry: `?online` creates a room and moves to `?room=<id>`, which joins it. The seat token is kept per tab in sessionStorage, so a reload rejoins the same seat and four tabs are four players. `&server=` overrides the server address. New: `src/net/connect.ts`.
+- `src/ui/Lobby.tsx`:
+  - The lobby shows the four seats (open, joined, away, you), the invite link with Copy, and Start for the host once all seats are taken. A spectator is told it is watching.
+  - When the server can't be reached, the lobby says how to start it.
+  - During the game, a small "Online · you are <colour>" pill sits under the phase banner on desktop and above the dock on a portrait phone. On landscape phones it is screen-reader only, because there is no free strip. A lost connection shows a "Reload to rejoin" alert.
+- Seat-aware HUD. `gameView` and `placementTargets` take `me`: `null` is hot-seat and behaves as before.
+  - Online, the hand is always this seat's own.
+  - Roll/End Turn, the build menu, trade and placement are live only on this seat's turn; otherwise they read "<colour>’s turn" or "Wait for your turn".
+  - Every seat that owes a discard gets its own dialog at once. Only the active seat sees the steal choice.
+  - In an open offer, only the addressed seat has Accept/Decline (others see "Deciding…"), and only the proposer confirms or cancels. This also closes the hot-seat leak where other screens learned whether a responder could pay.
+  - A spectator sees no hand, no cards and no controls.
+- Hot-seat-only parts are off online: the pass-the-device screen, autosave and Resume. The victory card offers "New room" instead of "New game".
+- `viewFor` exposes everyone's `totalVP` once the game is over (GAME_WON announces them anyway). The shadow state turns the gap to public points into VP cards, so the final table matches the server for every seat and for a spectator (unit-tested).
+- Tests: 6 new unit tests for the seat-aware views (196 in total).
+- Two full online games, played only through each tab's UI with four tabs plus a spectator against `npm run server` (`scripts/online-playthrough.mjs`):
+
+  | Viewport, seed | Result | Player trades | Bank trades | Discards |
+  |---|---|---|---|---|
+  | 1440×900, seed 7 | Orange won on turn 229 after 1,141 actions (5.8 min) | 85 offers, 71 completed | 67 | 14 |
+  | 390×844, seed 77 | Blue won on turn 194 after 1,082 actions (4.5 min) | 87 offers, 75 completed | 86 | 13 |
+
+  Both games also included cards, knights, road building and robber moves.
+
+  At every turn change each tab was audited: the hand shown equals that seat's own cards, the hand label names its own seat, and no tab had a live control outside its seat's turn. Results: 0 mismatches, 0 other hands shown, 0 live controls out of turn, 0 console errors.
+
+  The victory table was identical in all five tabs. The phone run also recorded 0 rejected actions in every tab. The desktop run's rejection listeners were lost when the dev server hot-reloaded the tabs after an edit of `Lobby.tsx` mid-run, so the tabs rejoined their seats by token; the game finished regardless.
+- Layout:
+  - The phone run showed the pill covering the notice stack (screenshots `phone-*-before-pill-fix.png`). It was moved above the dock and checked at 390×844 and 844×390.
+  - The lobby backdrop is darker, so the placeholder board's banner doesn't read through.
+- Regression: the hot-seat UI playthrough with seed 2024 replays the G4 exit game exactly (Blue on turn 194 after 939 actions, 195 pass screens, 0 rejections, 0 hand mismatches, 0 errors). Screenshots are in `screenshots/milestones/g5.3b/`.
+- Not yet: reconnect is only tested by reload in the lobby and by that unplanned mid-game reload. Resync on a `seq` gap and presence during the game are G5.4. Real devices on a LAN were not tried.
 
 ---
 
@@ -409,7 +442,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
-| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, G5.3a | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; `GAME_DESIGN.md` v1.2 |
+| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, G5.3b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -417,4 +450,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** review G5.3a, then G5.3b (seat-aware HUD, lobby, join by link).
+**Recommended next action:** review G5.3b, then G5.4 (reconnect and presence during a game, resync on a `seq` gap).

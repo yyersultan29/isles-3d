@@ -10,18 +10,20 @@ import { Avatar } from './icons'
 import { focusRing } from './HUD'
 import { usingKeyboard } from './modality'
 import { SEATS, discardPrompt, needsPass, viewerOf } from './gameView'
-import { useGame } from '../store/GameProvider'
+import { useGame, useSeat } from '../store/GameProvider'
 import { setSeen, useSeen } from '../store/ui'
 
 /** The current viewer and whether the pass screen covers the app. Safe to call from many components. */
 export function usePrivacy() {
   const s = useGame((x) => x)
   const seen = useSeen()
-  const viewer = viewerOf(s)
-  const covered = needsPass(s, seen)
+  const me = useSeat()
+  // online every screen belongs to one seat: there is never a device to pass
+  const viewer = me === null ? viewerOf(s) : me === 'spectator' ? null : me
+  const covered = me === null && needsPass(s, seen)
   // nothing to hide (an empty hand in the first setup round): reveal at once, so cards gained
   // later in the same turn don't raise the screen mid-turn
-  useEffect(() => { if (viewer && !covered && viewer !== seen) setSeen(viewer) }, [viewer, covered, seen])
+  useEffect(() => { if (me === null && viewer && !covered && viewer !== seen) setSeen(viewer) }, [me, viewer, covered, seen])
   return { viewer, covered }
 }
 

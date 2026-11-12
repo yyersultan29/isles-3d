@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
+import { createRoomFromUrl } from './net/connect'
 
 // Canvas textures (number tokens, harbour signs) draw text — wait for the web font first.
 const fontsReady = Promise.race([
@@ -9,7 +10,9 @@ const fontsReady = Promise.race([
   new Promise((r) => setTimeout(r, 2500)),
 ])
 
-fontsReady.finally(() => {
+// ?online first creates a room and moves to its link
+Promise.all([fontsReady.catch(() => {}), createRoomFromUrl()]).then(([, moved]) => {
+  if (moved) return
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

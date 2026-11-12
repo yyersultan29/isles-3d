@@ -3,7 +3,8 @@
 // not a freshly built array). Derived data goes through `useMemo` on `useGame((s) => s)`.
 
 import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import type { GameState } from '../game'
+import type { GameState, Viewer } from '../game'
+import type { OnlineSession, OnlineStore } from './onlineStore'
 import { createGameStore, type GameEventListener, type GameStore } from './gameStore'
 
 const StoreContext = createContext<GameStore | null>(null)
@@ -45,4 +46,25 @@ export function useGameEvents(handler: GameEventListener) {
   const ref = useRef(handler)
   useEffect(() => { ref.current = handler })
   useEffect(() => store.onEvents((e, s) => ref.current(e, s)), [store])
+}
+
+/** G5.3b: the online store, or null in a local (hot-seat) game. */
+export function useOnline(): OnlineStore | null {
+  const s = useGameStore()
+  return 'online' in s ? (s as OnlineStore) : null
+}
+
+const noSession = () => () => {}
+/** The online session (status, seat, lobby), or null in a local game. */
+export function useSession(): OnlineSession | null {
+  const o = useOnline()
+  return useSyncExternalStore(o ? o.onSession : noSession, () => (o ? o.session() : null))
+}
+
+/**
+ * Whose screen this is: the seat of this connection online (or 'spectator'); null in hot-seat,
+ * where the screen belongs to whoever the game waits for.
+ */
+export function useSeat(): Viewer | null {
+  return useSession()?.me ?? null
 }

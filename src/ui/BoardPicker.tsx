@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type K
 import { panel } from './HUD'
 import { usingKeyboard } from './modality'
 import { BOARD_MODE } from '../scene/board'
-import { useGame, useGameStore } from '../store/GameProvider'
+import { useGame, useGameStore, useSeat } from '../store/GameProvider'
 import { placementTargets } from '../store/placement'
 import { setPlacementMode, usePlacementMode } from '../store/ui'
 import { getCursor, nearest, project, setCursor, spotLabel, step, useCursor, type Dir, type Point } from '../store/boardCursor'
@@ -22,7 +22,8 @@ export function BoardPicker({ className = '', style }: { className?: string; sty
   const state = useGame((s) => s)
   const mode = usePlacementMode()
   const store = useGameStore()
-  const targets = useMemo(() => placementTargets(state, mode), [state, mode])
+  const me = useSeat()
+  const targets = useMemo(() => placementTargets(state, mode, me), [state, mode, me])
   const list = useMemo(() => [...targets.vertices, ...targets.edges, ...targets.tiles], [targets])
   const cur = useCursor()
   const btn = useRef<HTMLButtonElement>(null)

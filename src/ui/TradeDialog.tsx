@@ -2,7 +2,8 @@
 //  - Bank: rates from the engine's tradeRate (ports included) through bankView(); dispatches BANK_TRADE.
 //  - Players: an offer composer; proposeCheck() mirrors the engine's checks; dispatches PROPOSE_TRADE.
 // While an offer is open (state.trade) the panel shows it instead: each addressed player accepts or
-// declines (hot-seat, on the same screen), the proposer confirms with one who accepted or cancels.
+// declines (hot-seat, on the same screen; online each on their own), the proposer confirms with one
+// who accepted or cancels.
 // Every enabled button corresponds to an action legalActions offers.
 
 import { useEffect, useRef, useState } from 'react'
@@ -217,23 +218,25 @@ function OfferPanel() {
           <li key={r.id} className="flex h-[44px] items-center gap-[10px] rounded-[10px] bg-white/[0.05] pl-[5px] pr-[6px]" style={{ boxShadow: `inset 3px 0 0 ${r.color}` }}>
             <span className="h-[34px] w-[34px] shrink-0 overflow-hidden rounded-[7px]"><Avatar i={r.avatar} className="h-full w-full" /></span>
             <span className="min-w-[52px] flex-1 text-[15px] font-semibold text-white">{r.name}</span>
-            {r.response === 'pending' && (<>
+            {r.response === 'pending' && !r.canRespond && <span className="pr-[6px] text-[14px] text-[#a9a49b]">Deciding…</span>}
+            {r.response === 'pending' && r.canRespond && (<>
               <button ref={r.id === firstEnabled ? first : undefined} disabled={!r.canAccept} title={r.reason ?? undefined}
                 aria-label={`${r.name}: accept${r.reason ? ` (${r.reason})` : ''}`} onClick={() => act(r.id, { type: 'RESPOND_TRADE', tradeId: offer.id, accept: true })}
                 className={`${plain()} !bg-[#2f7d3a] hover:!bg-[#3a9447] disabled:!bg-white/10`}>Accept</button>
               <button aria-label={`${r.name}: decline`} onClick={() => act(r.id, { type: 'RESPOND_TRADE', tradeId: offer.id, accept: false })} className={plain()}>Decline</button>
             </>)}
             {r.response === 'reject' && <span className="pr-[6px] text-[14px] text-[#a9a49b]">Declined</span>}
-            {r.response === 'accept' && (
+            {r.response === 'accept' && !offer.canManage && <span className="pr-[6px] text-[14px] text-[#9fd49a]">Accepted</span>}
+            {r.response === 'accept' && offer.canManage && (
               <button ref={r.id === firstEnabled ? first : undefined} disabled={!r.canConfirm} aria-label={`Trade with ${r.name}`}
                 onClick={() => act(offer.from, { type: 'CONFIRM_TRADE', tradeId: offer.id, with: r.id })} className={`${gold()} !h-[34px] !px-[14px] !text-[15px]`}>Trade with {r.name}</button>
             )}
           </li>
         ))}
       </ul>
-      <div className="mt-[10px] flex justify-end">
+      {offer.canManage && <div className="mt-[10px] flex justify-end">
         <button ref={cancel} aria-label="Cancel offer" onClick={() => act(offer.from, { type: 'CANCEL_TRADE' })} className={plain()}>Cancel offer</button>
-      </div>
+      </div>}
     </>
   )
 }

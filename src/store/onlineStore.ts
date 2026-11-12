@@ -76,8 +76,11 @@ export function shadowState(v: PublicGameState): GameState {
   const players: PlayerState[] = v.players.map((p) => ({
     id: p.id,
     resources: p.resources ? { ...p.resources } : fillerHand(p.resourceCount, t && t.responses[p.id] === 'accept' ? t.request : {}),
-    // hidden cards: bought this turn so nothing treats them as playable, never VP
-    devCards: p.devCards ? p.devCards.map((c) => ({ ...c })) : Array.from({ length: p.devCardCount }, (_, i) => ({ id: -1 - i, type: 'knight' as const, boughtOnTurn: v.turn })),
+    // hidden cards: bought this turn so nothing treats them as playable, never VP until gameOver
+    // at gameOver the totals are public: the gap to the public points is that player's VP cards
+    devCards: p.devCards ? p.devCards.map((c) => ({ ...c })) : Array.from({ length: p.devCardCount }, (_, i) => ({
+      id: -1 - i, type: i < (p.totalVP ?? p.publicVP) - p.publicVP ? 'victoryPoint' as const : 'knight' as const, boughtOnTurn: v.turn,
+    })),
     playedKnights: p.playedKnights,
     playedDevThisTurn: p.playedDevThisTurn,
     pieces: { ...p.pieces },

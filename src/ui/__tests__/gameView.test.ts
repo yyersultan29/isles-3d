@@ -207,3 +207,78 @@ describe('G4.4a HUD view', () => {
     expect(needsPass(st, null)).toBe(false)
   })
 })
+
+// ---------- G5.3b: online, the screen belongs to one seat ----------
+import { gameView } from '../gameView'
+import { placementTargets } from '../../store/placement'
+import { shadowState } from '../../store/onlineStore'
+import { viewFor } from '../../game'
+
+describe('G5.3b seat-aware HUD', () => {
+  const hands = { p1: { lumber: 2, brick: 2, wool: 1, grain: 1 }, p2: { ore: 3, grain: 2 }, p3: { wool: 2 } }
+
+  it('hot-seat (me = null) is unchanged', () => {
+    const s = fixture({ hands })
+    const v = gameView(s)
+    expect(v.hand.owner).toBe('p1')
+    expect(v.primary.action).toEqual({ type: 'END_TURN' })
+    expect(v.opponents).toEqual(['p2', 'p3', 'p4'])
+  })
+
+  it('an idle seat sees its own hand and no live controls', () => {
+    const s = fixture({ hands, buildings: [['0,0,N', 'p1']] })
+    const v = gameView(s, 'p2')
+    expect(v.hand).toEqual({ owner: 'p2', counts: { lumber: 0, brick: 0, wool: 0, grain: 2, ore: 3 } })
+    expect(v.primary).toMatchObject({ action: null, player: null, label: 'Red’s turn' })
+    expect(v.build.every((b) => !b.enabled && b.reason === 'Wait for your turn')).toBe(true)
+    expect(v.bank).toMatchObject({ player: 'p2', open: false, reason: 'Wait for your turn' })
+    expect(v.dev.player).toBe('p2')
+    expect(v.opponents).toEqual(['p1', 'p3', 'p4'])
+    expect(placementTargets(s, 'road', 'p2').player).toBeNull()
+    // the active seat online gets the same controls as hot-seat
+    const a = gameView(s, 'p1')
+    expect(a.primary.action).toEqual({ type: 'END_TURN' })
+    expect(a.build).toEqual(gameView(s).build)
+  })
+
+  it('a spectator sees no hand, no cards and no controls', () => {
+    const v = gameView(fixture({ hands }), 'spectator')
+    expect(Object.values(v.hand.counts).every((n) => n === 0)).toBe(true)
+    expect(v.dev).toMatchObject({ total: 0, rows: [], canOpen: false })
+    expect(v.build.every((b) => b.reason === 'Watching')).toBe(true)
+    expect(v.primary.action).toBeNull()
+  })
+
+  it('every seat that owes a discard gets its own prompt at once; others none', () => {
+    const s = fixture({ hands: { p2: { ore: 8 }, p4: { wool: 9 } }, phase: { kind: 'discard', pending: { p2: 4, p4: 4 } } })
+    expect(discardPrompt(s)?.player).toBe('p2') // hot-seat: one at a time
+    expect(discardPrompt(s, 'p4')?.player).toBe('p4')
+    expect(discardPrompt(s, 'p2')?.player).toBe('p2')
+    expect(discardPrompt(s, 'p1')).toBeNull()
+    expect(discardPrompt(s, 'spectator')).toBeNull()
+    expect(stealPrompt(fixture({ phase: { kind: 'steal', tile: '0,0', candidates: ['p2'], resume: 'actions' } }), 'p2')).toBeNull()
+  })
+
+  it('an offer: only the addressed seat answers, only the proposer confirms or cancels', () => {
+    let s = fixture({ hands })
+    s = act(s, { type: 'PROPOSE_TRADE', offer: { lumber: 1 }, request: { ore: 1 } })
+    const forP2 = offerView(s, 'p2')!
+    expect(forP2.canManage).toBe(false)
+    expect(forP2.rows.map((r) => [r.id, r.canRespond, r.canAccept])).toEqual([['p2', true, true], ['p3', false, false], ['p4', false, false]])
+    // p3 can't pay, but other seats don't learn why
+    expect(offerView(s, 'p2')!.rows.find((r) => r.id === 'p3')!.reason).toBeNull()
+    expect(offerView(s, 'p3')!.rows.find((r) => r.id === 'p3')!.reason).toMatch(/Needs 1 more ore/)
+    s = act(s, { type: 'RESPOND_TRADE', tradeId: s.trade!.id, accept: true }, 'p2')
+    expect(offerView(s, 'p1')!).toMatchObject({ canManage: true })
+    expect(offerView(s, 'p1')!.rows[0].canConfirm).toBe(true)
+    expect(offerView(s, 'p2')!.rows[0].canConfirm).toBe(false)
+  })
+
+  it('the shadow at gameOver restores VP cards from the public totals, so the final table is right', () => {
+    const s = fixture({ phase: { kind: 'gameOver', winner: 'p3' } })
+    s.players[2].devCards.push({ id: 1, type: 'victoryPoint', boughtOnTurn: 1 }, { id: 2, type: 'knight', boughtOnTurn: 1 })
+    const expected = finalScores(s)
+    expect(finalScores(shadowState(viewFor(s, 'p1')))).toEqual(expected)
+    expect(finalScores(shadowState(viewFor(s, 'spectator')))).toEqual(expected)
+  })
+})

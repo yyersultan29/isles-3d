@@ -8,7 +8,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { corner, edgeToScene, PLAYER_COLOR_OF, PLAYER_COLORS, tileAt, tileByAxial, vertexToScene } from './board'
 import { animTime, motion } from './motion'
-import { useGame, useGameStore } from '../store/GameProvider'
+import { useGame, useGameStore, useSeat } from '../store/GameProvider'
 import { placementTargets } from '../store/placement'
 import { setPlacementMode, usePlacementMode } from '../store/ui'
 import { getCursor, setProjector } from '../store/boardCursor'
@@ -42,7 +42,8 @@ export function Placement() {
   const camera = useThree((s) => s.camera)
   const gl = useThree((s) => s.gl)
 
-  const targets = useMemo(() => placementTargets(state, mode), [state, mode])
+  const me = useSeat()
+  const targets = useMemo(() => placementTargets(state, mode, me), [state, mode, me])
   const spots = useMemo(() => {
     const vertices: Spot[] = targets.vertices.map(({ at, action }) => { const [x, z] = vertexPos(at); return { x, z, action, at } })
     const edges: EdgeSpot[] = targets.edges.map(({ at, action }) => {

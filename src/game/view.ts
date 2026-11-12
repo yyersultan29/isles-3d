@@ -20,7 +20,7 @@ export interface PublicPlayer {
   resources?: ResourceCounts
   /** own player only */
   devCards?: DevCard[]
-  /** own player only (others see it at GAME_WON) */
+  /** own player only, everyone's once the game is over */
   totalVP?: number
 }
 
@@ -69,6 +69,8 @@ export function viewFor(s: GameState, viewer: Viewer): PublicGameState {
         pub.devCards = p.devCards.map((c) => ({ ...c }))
         pub.totalVP = totalVP(s, p.id)
       }
+      // the final totals are public once the game is over (GAME_WON announces them too)
+      if (s.phase.kind === 'gameOver') pub.totalVP = totalVP(s, p.id)
       return pub
     }),
   }

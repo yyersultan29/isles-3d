@@ -10,6 +10,16 @@ npm run server       # local game server (G5): http://127.0.0.1:8787, WebSocket 
 npm run shot -- http://localhost:5173/ shots/out.png 2000 1130   # headless Chrome screenshot (dev server must be running)
 ```
 
+### Playing online (local server)
+
+1. `npm run dev` and, in a second terminal, `npm run server`.
+2. Open http://localhost:5173/?online. A room is created and the address becomes `?room=<id>`.
+3. Send the invite link from the lobby to the other players, or open it in three more tabs. Each tab is one seat; a fifth visitor watches.
+4. The first player starts the game once all four seats are taken.
+
+A reload rejoins the same seat: the seat token is kept per tab. Another computer on the same network needs `HOST=0.0.0.0 npm run server` and `npx vite --host`; it then opens the invite link with this computer's address. The game server is local only and is not part of the GitHub Pages deployment.
+
+
 Debug URL params:
 - `?cam=x,y,z&tgt=x,y,z` overrides the camera.
 - `?nofx` turns off post-processing.
