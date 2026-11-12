@@ -1,7 +1,7 @@
 // G4.4a: HUD data is derived from state and shows only public information for everyone.
 import { describe, expect, it } from 'vitest'
 import { act, fixture, newGame, playSetup } from '../../game/__tests__/helpers'
-import { bankMax, bankView, devView, finalScores, offerView, proposeCheck, buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
+import { bankMax, bankView, devView, finalScores, offerView, proposeCheck, buildOptions, costText, discardPrompt, handOf, hasPrivate, needsPass, stealPrompt, viewerOf, phaseText, primaryAction, seats, SEATS } from '../gameView'
 import { COSTS, apply, createGame, legalActions, type ReplayFile } from '../../game'
 
 describe('G4.4a HUD view', () => {
@@ -170,5 +170,40 @@ describe('G4.4a HUD view', () => {
       }
     }
     expect(checked).toBeGreaterThan(0)
+  })
+
+  it('G4.8a: the viewer is the player the game waits for; the pass screen only guards private cards', () => {
+    const s = fixture({ hands: { p1: { lumber: 1 }, p2: { ore: 8 }, p4: { wool: 9 } }, phase: { kind: 'discard', pending: { p4: 4, p2: 4 } } })
+    // sequential discards: p2 then p4, each behind the pass screen, and the hand shown is theirs
+    expect(viewerOf(s)).toBe('p2')
+    expect(handOf(s)).toMatchObject({ owner: 'p2', counts: { ore: 8 } })
+    expect(needsPass(s, 'p1')).toBe(true)
+    expect(needsPass(s, 'p2')).toBe(false)
+    const after = act(s, { type: 'DISCARD', cards: { ore: 4 } }, 'p2')
+    expect(viewerOf(after)).toBe('p4')
+    expect(needsPass(after, 'p2')).toBe(true)
+    // back to the active player once the discards are done
+    expect(viewerOf(fixture())).toBe('p1')
+    // an empty hand and no development cards: nothing to hide, no pass screen
+    const fresh = newGame(1, { boardPreset: 'standard-fixed' })
+    const first = fresh.order[fresh.active]
+    expect(hasPrivate(fresh, first)).toBe(false)
+    expect(needsPass(fresh, null)).toBe(false)
+    const dev = fixture()
+    dev.players[0].devCards = [{ id: 1, type: 'victoryPoint', boughtOnTurn: 1 }]
+    expect(hasPrivate(dev, 'p1')).toBe(true)
+    expect(needsPass(dev, 'p3')).toBe(true)
+  })
+
+  it('G4.8a: no viewer once the game is over (everything is revealed)', () => {
+    const files = import.meta.glob('../../game/__tests__/golden/*.json', { eager: true, import: 'default' }) as Record<string, ReplayFile>
+    const f = Object.entries(files).find(([k]) => k.includes('standard-fixed-seed7'))![1]
+    const c = createGame(f.settings)
+    if (!c.ok) throw new Error('bad settings')
+    let st = c.state
+    for (const { player, action } of f.actions) { const r = apply(st, player, action); if (!r.ok) throw new Error(r.error.code); st = r.state }
+    expect(st.phase.kind).toBe('gameOver')
+    expect(viewerOf(st)).toBeNull()
+    expect(needsPass(st, null)).toBe(false)
   })
 })

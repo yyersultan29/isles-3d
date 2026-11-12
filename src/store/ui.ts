@@ -2,6 +2,7 @@
 // during their `actions` phase. Set by the build menu (G4.4); `?place=road|settlement|city` for dev checks.
 
 import { useSyncExternalStore } from 'react'
+import type { PlayerId } from '../game'
 
 export type PlacementMode = 'road' | 'settlement' | 'city' | null
 
@@ -57,3 +58,22 @@ export const getTradeOpen = () => panel === 'trade'
 export const useTradeOpen = () => usePanel() === 'trade'
 export const setDevOpen = (v: boolean) => setPanel(v ? 'dev' : panel === 'dev' ? null : panel)
 export const useDevOpen = () => usePanel() === 'dev'
+
+// ---------- G4.8a: hot-seat — whose private view has been revealed on this device ----------
+
+let seen: PlayerId | null = null
+const seenListeners = new Set<() => void>()
+
+/** Mark `p` as the player now looking at the screen (after the pass-the-device screen). */
+export function setSeen(p: PlayerId | null) {
+  if (p === seen) return
+  seen = p
+  for (const l of [...seenListeners]) l()
+}
+export const getSeen = () => seen
+export function useSeen(): PlayerId | null {
+  return useSyncExternalStore(
+    (l) => { seenListeners.add(l); return () => { seenListeners.delete(l) } },
+    () => seen,
+  )
+}

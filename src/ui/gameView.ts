@@ -104,9 +104,33 @@ const RES_NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', woo
 export const costText = (c: Partial<Record<Resource, number>>) =>
   RESOURCE_ORDER.filter((r) => c[r]).map((r) => `${c[r]} ${RES_NAME[r]}`).join(', ')
 
-/** The hand the HUD shows: the active player's (hot-seat privacy comes with G4.8). */
+// ---------- G4.8a: hot-seat privacy ----------
+
+/**
+ * Who is looking at the screen: the player the game waits for. That is the active player, except
+ * during a seven's discards, which hot-seat collects one at a time in turn order (§9). Null once
+ * the game is over (everything is revealed then).
+ */
+export function viewerOf(s: GameState): PlayerId | null {
+  if (s.phase.kind === 'gameOver') return null
+  return discardPrompt(s)?.player ?? s.order[s.active]
+}
+
+/** Whether a player holds anything the others must not see: resource cards or development cards. */
+export function hasPrivate(s: GameState, p: PlayerId): boolean {
+  const pl = s.players.find((x) => x.id === p)!
+  return pl.devCards.length > 0 || RESOURCE_ORDER.some((r) => pl.resources[r] > 0)
+}
+
+/** The pass-the-device screen is needed when the viewer changes to someone with private cards. */
+export const needsPass = (s: GameState, seen: PlayerId | null): boolean => {
+  const v = viewerOf(s)
+  return !!v && v !== seen && hasPrivate(s, v)
+}
+
+/** The hand the HUD shows: the viewer's (the discarding player during a seven), the winner's at the end. */
 export function handOf(s: GameState): { owner: PlayerId; counts: Record<Resource, number> } {
-  const owner = s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]
+  const owner = s.phase.kind === 'gameOver' ? s.phase.winner : viewerOf(s)!
   return { owner, counts: { ...s.players.find((p) => p.id === owner)!.resources } }
 }
 

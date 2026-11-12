@@ -1,6 +1,7 @@
 import { World } from './scene/World'
 import { HUD } from './ui/HUD'
 import { GameProvider } from './store/GameProvider'
+import { PassDevice } from './ui/PassDevice'
 import { SceneErrorBoundary, SceneStatusNotice, hasWebGL2 } from './scene/SceneGuard'
 
 const webgl = hasWebGL2()
@@ -19,6 +20,7 @@ export default function App() {
         </div>
         <HUD />
       </div>
+      <PassDevice />
     </GameProvider>
   )
 }

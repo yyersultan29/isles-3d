@@ -8,6 +8,7 @@ import { CompactHUD } from './CompactHUD'
 import { GameDialogs } from './Dialogs'
 import { Notices } from './Notices'
 import { Victory } from './Victory'
+import { usePrivacy } from './PassDevice'
 import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
 import { setDevOpen, setPanel, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeOpen } from '../store/ui'
@@ -260,6 +261,8 @@ const RES_ICON = Object.fromEntries(RESOURCES.map((r) => [r.key, r.Icon])) as Re
 export function useHand() {
   const { hand, seats } = useGameView()
   const owner = seats.find((x) => x.id === hand.owner)!
+  // G4.8a: behind the pass-the-device screen the previous or next hand is never rendered
+  if (usePrivacy().covered) return { counts: { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 }, ownerName: '', ownerColor: '#888' }
   return { counts: hand.counts, ownerName: owner.name, ownerColor: owner.color }
 }
 

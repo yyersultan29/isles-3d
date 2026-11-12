@@ -135,7 +135,7 @@ export function BoardPicker({ className = '', style }: { className?: string; sty
   const kind = targets.tiles.length ? 'tile' : targets.edges.length ? 'road spot' : 'spot'
   return (
     <div className={`pointer-events-none flex justify-center ${className}`} style={style}>
-      <button ref={btn} type="button" onClick={place} onFocus={onFocus} onBlur={onBlur} onKeyDown={onKeyDown}
+      <button ref={btn} type="button" data-board-picker onClick={place} onFocus={onFocus} onBlur={onBlur} onKeyDown={onKeyDown}
         aria-label={idx >= 0 ? `${label}. ${idx + 1} of ${n}. Arrow keys choose, Enter places.` : `Choose a ${kind} on the board: ${n} options. Use the arrow keys.`}
         className={`sr-only rounded-full text-[14px] font-semibold text-[#f4efe6] outline-none ring-2 ring-[#f2b544] focus-visible:not-sr-only focus-visible:px-[16px] focus-visible:py-[8px] focus-visible:pointer-events-auto ${panel}`}>
         <span aria-hidden>

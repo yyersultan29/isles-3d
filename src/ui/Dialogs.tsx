@@ -10,6 +10,7 @@ import { useGameStore } from '../store/GameProvider'
 import { useDevOpen, useTradeOpen } from '../store/ui'
 import { DevDialog } from './DevDialog'
 import { TradeDialog } from './TradeDialog'
+import { usePrivacy } from './PassDevice'
 import { RESOURCE_ORDER, type Resource } from '../game'
 
 const zero = (): Record<Resource, number> => ({ lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 })
@@ -170,6 +171,7 @@ export function GameDialogs({ compact = false, className = '', style }: { compac
   const box = useRef<HTMLDivElement>(null)
   useReturnFocus(kind, box)
   useKeepFocus(box)
+  if (usePrivacy().covered) return null // G4.8a: a hand-revealing dialog waits for the pass screen
   const body = kind === 'discard' ? <DiscardDialog compact={compact} />
     : kind === 'steal' ? <StealDialog />
     : kind === 'trade' ? <TradeDialog compact={compact} />
