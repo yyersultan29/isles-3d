@@ -11,13 +11,14 @@ import { Ocean } from './Ocean'
 import { Vegetation } from './Vegetation'
 import { Tokens, Robber, Buildings } from './Pieces'
 import { Harbors, harborSignTops } from './Harbors'
-import { VERTICES, islandRadius } from './board'
+import { VERTICES, islandRadius, BOARD_MODE } from './board'
 import { Ships } from './Ships'
 import { Scenery } from './Scenery'
 import { Smoke } from './Smoke'
 import { isCompact, COMPACT_SAFE } from '../ui/layout'
 import { CameraInteraction, setHome, applyViewPreset } from './CameraInteraction'
 import { TileHover } from './TileHover'
+import { Placement } from './Placement'
 import { quality } from './quality'
 import { motion } from './motion'
 import { ContextLossGuard } from './SceneGuard'
@@ -273,12 +274,12 @@ export function World() {
       dpr={quality.dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
       camera={{ position: CAMERA_POS, fov: 30, near: 0.1, far: 120 }}
-      onCreated={({ gl, scene }) => {
+      onCreated={({ gl, scene, camera }) => {
         gl.toneMapping = THREE.NoToneMapping
         scene.background = new THREE.Color('#0b2236')
         scene.fog = new THREE.Fog('#1f3f55', 17, 40)
-        // dev-only hook for scene audits (scripts/audit.mjs)
-        if (import.meta.env.DEV) Object.assign(window, { __isles: { gl, scene } })
+        // dev-only hook for scene audits (scripts/audit.mjs) and browser checks (camera for screen projection)
+        if (import.meta.env.DEV) Object.assign(window, { __isles: { gl, scene, camera } })
       }}
     >
       <CameraRig />
@@ -295,6 +296,7 @@ export function World() {
         <Buildings />
         <Smoke />
         {!qp.has('nohover') && <TileHover />}
+        {BOARD_MODE === 'game' && <Placement />}
         <Harbors />
         <Ocean />
         <Ships />
