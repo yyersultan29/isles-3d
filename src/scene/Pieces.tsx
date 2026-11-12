@@ -3,10 +3,11 @@ import { useFrame } from '@react-three/fiber'
 import { animTime } from './motion'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { TILES, tileHeight, corner, tileAt, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight } from './board'
+import { TILES, tileHeight, corner, tileAt, tileByAxial, BOARD_MODE, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight } from './board'
 import { tokenTexture } from './textures'
 import { StaticBatch } from './StaticBatch'
 import { mulberry32 } from './noise'
+import { useGame } from '../store/GameProvider'
 
 // ---------------- Number tokens ----------------
 const TOKEN_R = 0.27
@@ -59,6 +60,7 @@ export function Tokens() {
 }
 
 // ---------------- Robber ----------------
+const ROBBER_ASIDE = 0.5
 export function Robber() {
   const geo = useMemo(() => {
     const p = [
@@ -69,9 +71,13 @@ export function Robber() {
     g.scale(1.25, 1.25, 1.25)
     return g
   }, [])
-  const desert = TILES.find((t) => t.biome === 'desert')!
+  // G4.2: the engine decides where the robber stands; the demo board keeps it on the desert
+  const robberTile = useGame((s) => s.robber)
+  const t = (BOARD_MODE === 'game' && tileByAxial(robberTile)) || TILES.find((x) => x.biome === 'desert')!
+  // on a numbered tile, step aside so the token stays readable
+  const x = t.number ? t.x - ROBBER_ASIDE : t.x
   return (
-    <mesh geometry={geo} position={[desert.x, tileHeight(desert, desert.x, desert.z) - 0.01, desert.z]} castShadow receiveShadow>
+    <mesh geometry={geo} position={[x, tileHeight(t, x, t.z) - 0.01, t.z]} castShadow receiveShadow>
       <meshPhysicalMaterial color="#1b1a1c" roughness={0.32} metalness={0.15} clearcoat={0.6} clearcoatRoughness={0.3} />
     </mesh>
   )

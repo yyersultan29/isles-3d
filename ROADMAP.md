@@ -245,6 +245,8 @@ Specification: `GAME_DESIGN.md` v1.2 (systems review of the v1.1 rules audit, 20
 
 **G4.1 result (2026-11-11):** `src/store/gameStore.ts` is a plain-TS store: `getState`, `subscribe`, `onEvents` (events reach listeners before state listeners), `dispatch` (a rejected action changes nothing and notifies nobody), `reset`, `replayFile` (for autosave in G4.8). `src/store/GameProvider.tsx` adds `useGame(selector)` via `useSyncExternalStore`, `useDispatch`, `useGameEvents` (ref-based, no per-frame state) and `?seed=`. `App` is wrapped in the provider; nothing reads it yet. A dev-only `window.__islesStore` exists for browser checks and is absent from the production bundle. Tests: 7 store tests (141 total), including replay-hash equality with the store state. Browser: a live dispatch through the store works with no console errors. Pixel diff at 1440×900 DPR 2 `?nohover`: mean 0.05 against V8, noise floor 0.06 (`screenshots/milestones/g4.1/`); ~51 fps headless before and after. The JS bundle grew by 26 KB (9.4 KB gzip) because the engine is now included.
 
+**G4.2a result (2026-11-12):** tiles, tokens and the robber come from the engine. `scene/board.ts` builds its 19 tiles from `STANDARD_FIXED` through the G1.10 adapter (`axialToScene`). Each scene tile carries its canonical `axial` id; `?board=demo` keeps the showcase layout. Mountains, forests, fields and vegetation are procedural per biome, so they followed the new layout without art changes. The robber reads `state.robber` from the store; on a numbered tile it stands 0.5 to the west so the token stays readable. Tests: 4 scene-board tests (145 total) check that every scene tile matches the engine's terrain and token. Browser: a live game driven through the store to a 7 moved the robber to `1,1` with no console errors; the store context reaches inside the R3F canvas. Screenshots are in `screenshots/milestones/g4.2a/` (game board, demo board, robber moved). The demo board differs from the G4.1 baseline only in animated areas (wheat sway, foam, smoke): 0.26% of pixels over 12/255, all at animation-phase spots, none structural. Still demo data until G4.2b/c: harbours (7 instead of 9 ports) and the buildings/roads.
+
 ### G5 — Multiplayer and deployment (later)
 
 Design targets are in `GAME_DESIGN.md` §20 (timers and absent players), §21 (architecture and protocol) and §22 (persistence). They are our own design and need the decisions in item 5 above before work starts.
@@ -309,7 +311,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G1 — Engine foundation | Done | `861b562` | — | 65 tests; setup, dice, production, views, replay |
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
-| G4 — 3D/UI integration | In progress | G4.1 | `screenshots/milestones/g4.1/` | G4.1 store done; scene unchanged (pixel diff within noise) |
+| G4 — 3D/UI integration | In progress | `62ed0d3`, G4.2a | `screenshots/milestones/g4.1/`, `g4.2a/` | G4.1 store; G4.2a tiles, tokens and robber from the engine (`?board=demo` keeps the showcase) |
 | G5 — Gameplay | Backlog (spec ready) | — | — | `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
@@ -318,4 +320,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** **G4.2**: board from engine state (`standard-fixed`), after the G4.1 review.
+**Recommended next action:** **G4.2b**: the 9 engine ports in place of the demo harbours, after the G4.2a review.

@@ -1,4 +1,5 @@
 import { fbm, noise2, ridged, smoothstep, clamp, mulberry32 } from './noise'
+import { STANDARD_FIXED, axialToScene, sceneToAxial, type Terrain, type TileId } from '../game'
 
 export type Biome = 'forest' | 'wheat' | 'mountain' | 'pasture' | 'hills' | 'desert'
 export type Player = 'red' | 'blue' | 'white' | 'orange'
@@ -9,6 +10,8 @@ export const WATER_Y = -0.4
 
 export interface Tile {
   id: number
+  /** canonical engine tile id `q,r` (G1.10 adapter) */
+  axial: TileId
   row: number
   col: number
   biome: Biome
@@ -18,8 +21,16 @@ export interface Tile {
   seed: number
 }
 
-// Reference layout, top (north, -z) to bottom.
-const LAYOUT: [Biome, number | null][][] = [
+/**
+ * Which board the scene draws (G4.2): `game` (default) is the engine's `standard-fixed` board;
+ * `?board=demo` keeps the showcase layout from the visual milestones.
+ */
+export type BoardMode = 'game' | 'demo'
+export const BOARD_MODE: BoardMode =
+  typeof location !== 'undefined' && new URLSearchParams(location.search).get('board') === 'demo' ? 'demo' : 'game'
+
+// Showcase layout, top (north, -z) to bottom.
+const DEMO_LAYOUT: [Biome, number | null][][] = [
   [['mountain', 5], ['pasture', 2], ['wheat', 9]],
   [['pasture', 10], ['hills', 10], ['mountain', 3], ['forest', 4]],
   [['forest', 8], ['wheat', 11], ['desert', null], ['pasture', 11], ['hills', 6]],
@@ -27,11 +38,30 @@ const LAYOUT: [Biome, number | null][][] = [
   [['mountain', 5], ['pasture', 4], ['hills', 8]],
 ]
 
+export const TERRAIN_BIOME: Record<Terrain, Biome> = {
+  forest: 'forest', pasture: 'pasture', fields: 'wheat', hills: 'hills', mountains: 'mountain', desert: 'desert',
+}
+
+/** The engine's `standard-fixed` board in scene rows (3–4–5–4–3), via the axial adapter. */
+export function engineLayout(tiles: Readonly<Record<TileId, readonly [Terrain, number | null]>>): [Biome, number | null][][] {
+  const rows: [Biome, number | null][][] = [[], [], [], [], []]
+  for (const [id, [terrain, token]] of Object.entries(tiles) as [TileId, readonly [Terrain, number | null]][]) {
+    const [q, r] = id.split(',').map(Number)
+    const [row, col] = axialToScene(q, r)
+    rows[row][col] = [TERRAIN_BIOME[terrain], token]
+  }
+  return rows
+}
+
+const LAYOUT = BOARD_MODE === 'demo' ? DEMO_LAYOUT : engineLayout(STANDARD_FIXED)
+
 export const TILES: Tile[] = []
 LAYOUT.forEach((row, r) => {
   row.forEach(([biome, number], c) => {
+    const [q, ar] = sceneToAxial(r, c)
     TILES.push({
       id: TILES.length,
+      axial: `${q},${ar}`,
       row: r,
       col: c,
       biome,
@@ -44,6 +74,7 @@ LAYOUT.forEach((row, r) => {
 })
 
 export const tileAt = (row: number, col: number) => TILES.find((t) => t.row === row && t.col === col)!
+export const tileByAxial = (id: TileId) => TILES.find((t) => t.axial === id)
 
 /** Corner k of a pointy-top hex. k=5 top, k=0 upper-right, k=1 lower-right, k=2 bottom, k=3 lower-left, k=4 upper-left. */
 export function corner(t: { x: number; z: number }, k: number, r = HEX_R): [number, number] {
