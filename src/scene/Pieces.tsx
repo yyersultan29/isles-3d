@@ -7,7 +7,7 @@ import { TILES, tileHeight, corner, tileAt, tileByAxial, robberSpot, BOARD_MODE,
 import { tokenTexture } from './textures'
 import { StaticBatch } from './StaticBatch'
 import { mulberry32 } from './noise'
-import { useGame } from '../store/GameProvider'
+import { useGame, useGameStore } from '../store/GameProvider'
 import { buildingKey, roadKey, useArrivals } from './arrivals'
 
 // ---------------- Number tokens ----------------
@@ -91,13 +91,18 @@ export function Robber() {
   const ref = useRef<THREE.Group>(null)
   const hop = useRef<{ from: THREE.Vector3; to: THREE.Vector3; t0: number } | null>(null)
   const placed = useRef(false)
+  const store = useGameStore()
+  const gen = useRef(store.generation())
   useEffect(() => {
     const g = ref.current
     if (!g) return
     const to = new THREE.Vector3(x, y, z)
-    if (!placed.current || motion.reduced || g.position.distanceTo(to) < 1e-3) { g.position.copy(to); hop.current = null; placed.current = true; return }
+    // a new or resumed game (G4.8b) puts the robber in place; only a move within a game hops
+    const fresh = gen.current !== store.generation()
+    gen.current = store.generation()
+    if (!placed.current || fresh || motion.reduced || g.position.distanceTo(to) < 1e-3) { g.position.copy(to); hop.current = null; placed.current = true; return }
     hop.current = { from: g.position.clone(), to, t0: performance.now() }
-  }, [x, y, z])
+  }, [x, y, z, store])
   useFrame(() => {
     const h = hop.current, g = ref.current
     if (!h || !g) return

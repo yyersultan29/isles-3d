@@ -2,7 +2,7 @@
 // Plain TypeScript, no React, so it is unit-tested without a DOM. React binds to it through
 // `useSyncExternalStore` in GameProvider.tsx; animations subscribe to events, never to frames.
 
-import { ENGINE_VERSION, apply, createGame } from '../game'
+import { ENGINE_VERSION, apply, createGame, replay } from '../game'
 import type { Action, EngineError, GameEvent, GameSettings, GameState, PlayerId, ReplayFile, Result } from '../game'
 
 export type GameEventListener = (events: readonly GameEvent[], state: GameState) => void
@@ -22,11 +22,20 @@ export interface GameStore {
   reset(settings: Partial<GameSettings> & { seed: number }): void
   /** the game so far as a replay file (§22), for autosave in G4.8 */
   replayFile(): ReplayFile
+  /**
+   * G4.8b: continue a saved game. The replay runs silently: event listeners hear nothing (no
+   * animations, tags or notices for history), state listeners are told once. A file that doesn't
+   * replay (version, an illegal action) is rejected and the current game is kept.
+   */
+  load(file: ReplayFile): Result
+  /** bumps on every reset and load: views snap to a new game instead of animating into it */
+  generation(): number
 }
 
 export function createGameStore(settings: Partial<GameSettings> & { seed: number }): GameStore {
   let state: GameState
   let log: ReplayFile['actions'] = []
+  let gen = 0
   const listeners = new Set<() => void>()
   const eventListeners = new Set<GameEventListener>()
   const rejectionListeners = new Set<RejectionListener>()
@@ -36,6 +45,7 @@ export function createGameStore(settings: Partial<GameSettings> & { seed: number
     if (!r.ok) throw new Error(`createGame: ${r.error.code}: ${r.error.message}`)
     state = r.state
     log = []
+    gen++
     return r.events
   }
   start(settings)
@@ -73,6 +83,16 @@ export function createGameStore(settings: Partial<GameSettings> & { seed: number
     reset(s) {
       emit(start(s))
     },
+    load(file) {
+      const r = replay(file)
+      if (!r.ok) return r
+      state = r.state
+      log = file.actions.map((a) => ({ ...a }))
+      gen++
+      for (const l of [...listeners]) l()
+      return { ok: true, state, events: [] }
+    },
+    generation: () => gen,
     replayFile: () => ({ schemaVersion: 1, engineVersion: ENGINE_VERSION, settings: { ...state.settings }, actions: [...log] }),
   }
 }

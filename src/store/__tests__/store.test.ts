@@ -89,3 +89,60 @@ describe('G4.1 game store', () => {
     }
   })
 })
+
+describe('G4.8b load and autosave', async () => {
+  const { readSave, writeSave, clearSave, resumable, startAutosave, SAVE_KEY } = await import('../autosave')
+  const files = import.meta.glob('../../game/__tests__/golden/*.json', { eager: true, import: 'default' }) as Record<string, import('../../game').ReplayFile>
+  const golden = Object.entries(files).find(([k]) => k.includes('standard-fixed-seed7'))![1]
+  const mem = () => { const m = new Map<string, string>(); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v) }, removeItem: (k: string) => { m.delete(k) }, m } }
+
+  it('load replays silently: state listeners once, no events, history kept for saving', () => {
+    const st = createGameStore({ seed: 1 })
+    const half = { ...golden, actions: golden.actions.slice(0, 300) }
+    const calls: string[] = []
+    st.subscribe(() => calls.push('state'))
+    st.onEvents(() => calls.push('events'))
+    const g0 = st.generation()
+    const r = st.load(half)
+    expect(r.ok).toBe(true)
+    expect(calls).toEqual(['state'])
+    expect(st.generation()).toBe(g0 + 1)
+    const ref = replay(half)
+    expect(ref.ok && hashState(st.getState())).toBe(ref.ok && hashState(ref.state))
+    expect(st.replayFile().actions).toEqual(half.actions)
+    // play on from the loaded game: the log continues
+    const next = golden.actions[300]
+    expect(st.dispatch(next.player, next.action).ok).toBe(true)
+    expect(st.replayFile().actions).toHaveLength(301)
+  })
+
+  it('a file that does not replay is rejected and the current game is kept', () => {
+    const st = createGameStore({ seed: 1 })
+    const before = st.getState()
+    expect(st.load({ ...golden, engineVersion: '9.0.0' }).ok).toBe(false)
+    const bad = { ...golden, actions: [golden.actions[1], ...golden.actions] }
+    expect(st.load(bad).ok).toBe(false)
+    expect(st.getState()).toBe(before)
+  })
+
+  it('autosave writes after every change; saves are read back, checked and offered only when unfinished', () => {
+    const kv = mem()
+    const st = createGameStore({ seed: 5, boardPreset: 'standard-fixed' })
+    const stop = startAutosave(st, kv)
+    expect(readSave(kv)).toBeNull()
+    st.dispatch(active(st), firstLegal(st))
+    expect(readSave(kv)!.actions).toHaveLength(1)
+    expect(resumable(readSave(kv))!.turn).toBe(st.getState().turn)
+    stop()
+    st.dispatch(active(st), firstLegal(st))
+    expect(readSave(kv)!.actions).toHaveLength(1) // stopped
+    expect(resumable(golden)).toBeNull() // a finished game isn't offered
+    expect(resumable({ ...golden, actions: [] })).toBeNull()
+    kv.setItem(SAVE_KEY, '{not json')
+    expect(readSave(kv)).toBeNull()
+    expect(writeSave(golden, { getItem: () => null, setItem: () => { throw new Error('quota') }, removeItem: () => {} })).toBe(false)
+    clearSave(kv)
+    expect(kv.m.size).toBe(0)
+    expect(readSave(null)).toBeNull()
+  })
+})

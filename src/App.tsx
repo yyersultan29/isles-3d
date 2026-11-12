@@ -2,6 +2,8 @@ import { World } from './scene/World'
 import { HUD } from './ui/HUD'
 import { GameProvider } from './store/GameProvider'
 import { PassDevice } from './ui/PassDevice'
+import { Resume } from './ui/Resume'
+import { BOARD_MODE } from './scene/board'
 import { SceneErrorBoundary, SceneStatusNotice, hasWebGL2 } from './scene/SceneGuard'
 
 const webgl = hasWebGL2()
@@ -21,6 +23,8 @@ export default function App() {
         <HUD />
       </div>
       <PassDevice />
+      {/* the showcase board (?board=demo) has no saved games */}
+      {BOARD_MODE === 'game' && <Resume />}
     </GameProvider>
   )
 }
