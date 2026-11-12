@@ -454,7 +454,8 @@ export const HUD = memo(function HUD() {
           </IconButton>
         </div>
         <PhaseBanner className="absolute left-1/2 top-[14px] -translate-x-1/2 whitespace-nowrap" />
-        <Notices className="absolute left-1/2 top-[62px] w-[640px] -translate-x-1/2" />
+        {/* bottom-left corner above the action buttons: notices never cover tokens, ports or the HUD */}
+        <Notices align="start" className="absolute bottom-[84px] left-[22px] w-[250px] justify-end" />
         <Players />
         <DiceArea />
         <ResourceCards />

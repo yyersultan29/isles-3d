@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { TILES, Tile, tileHeight, hexDist, corner, tileAt, BUILDINGS, ROADS, HARBORS, islandRadius, WATER_Y, EDGES, VERTICES, findTile, BOARD_MODE } from './board'
+import { TILES, Tile, tileHeight, hexDist, corner, tileAt, BUILDINGS, ROADS, HARBORS, islandRadius, WATER_Y, EDGES, VERTICES, findTile, BOARD_MODE, robberSpot } from './board'
 import { mulberry32, noise2, fbm } from './noise'
 import { pineGeometry, broadleafGeometry, bushGeometry, rockGeometry, wheatGeometry, grassTuftGeometry, sheepGeometries } from './models'
 import { addWind } from './shaders'
@@ -25,6 +25,9 @@ if (BOARD_MODE === 'demo') {
 } else {
   // G4.2c: in a game any vertex may get a city and any edge a road, so keep props off all of them
   for (const [x, z] of VERTICES) blockers.push([x, z, 0.3])
+  // the robber may stand on any tile (G4.5b): keep its spot clear, and the strip in front of it
+  // (towards the default camera, +z) so tall trees don't hide the figure
+  for (const t of TILES) { const [x, z] = robberSpot(t); blockers.push([x, z, 0.22], [x, z + 0.24, 0.2], [x, z + 0.42, 0.16]) }
   for (const { a, b } of EDGES) for (let i = 1; i < 4; i++) blockers.push([a[0] + (b[0] - a[0]) * (i / 4), a[1] + (b[1] - a[1]) * (i / 4), 0.12])
 }
 for (const h of HARBORS) {

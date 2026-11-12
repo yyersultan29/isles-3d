@@ -1,9 +1,9 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { animTime } from './motion'
+import { animTime, motion } from './motion'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { TILES, tileHeight, corner, tileAt, tileByAxial, BOARD_MODE, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight, scenePieces, type Building, type Road } from './board'
+import { TILES, tileHeight, corner, tileAt, tileByAxial, robberSpot, BOARD_MODE, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight, scenePieces, type Building, type Road } from './board'
 import { tokenTexture } from './textures'
 import { StaticBatch } from './StaticBatch'
 import { mulberry32 } from './noise'
@@ -60,26 +60,59 @@ export function Tokens() {
 }
 
 // ---------------- Robber ----------------
-const ROBBER_ASIDE = 0.5
+const BASE_H = 0.035
+const MOVE_S = 0.75 // seconds for the hop to a new tile
+const HOP = 0.55 // arc height
+const robberMat = new THREE.MeshPhysicalMaterial({ color: '#1b1a1c', roughness: 0.32, metalness: 0.15, clearcoat: 0.6, clearcoatRoughness: 0.3 })
+// a pale stone base, like a board-game piece, so the dark figure reads on forest and grass (G4.5b)
+const baseMat = new THREE.MeshStandardMaterial({ color: '#e4d9c1', roughness: 0.75 })
+
 export function Robber() {
   const geo = useMemo(() => {
     const p = [
       [0, 0], [0.13, 0], [0.135, 0.02], [0.11, 0.04], [0.085, 0.07], [0.07, 0.14], [0.065, 0.2],
       [0.09, 0.225], [0.095, 0.24], [0.06, 0.255], [0.075, 0.29], [0.09, 0.33], [0.085, 0.37], [0.06, 0.4], [0.02, 0.415], [0, 0.415],
     ].map(([x, y]) => new THREE.Vector2(x, y))
-    const g = new THREE.LatheGeometry(p, 40)
-    g.scale(1.25, 1.25, 1.25)
-    return g
+    const body = new THREE.LatheGeometry(p, 40)
+    body.scale(1.25, 1.25, 1.25)
+    body.translate(0, BASE_H, 0)
+    const base = new THREE.CylinderGeometry(0.2, 0.215, BASE_H, 40)
+    base.translate(0, BASE_H / 2, 0)
+    return { body, base }
   }, [])
   // G4.2: the engine decides where the robber stands; the demo board keeps it on the desert
   const robberTile = useGame((s) => s.robber)
   const t = (BOARD_MODE === 'game' && tileByAxial(robberTile)) || TILES.find((x) => x.biome === 'desert')!
-  // on a numbered tile, step aside so the token stays readable
-  const x = t.number ? t.x - ROBBER_ASIDE : t.x
+  const [x, z] = robberSpot(t)
+  const y = tileHeight(t, x, z) - 0.01
+
+  // G4.5b: hop along an arc when the robber moves; the state is already final, this is only the view
+  const ref = useRef<THREE.Group>(null)
+  const hop = useRef<{ from: THREE.Vector3; to: THREE.Vector3; t0: number } | null>(null)
+  const placed = useRef(false)
+  useEffect(() => {
+    const g = ref.current
+    if (!g) return
+    const to = new THREE.Vector3(x, y, z)
+    if (!placed.current || motion.reduced || g.position.distanceTo(to) < 1e-3) { g.position.copy(to); hop.current = null; placed.current = true; return }
+    hop.current = { from: g.position.clone(), to, t0: performance.now() }
+  }, [x, y, z])
+  useFrame(() => {
+    const h = hop.current, g = ref.current
+    if (!h || !g) return
+    const k = Math.min(1, (performance.now() - h.t0) / 1000 / MOVE_S)
+    const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2 // ease in-out
+    g.position.lerpVectors(h.from, h.to, e)
+    g.position.y += Math.sin(Math.PI * e) * HOP
+    if (k >= 1) { g.position.copy(h.to); hop.current = null }
+  })
+  useEffect(() => () => { geo.body.dispose(); geo.base.dispose() }, [geo])
+
   return (
-    <mesh geometry={geo} position={[x, tileHeight(t, x, t.z) - 0.01, t.z]} castShadow receiveShadow>
-      <meshPhysicalMaterial color="#1b1a1c" roughness={0.32} metalness={0.15} clearcoat={0.6} clearcoatRoughness={0.3} />
-    </mesh>
+    <group ref={ref}>
+      <mesh geometry={geo.base} material={baseMat} castShadow receiveShadow />
+      <mesh geometry={geo.body} material={robberMat} castShadow receiveShadow />
+    </group>
   )
 }
 

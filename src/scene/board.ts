@@ -76,6 +76,11 @@ LAYOUT.forEach((row, r) => {
 export const tileAt = (row: number, col: number) => TILES.find((t) => t.row === row && t.col === col)!
 export const tileByAxial = (id: TileId) => TILES.find((t) => t.axial === id)
 
+/** Where the robber stands on a tile: beside the number token so the token stays readable (G4.5b
+ *  keeps trees off this spot on every tile, see Vegetation.tsx). */
+export const ROBBER_ASIDE = 0.5
+export const robberSpot = (t: Tile): [number, number] => [t.number ? t.x - ROBBER_ASIDE : t.x, t.z]
+
 /** Corner k of a pointy-top hex. k=5 top, k=0 upper-right, k=1 lower-right, k=2 bottom, k=3 lower-left, k=4 upper-left. */
 export function corner(t: { x: number; z: number }, k: number, r = HEX_R): [number, number] {
   const a = ((60 * k - 30) * Math.PI) / 180
