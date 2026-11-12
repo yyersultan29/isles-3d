@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { BuildRows, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PLAYERS, RESOURCES, Trophy, focusRing, panel } from './HUD'
-import { COMPACT_SAFE } from './layout'
-import { motion } from '../scene/motion'
+import { AwardBadges, BuildRows, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
+import { useGameView } from './gameView'
+import { COMPACT_SAFE, PHASE_ROW } from './layout'
 
 /**
  * HUD for narrow and portrait screens. It uses real CSS pixels (no global down-scaling), so text
@@ -14,11 +14,10 @@ import { motion } from '../scene/motion'
 export function CompactHUD() {
   const [menu, setMenu] = useState(false)
   const [build, setBuild] = useState(false)
-  const dice = useRef<HTMLDivElement>(null)
-  const roll = () => {
-    if (!dice.current || motion.reduced) return
-    gsap.fromTo(dice.current.children, { y: -10, rotate: -25 }, { y: 0, rotate: 0, duration: 0.6, ease: 'bounce.out', stagger: 0.08 })
-  }
+  const { seats } = useGameView()
+  const { ref: dice, a, b, primary, act } = useDiceAndAction((el) =>
+    gsap.fromTo(el.children, { y: -10, rotate: -25 }, { y: 0, rotate: 0, duration: 0.6, ease: 'bounce.out', stagger: 0.08 }),
+  )
   // Escape closes any open popover
   useEffect(() => {
     const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMenu(false); setBuild(false) } }
@@ -29,7 +28,7 @@ export function CompactHUD() {
   return (
     <div className="pointer-events-none fixed inset-0 select-none overflow-hidden font-ui text-[#f4efe6] [&_button]:pointer-events-auto">
       {/* ---------- top bar ---------- */}
-      <div className="absolute inset-x-[8px] top-[8px] flex items-start gap-[8px]" style={{ height: COMPACT_SAFE.top - 8 }}>
+      <div className="absolute inset-x-[8px] top-[8px] flex items-start gap-[8px]" style={{ height: COMPACT_SAFE.top - PHASE_ROW - 8 }}>
         <div className="relative">
           <button
             aria-label="Menu"
@@ -57,18 +56,19 @@ export function CompactHUD() {
         </div>
 
         <ul aria-label="Players" className="flex min-w-0 flex-1 gap-[6px]">
-          {PLAYERS.map((p, i) => (
+          {seats.map((p) => (
             <li
-              key={p.name}
-              aria-label={`${p.name}: ${p.vp} victory points, ${p.cards} cards, online`}
-              className={`flex h-[46px] min-w-0 flex-1 items-center gap-[5px] overflow-hidden rounded-[8px] pl-[4px] pr-[4px] ${panel}`}
-              style={{ boxShadow: `inset 3px 0 0 ${p.color}, inset 0 0 0 1px ${p.color}55` }}
+              key={p.id}
+              aria-label={seatLabel(p)}
+              aria-current={p.active ? 'true' : undefined}
+              className={`flex h-[46px] min-w-0 flex-1 items-center gap-[3px] overflow-hidden rounded-[8px] pl-[3px] pr-[3px] ${panel}`}
+              style={{ boxShadow: `inset ${p.active ? 4 : 3}px 0 0 ${p.color}, inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '55'}` }}
             >
               <div className="h-[30px] w-[30px] shrink-0 overflow-hidden rounded-[6px] ring-2 min-[560px]:h-[36px] min-[560px]:w-[36px]" style={{ ['--tw-ring-color' as string]: p.color }}>
-                <Avatar i={i} className="h-full w-full" />
+                <Avatar i={p.avatar} className="h-full w-full" />
               </div>
               <div aria-hidden className="min-w-0 leading-none [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:shrink-0">
-                <div className="mb-[4px] hidden truncate text-[13px] font-semibold text-white min-[560px]:block">{p.name}</div>
+                <div className="mb-[4px] hidden items-center gap-[4px] truncate text-[13px] font-semibold text-white min-[560px]:flex">{p.name}<AwardBadges seat={p} /></div>
                 <div className="flex items-center gap-[3px] text-[13px] font-semibold"><Trophy />{p.vp}</div>
                 <div className="mt-[2px] flex items-center gap-[3px] text-[12px] text-[#d6d2ca] min-[560px]:hidden"><CardsIco />{p.cards}</div>
               </div>
@@ -81,18 +81,24 @@ export function CompactHUD() {
         </IconButton>
       </div>
 
+      {/* ---------- phase line, under the top bar (inside COMPACT_SAFE.top) ---------- */}
+      <div className="absolute inset-x-[8px] flex justify-center" style={{ top: COMPACT_SAFE.top - PHASE_ROW + 2 }}>
+        <PhaseBanner className="max-w-full truncate !px-[12px] !py-[5px] !text-[13px]" />
+      </div>
+
       {/* ---------- bottom dock ---------- */}
       <div className="absolute inset-x-[8px] bottom-[8px] flex flex-col items-center gap-[8px]" style={{ height: COMPACT_SAFE.bottom - 8 }}>
         <div className="relative flex w-full max-w-[560px] items-center gap-[8px]">
           <button
-            onClick={roll}
-            className="flex h-[48px] items-center gap-[8px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] pl-[6px] pr-[16px] font-display text-[17px] font-semibold text-[#3a2208] shadow-[0_0_12px_rgba(255,190,70,0.6),0_3px_0_#8a5410] outline-none focus-visible:ring-4 focus-visible:ring-white/80 active:translate-y-[2px]"
+            onClick={act}
+            disabled={!primary.action}
+            className="flex h-[48px] disabled:grayscale-[0.7] disabled:brightness-75 items-center gap-[8px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] pl-[6px] pr-[16px] font-display text-[17px] font-semibold text-[#3a2208] shadow-[0_0_12px_rgba(255,190,70,0.6),0_3px_0_#8a5410] outline-none focus-visible:ring-4 focus-visible:ring-white/80 active:translate-y-[2px]"
           >
             <span ref={dice} aria-hidden className="flex gap-[6px] pl-[2px]">
-              <Die faces={[5, 1, 3]} rot="rotateX(-24deg) rotateY(-28deg)" size={24} />
-              <Die faces={[6, 2, 4]} rot="rotateX(-22deg) rotateY(30deg)" size={24} />
+              <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg)" size={24} />
+              <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg)" size={24} />
             </span>
-            Roll
+            <span className="whitespace-nowrap">{primary.short}</span>
           </button>
           <IconButton label="Undo" className="!h-[44px] !w-[44px] shrink-0">
             <svg aria-hidden viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>

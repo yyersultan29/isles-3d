@@ -5,6 +5,8 @@ import { BRAND_NAME } from '../brand'
 import { motion } from '../scene/motion'
 import { useViewport } from './layout'
 import { CompactHUD } from './CompactHUD'
+import { useGameView, type SeatView } from './gameView'
+import { useGameStore, useGameEvents } from '../store/GameProvider'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -90,13 +92,6 @@ export function IconButton({ children, label, className = '' }: { children: Reac
   )
 }
 
-export const PLAYERS = [
-  { name: 'Alex', vp: 5, cards: 7, color: '#d23a2e' },
-  { name: 'Maria', vp: 4, cards: 6, color: '#2f5fe0' },
-  { name: 'Den', vp: 5, cards: 7, color: '#e0812f' },
-  { name: 'Kate', vp: 3, cards: 5, color: '#c9ccd2' },
-]
-
 export const Trophy = () => (
   <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="#f2b544">
     <path d="M6 3h12v3h3v2a5 5 0 0 1-4.6 5A6 6 0 0 1 13 16.6V19h4v2H7v-2h4v-2.4A6 6 0 0 1 7.6 13 5 5 0 0 1 3 8V6h3zm0 5V8H5a3 3 0 0 0 1.3 2.5A6 6 0 0 1 6 8zm12 0a6 6 0 0 1-.3 2.5A3 3 0 0 0 19 8z" />
@@ -109,30 +104,59 @@ export const CardsIco = () => (
   </svg>
 )
 
+/** Small award badges (Longest Road / Largest Army) shown on a player card. */
+export function AwardBadges({ seat }: { seat: SeatView }) {
+  if (!seat.longestRoad && !seat.largestArmy) return null
+  return (
+    <span className="flex gap-[3px]">
+      {seat.longestRoad && <span title="Longest Road (+2)" className="rounded-[4px] bg-[#f2b544]/20 px-[4px] text-[11px] font-bold text-[#f2cf84] ring-1 ring-[#f2b544]/50">LR</span>}
+      {seat.largestArmy && <span title="Largest Army (+2)" className="rounded-[4px] bg-[#f2b544]/20 px-[4px] text-[11px] font-bold text-[#f2cf84] ring-1 ring-[#f2b544]/50">LA</span>}
+    </span>
+  )
+}
+
+export const seatLabel = (p: SeatView) =>
+  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}`
+
 function Players() {
+  const { seats } = useGameView()
   return (
     <ul aria-label="Players" className="absolute right-[18px] top-[66px] flex w-[212px] flex-col gap-[7px]">
-      {PLAYERS.map((p, i) => (
+      {seats.map((p) => (
         <li
-          key={p.name}
-          aria-label={`${p.name}: ${p.vp} victory points, ${p.cards} cards, online`}
-          className={`relative flex h-[62px] items-center gap-[12px] overflow-hidden rounded-[8px] pl-[6px] pr-3 ${panel}`}
-          style={{ boxShadow: `inset 3px 0 0 ${p.color}, inset 0 0 0 1px ${p.color}55, 0 8px 22px rgba(0,0,0,.5)` }}
+          key={p.id}
+          aria-label={seatLabel(p)}
+          aria-current={p.active ? 'true' : undefined}
+          className={`relative flex h-[62px] items-center gap-[12px] overflow-hidden rounded-[8px] pl-[6px] pr-3 transition-transform ${panel} ${p.active ? '-translate-x-[8px]' : ''}`}
+          style={{ boxShadow: `inset ${p.active ? 5 : 3}px 0 0 ${p.color}, inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '55'}, 0 8px 22px rgba(0,0,0,.5)` }}
         >
           <div className="h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[7px] ring-2" style={{ ['--tw-ring-color' as string]: p.color }}>
-            <Avatar i={i} className="h-full w-full" />
+            <Avatar i={p.avatar} className="h-full w-full" />
           </div>
           <div className="flex-1">
-            <div className="text-[15px] font-semibold text-white leading-none mb-[8px]">{p.name}</div>
+            <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}<AwardBadges seat={p} /></div>
             <div className="flex items-center gap-[22px] text-[14px] text-[#ece8e0] leading-none">
               <span className="flex items-center gap-[5px]"><Trophy />{p.vp}</span>
               <span className="flex items-center gap-[5px]"><CardsIco />{p.cards}</span>
             </div>
           </div>
-          <span aria-hidden className="absolute right-[10px] top-[9px] h-[9px] w-[9px] rounded-full bg-[#3fd25a] shadow-[0_0_8px_#3fd25a]" />
+          {p.active && <span aria-hidden className="absolute right-[10px] top-[9px] h-[9px] w-[9px] rounded-full bg-[#f2b544] shadow-[0_0_8px_#f2b544]" />}
         </li>
       ))}
     </ul>
+  )
+}
+
+/** Turn and phase line, announced politely to screen readers. */
+export function PhaseBanner({ className = '' }: { className?: string }) {
+  const { phase, seats } = useGameView()
+  const active = seats.find((x) => x.active)
+  return (
+    <div role="status" aria-live="polite" className={`pointer-events-none rounded-full px-[18px] py-[7px] text-[15px] font-semibold text-[#f4efe6] ${panel} ${className}`}
+      style={active ? { boxShadow: `inset 0 0 0 1.5px ${active.color}aa, 0 8px 22px rgba(0,0,0,.5)` } : undefined}>
+      {active && <span aria-hidden className="mr-[8px] inline-block h-[10px] w-[10px] rounded-full align-middle" style={{ background: active.color }} />}
+      {phase}
+    </div>
   )
 }
 
@@ -167,26 +191,44 @@ export function Die({ faces, rot, size = 54 }: { faces: [number, number, number]
   )
 }
 
+/** A die showing `v` on the front, with consistent top and right faces. */
+export const dieFaces = (v: number): [number, number, number] => {
+  const adj: Record<number, [number, number]> = { 1: [2, 3], 2: [3, 1], 3: [1, 2], 4: [1, 5], 5: [1, 3], 6: [2, 4] }
+  return [v, ...adj[v]]
+}
+
+/** Dice from state plus the main action button; the dice bounce on every DICE_ROLLED event. */
+export function useDiceAndAction(bounce: (el: HTMLElement) => void) {
+  const { dice, primary } = useGameView()
+  const store = useGameStore()
+  const ref = useRef<HTMLDivElement>(null)
+  useGameEvents((events) => {
+    if (ref.current && !motion.reduced && events.some((e) => e.type === 'DICE_ROLLED')) bounce(ref.current)
+  })
+  const act = () => { if (primary.action && primary.player) store.dispatch(primary.player, primary.action) }
+  const [a, b] = dice ?? [5, 6]
+  return { ref, a, b, rolled: !!dice, primary, act }
+}
+
 function DiceArea() {
-  const dice = useRef<HTMLDivElement>(null)
-  const roll = () => {
-    if (!dice.current || motion.reduced) return
-    gsap.fromTo(dice.current.children, { y: -18, rotate: -25 }, { y: 0, rotate: 0, duration: 0.7, ease: 'bounce.out', stagger: 0.08 })
-  }
+  const { ref, a, b, rolled, primary, act } = useDiceAndAction((el) =>
+    gsap.fromTo(el.children, { y: -18, rotate: -25 }, { y: 0, rotate: 0, duration: 0.7, ease: 'bounce.out', stagger: 0.08 }),
+  )
   return (
     <div className="absolute right-[14px] top-[420px] w-[232px]">
-      <div ref={dice} aria-hidden className="relative z-10 mx-auto flex w-[150px] justify-between drop-shadow-[0_10px_8px_rgba(0,0,0,0.55)]">
-        <Die faces={[5, 1, 3]} rot="rotateX(-24deg) rotateY(-28deg) rotateZ(-4deg)" />
-        <Die faces={[6, 2, 4]} rot="rotateX(-22deg) rotateY(30deg) rotateZ(6deg)" />
+      <div ref={ref} aria-label={rolled ? `Dice: ${a} and ${b}, total ${a + b}` : 'Dice not rolled yet'} role="img" className={`relative z-10 mx-auto flex w-[150px] justify-between drop-shadow-[0_10px_8px_rgba(0,0,0,0.55)] transition-opacity ${rolled ? '' : 'opacity-70'}`}>
+        <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg) rotateZ(-4deg)" />
+        <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg) rotateZ(6deg)" />
       </div>
       {/* wooden plinth */}
       <div className="relative -mt-[18px] h-[96px] rounded-[28px] bg-[linear-gradient(180deg,#6b4a2c,#3d2817_60%,#2a1b10)] shadow-[0_14px_30px_rgba(0,0,0,0.6),inset_0_2px_0_rgba(255,220,170,0.25),inset_0_-6px_12px_rgba(0,0,0,0.5)] ring-1 ring-black/40">
         <div className="absolute inset-x-[10px] top-[8px] h-[8px] rounded-full bg-[repeating-linear-gradient(90deg,rgba(0,0,0,0.12)_0_6px,rgba(255,255,255,0.03)_6px_14px)]" />
         <button
-          onClick={roll}
-          className="absolute left-1/2 top-[30px] outline-none focus-visible:ring-4 focus-visible:ring-white/80 h-[46px] w-[176px] -translate-x-1/2 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] font-display text-[21px] font-semibold text-[#3a2208] shadow-[0_0_18px_rgba(255,190,70,0.7),0_4px_0_#8a5410,inset_0_2px_0_rgba(255,255,255,0.7)] transition-transform hover:scale-[1.03] active:translate-y-[2px]"
+          onClick={act}
+          disabled={!primary.action}
+          className="absolute left-1/2 top-[30px] outline-none focus-visible:ring-4 focus-visible:ring-white/80 h-[46px] w-[176px] -translate-x-1/2 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] font-display text-[21px] font-semibold text-[#3a2208] shadow-[0_0_18px_rgba(255,190,70,0.7),0_4px_0_#8a5410,inset_0_2px_0_rgba(255,255,255,0.7)] transition-[transform,filter] hover:scale-[1.03] active:translate-y-[2px] disabled:cursor-default disabled:grayscale-[0.7] disabled:brightness-75 disabled:hover:scale-100 disabled:text-[18px]"
         >
-          Roll Dice
+          {primary.label}
         </button>
       </div>
     </div>
@@ -330,6 +372,7 @@ export const HUD = memo(function HUD() {
             <span aria-hidden className="text-[20px] font-bold">?</span>
           </IconButton>
         </div>
+        <PhaseBanner className="absolute left-1/2 top-[14px] -translate-x-1/2 whitespace-nowrap" />
         <Players />
         <DiceArea />
         <ResourceCards />

@@ -8,8 +8,10 @@ export function isCompact(w: number, h: number) {
   return w < 900 || h > w
 }
 
+/** Height of the compact phase line under the top bar (G4.4a). */
+export const PHASE_ROW = 34
 /** Compact HUD reserved areas in CSS px: keep in sync with CompactHUD.tsx. */
-export const COMPACT_SAFE = { top: 62, bottom: 146, side: 8 }
+export const COMPACT_SAFE = { top: 62 + PHASE_ROW, bottom: 146, side: 8 }
 
 export function useViewport() {
   const read = () => ({ w: window.innerWidth, h: window.innerHeight })
