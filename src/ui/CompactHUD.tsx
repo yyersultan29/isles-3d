@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { AwardBadges, BuildRows, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, useHand } from './HUD'
+import { AwardBadges, BuildRows, DevButton, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, useHand } from './HUD'
 import { useGameView } from './gameView'
 import { GameDialogs } from './Dialogs'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
@@ -106,11 +106,12 @@ export function CompactHUD() {
             <span className="whitespace-nowrap">{primary.short}</span>
           </button>
           <TradeButton icon={22} className="!h-[44px] !w-[40px] shrink-0" />
-          <IconButton label="Undo" className="!h-[44px] !w-[40px] shrink-0">
+          <DevButton icon={22} className="!h-[44px] !w-[40px]" />
+          {/* undo and chat are still placeholders: they give way to Trade and Cards on small screens (G4.4d/e) */}
+          <IconButton label="Undo" className="!h-[44px] !w-[40px] shrink-0 max-[389px]:!hidden">
             <svg aria-hidden viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
           </IconButton>
-          {/* chat is still a placeholder: dropped below 390 px so the dock fits with Trade (G4.4d) */}
-          <IconButton label="Chat (new messages)" className="relative !h-[44px] !w-[40px] shrink-0 max-[389px]:!hidden">
+          <IconButton label="Chat (new messages)" className="relative !h-[44px] !w-[40px] shrink-0 max-[559px]:!hidden">
             <svg aria-hidden viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="currentColor"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.4 1.3 4.6 3.4 6L4.5 21l4.4-2.3c1 .2 2 .3 3.1.3 5.5 0 10-3.6 10-8s-4.5-8-10-8z" /></svg>
             <span aria-hidden className="absolute right-[4px] top-[4px] h-[8px] w-[8px] rounded-full bg-[#f2a33a]" />
           </IconButton>

@@ -92,7 +92,7 @@ export function primaryAction(s: GameState): { label: string; short: string; act
 
 export function useGameView() {
   const s = useGame((x) => x)
-  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s), bank: bankView(s), offer: offerView(s), opponents: s.order.filter((p) => p !== s.order[s.active]) }), [s])
+  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s), bank: bankView(s), offer: offerView(s), dev: devView(s), opponents: s.order.filter((p) => p !== s.order[s.active]) }), [s])
 }
 
 // ---------- G4.4b: hand and build menu ----------
@@ -219,4 +219,38 @@ export function offerView(s: GameState): OfferView | null {
     } as OfferRow
   })
   return { id: t.id, from: t.from, offer: { ...t.offer }, request: { ...t.request }, rows }
+}
+
+// ---------- G4.4e: development cards ----------
+
+export type DevKind = 'knight' | 'roadBuilding' | 'yearOfPlenty' | 'monopoly' | 'victoryPoint'
+export interface DevRow { type: DevKind; count: number; playable: boolean; reason: string | null }
+export interface DevView { player: PlayerId; total: number; rows: DevRow[]; yopTake: number; bank: Record<Resource, number>; canOpen: boolean }
+
+const DEV_ORDER: DevKind[] = ['knight', 'roadBuilding', 'yearOfPlenty', 'monopoly', 'victoryPoint']
+const PLAY_TYPE: Record<Exclude<DevKind, 'victoryPoint'>, Action['type']> = { knight: 'PLAY_KNIGHT', roadBuilding: 'PLAY_ROAD_BUILDING', yearOfPlenty: 'PLAY_YEAR_OF_PLENTY', monopoly: 'PLAY_MONOPOLY' }
+
+/** The active player's development cards by type; a row is playable exactly when legalActions offers it. */
+export function devView(s: GameState): DevView {
+  const player = s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]
+  const pl = s.players.find((p) => p.id === player)!
+  const legal = s.phase.kind === 'gameOver' ? [] : legalActions(s, player)
+  const rows = DEV_ORDER.flatMap((type): DevRow[] => {
+    const cards = pl.devCards.filter((c) => c.type === type)
+    if (!cards.length) return []
+    if (type === 'victoryPoint') return [{ type, count: cards.length, playable: false, reason: 'Counts at the end' }]
+    const playable = legal.some((a) => a.type === PLAY_TYPE[type])
+    let reason: string | null = null
+    if (!playable) {
+      if (s.phase.kind !== 'preRoll' && s.phase.kind !== 'actions') reason = 'Not now'
+      else if (pl.playedDevThisTurn) reason = 'One card per turn'
+      else if (cards.every((c) => c.boughtOnTurn >= s.turn)) reason = 'Bought this turn'
+      else if (type === 'roadBuilding') reason = 'No legal road'
+      else if (type === 'yearOfPlenty') reason = 'The bank is empty'
+      else reason = 'Not now'
+    }
+    return [{ type, count: cards.length, playable, reason }]
+  })
+  const bankTotal = RESOURCE_ORDER.reduce((a, r) => a + s.bank[r], 0)
+  return { player, total: pl.devCards.length, rows, yopTake: Math.min(2, bankTotal), bank: { ...s.bank }, canOpen: s.phase.kind === 'preRoll' || s.phase.kind === 'actions' }
 }

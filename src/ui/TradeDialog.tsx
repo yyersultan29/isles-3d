@@ -13,16 +13,16 @@ import { useGame, useGameStore } from '../store/GameProvider'
 import { setTradeOpen } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 
-const NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
+export const NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
 const text = (c: Counts) => RESOURCE_ORDER.filter((r) => c[r]).map((r) => `${c[r]} ${NAME[r]}`).join(', ')
 // functions, not constants: HUD.tsx (focusRing) and this module import each other
-const gold = () => `h-[38px] shrink-0 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[20px] font-display text-[17px] font-semibold text-[#3a2208] disabled:grayscale-[0.7] disabled:brightness-75 ${focusRing}`
-const plain = () => `h-[34px] shrink-0 rounded-[9px] bg-white/10 px-[12px] text-[14px] font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white/10 ${focusRing}`
+export const gold = () => `h-[38px] shrink-0 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[20px] font-display text-[17px] font-semibold text-[#3a2208] disabled:grayscale-[0.7] disabled:brightness-75 ${focusRing}`
+export const plain = () => `h-[34px] shrink-0 rounded-[9px] bg-white/10 px-[12px] text-[14px] font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white/10 ${focusRing}`
 const tileW = (compact: boolean) => (compact ? 'w-[58px]' : 'w-[70px]')
 /** Move focus into a panel unless the user is switching tabs with the keyboard. */
 const focusInto = (el: HTMLElement | null) => { if (!(document.activeElement as HTMLElement | null)?.matches('[role=tab]')) el?.focus() }
 
-function useAct() {
+export function useAct() {
   const store = useGameStore()
   return (player: PlayerId, action: Action) => {
     const r = store.dispatch(player, action)
@@ -31,7 +31,7 @@ function useAct() {
   }
 }
 
-function Tile({ res, top, corner, selected, disabled, label, onClick, compact, btnRef }: {
+export function Tile({ res, top, corner, selected, disabled, label, onClick, compact, btnRef }: {
   res: Resource; top: string; corner: string; selected: boolean; disabled: boolean; label: string; onClick: () => void; compact: boolean
   btnRef?: React.Ref<HTMLButtonElement>
 }) {

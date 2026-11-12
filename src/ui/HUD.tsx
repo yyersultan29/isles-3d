@@ -7,7 +7,7 @@ import { useViewport } from './layout'
 import { CompactHUD } from './CompactHUD'
 import { GameDialogs } from './Dialogs'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
-import { setPlacementMode, setTradeOpen, usePlacementMode, useTradeOpen } from '../store/ui'
+import { setDevOpen, setPanel, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeOpen } from '../store/ui'
 import type { Resource } from '../game'
 import { useGameStore, useGameEvents } from '../store/GameProvider'
 
@@ -255,13 +255,16 @@ export function useHand() {
   return { counts: hand.counts, ownerName: owner.name, ownerColor: owner.color }
 }
 
-/** Clears the build choice and closes the trade panel when the turn or phase moves on, and on Escape. Mount once per HUD. */
+/** Clears the build choice and closes the trade/dev panels when the turn or phase moves on, and on Escape. Mount once per HUD. */
 export function usePlacementAutoReset() {
   const { phaseKind, active, turn } = useGameView()
-  useEffect(() => { if (phaseKind !== 'actions') { setPlacementMode(null); setTradeOpen(false) } }, [phaseKind])
-  useEffect(() => { setPlacementMode(null); setTradeOpen(false) }, [active, turn])
   useEffect(() => {
-    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { setPlacementMode(null); setTradeOpen(false) } }
+    if (phaseKind !== 'actions') { setPlacementMode(null); setTradeOpen(false) }
+    if (phaseKind !== 'actions' && phaseKind !== 'preRoll') setDevOpen(false) // knights may be played before the roll
+  }, [phaseKind])
+  useEffect(() => { setPlacementMode(null); setPanel(null) }, [active, turn])
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { setPlacementMode(null); setPanel(null) } }
     window.addEventListener('keydown', f)
     return () => window.removeEventListener('keydown', f)
   }, [])
@@ -390,10 +393,31 @@ export function TradeButton({ className = '', icon = 24 }: { className?: string;
   )
 }
 
+const CardsStackIco = ({ size }: { size: number }) => (
+  <svg aria-hidden viewBox="0 0 24 24" style={{ width: size, height: size }} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><rect x="8" y="4" width="11" height="15" rx="2" /><path d="M5 7.5v11A1.5 1.5 0 0 0 6.5 20H15" /><path d="M13.5 9l1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L10.5 11.3l2-.3z" fill="currentColor" strokeWidth="1" /></svg>
+)
+
+/** Opens the development cards panel (G4.4e); a badge shows how many cards the active player holds. */
+export function DevButton({ className = '', icon = 24 }: { className?: string; icon?: number }) {
+  const { dev } = useGameView()
+  const open = useDevOpen()
+  const label = `Development cards: ${dev.total}${dev.canOpen ? '' : ' (Not now)'}`
+  return (
+    <div className="relative shrink-0">
+      <IconButton label={label} aria-pressed={open} disabled={!dev.canOpen} onClick={() => setDevOpen(!open)}
+        className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
+        <CardsStackIco size={icon} />
+      </IconButton>
+      {dev.total > 0 && <span aria-hidden className="pointer-events-none absolute -right-[5px] -top-[5px] grid h-[19px] min-w-[19px] place-items-center rounded-full bg-[#f2b544] px-[4px] text-[11px] font-bold text-[#2a1a06] shadow-[0_1px_4px_rgba(0,0,0,.5)]">{dev.total}</span>}
+    </div>
+  )
+}
+
 function BottomLeft() {
   return (
     <div className="absolute bottom-[16px] left-[22px] flex gap-[12px]">
       <TradeButton className="!h-[52px] !w-[52px] !rounded-[12px]" />
+      <DevButton className="!h-[52px] !w-[52px] !rounded-[12px]" />
       <IconButton label="Undo" className="!h-[52px] !w-[52px] !rounded-[12px]">
         <svg aria-hidden viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
       </IconButton>

@@ -1,7 +1,7 @@
 // G4.4a: HUD data is derived from state and shows only public information for everyone.
 import { describe, expect, it } from 'vitest'
 import { act, fixture, newGame, playSetup } from '../../game/__tests__/helpers'
-import { bankMax, bankView, offerView, proposeCheck, buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
+import { bankMax, bankView, devView, offerView, proposeCheck, buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
 import { COSTS, legalActions } from '../../game'
 
 describe('G4.4a HUD view', () => {
@@ -125,5 +125,23 @@ describe('G4.4a HUD view', () => {
     t = act(t, { type: 'CONFIRM_TRADE', tradeId: v.id, with: 'p2' })
     expect(offerView(t)).toBeNull()
     expect(t.players[0].resources).toMatchObject({ lumber: 0, ore: 1 })
+  })
+
+  it('G4.4e: dev rows follow legalActions with the first reason that applies', () => {
+    const s = fixture({ buildings: [['0,0,N', 'p1']], roads: [['0,0,NE', 'p1']] })
+    const card = (id: number, type: 'knight' | 'roadBuilding' | 'yearOfPlenty' | 'monopoly' | 'victoryPoint', boughtOnTurn = 1) => ({ id, type, boughtOnTurn })
+    s.players[0].devCards.push(card(90, 'knight'), card(91, 'knight', 5), card(92, 'monopoly', 5), card(93, 'victoryPoint'), card(94, 'yearOfPlenty'))
+    let v = devView(s)
+    expect(v.total).toBe(5)
+    expect(v.rows.map((r) => [r.type, r.count, r.playable, r.reason])).toEqual([
+      ['knight', 2, true, null], ['yearOfPlenty', 1, true, null], ['monopoly', 1, false, 'Bought this turn'], ['victoryPoint', 1, false, 'Counts at the end']])
+    expect(v.yopTake).toBe(2)
+    const after = act(s, { type: 'PLAY_YEAR_OF_PLENTY', take: ['ore', 'ore'] })
+    v = devView(after)
+    expect(v.rows.find((r) => r.type === 'knight')).toMatchObject({ playable: false, reason: 'One card per turn' })
+    expect(devView(fixture({ phase: { kind: 'discard', pending: { p2: 4 } } }))).toMatchObject({ canOpen: false, rows: [] })
+    const pre = fixture({ phase: { kind: 'preRoll' } })
+    pre.players[0].devCards.push(card(95, 'knight'))
+    expect(devView(pre)).toMatchObject({ canOpen: true, rows: [{ type: 'knight', playable: true }] })
   })
 })

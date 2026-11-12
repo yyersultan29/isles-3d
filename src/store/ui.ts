@@ -17,7 +17,7 @@ const listeners = new Set<() => void>()
 export function setPlacementMode(m: PlacementMode) {
   if (m === mode) return
   mode = m
-  if (m) setTradeOpen(false)
+  if (m) setPanel(null)
   for (const l of [...listeners]) l()
 }
 
@@ -30,23 +30,30 @@ export function usePlacementMode(): PlacementMode {
   )
 }
 
-// ---------- G4.4d: whether the trade panel is open ----------
+// ---------- G4.4d/e: which HUD panel is open (trade or development cards; one at a time) ----------
 
-let tradeOpen = false
-const tradeListeners = new Set<() => void>()
+export type Panel = 'trade' | 'dev' | null
+let panel: Panel = null
+const panelListeners = new Set<() => void>()
 
-export function setTradeOpen(v: boolean) {
-  if (v === tradeOpen) return
-  tradeOpen = v
-  if (v) setPlacementMode(null) // a board choice and the trade panel never compete
-  for (const l of [...tradeListeners]) l()
+export function setPanel(v: Panel) {
+  if (v === panel) return
+  panel = v
+  if (v) setPlacementMode(null) // a board choice and a panel never compete
+  for (const l of [...panelListeners]) l()
 }
 
-export const getTradeOpen = () => tradeOpen
+export const getPanel = () => panel
 
-export function useTradeOpen(): boolean {
+export function usePanel(): Panel {
   return useSyncExternalStore(
-    (l) => { tradeListeners.add(l); return () => { tradeListeners.delete(l) } },
-    () => tradeOpen,
+    (l) => { panelListeners.add(l); return () => { panelListeners.delete(l) } },
+    () => panel,
   )
 }
+
+export const setTradeOpen = (v: boolean) => setPanel(v ? 'trade' : panel === 'trade' ? null : panel)
+export const getTradeOpen = () => panel === 'trade'
+export const useTradeOpen = () => usePanel() === 'trade'
+export const setDevOpen = (v: boolean) => setPanel(v ? 'dev' : panel === 'dev' ? null : panel)
+export const useDevOpen = () => usePanel() === 'dev'
