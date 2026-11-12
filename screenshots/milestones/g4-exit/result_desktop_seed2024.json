@@ -1,0 +1,39 @@
+{
+ "seed": 2024,
+ "minutes": 5,
+ "final": {
+  "kind": "gameOver",
+  "turn": 194,
+  "actions": 939
+ },
+ "victory": "Blue wins! 10 victory points on turn 194 Final scores PLAYER SETTLEMENTS CITIES AWARDS VP CARDS TOTAL Blue 5 1 Road 1 10 White 2 2 – 3 9 Red 3 0 Army 1 6 Orange 2 0 – 0 2 View board New game",
+ "ui": {
+  "setup": 16,
+  "roll": 194,
+  "moveRobber": 47,
+  "endTurn": 193,
+  "pass": 195,
+  "road": 32,
+  "propose": 65,
+  "accept": 96,
+  "decline": 99,
+  "p2pTrade": 54,
+  "steal": 12,
+  "buyDev": 25,
+  "bankTrade": 61,
+  "PLAY_KNIGHT": 14,
+  "cancelOffer": 11,
+  "PLAY_MONOPOLY": 2,
+  "discard": 3,
+  "PLAY_YEAR_OF_PLENTY": 2,
+  "PLAY_ROAD_BUILDING": 1,
+  "roadBuilding": 2,
+  "settlement": 7,
+  "city": 3
+ },
+ "rejections": 0,
+ "handMismatch": 0,
+ "passScreens": 195,
+ "steps": 1213,
+ "errors": []
+}
