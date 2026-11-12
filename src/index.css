@@ -8,6 +8,9 @@
 html, body, #root { height: 100%; margin: 0; background: #0b2236; overflow: hidden; }
 canvas { display: block; }
 
+/* HUD notices (G4.5a) slide in from above */
+@keyframes notice-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
 /* Respect reduced-motion for HUD transitions too (the 3D scene handles its own; see scene/motion.ts). */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }

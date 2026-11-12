@@ -126,7 +126,7 @@ export function Placement() {
       const r = store.dispatch(targets.player, spot.action)
       if (r.ok) {
         if (state.phase.kind === 'actions') setPlacementMode(null) // one build per menu choice
-      } else console.warn(`[placement] ${r.error.code}: ${r.error.message}`) // i18n messages come with G4.5
+      } // a rejection shows as a HUD notice (ui/Notices.tsx)
       hover.current = { spot: null, kind: null }
       el.style.cursor = ''
     }

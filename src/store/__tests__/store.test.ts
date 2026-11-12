@@ -28,18 +28,27 @@ describe('G4.1 game store', () => {
     expect(got[0]).toMatchObject({ type: 'SETUP_PLACED' })
   })
 
-  it('a rejected dispatch changes nothing and notifies nobody', () => {
+  it('a rejected dispatch changes nothing and only tells rejection listeners', () => {
     const st = createGameStore({ seed: 3 })
     let n = 0
+    const rejected: string[] = []
     st.subscribe(() => n++)
     st.onEvents(() => n++)
+    const offR = st.onRejected((e, p) => rejected.push(`${p}:${e.code}`))
     const before = st.getState()
     const wrong = st.getState().order[1]
     const r = st.dispatch(wrong, firstLegal(st))
     expect(r).toMatchObject({ ok: false, error: { code: 'NOT_YOUR_TURN' } })
     expect(st.getState()).toBe(before)
     expect(n).toBe(0)
+    expect(rejected).toEqual([`${wrong}:NOT_YOUR_TURN`])
+    offR()
+    st.dispatch(wrong, firstLegal(st))
+    expect(rejected).toHaveLength(1)
     expect(st.replayFile().actions).toHaveLength(0)
+    st.onRejected((e) => rejected.push(e.code))
+    st.dispatch(st.getState().order[0], firstLegal(st))
+    expect(rejected).toHaveLength(1) // successful actions are not rejections
   })
 
   it('unsubscribe stops notifications', () => {

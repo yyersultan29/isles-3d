@@ -6,6 +6,7 @@ import { motion } from '../scene/motion'
 import { useViewport } from './layout'
 import { CompactHUD } from './CompactHUD'
 import { GameDialogs } from './Dialogs'
+import { Notices } from './Notices'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
 import { setDevOpen, setPanel, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeOpen } from '../store/ui'
 import type { Resource } from '../game'
@@ -453,6 +454,7 @@ export const HUD = memo(function HUD() {
           </IconButton>
         </div>
         <PhaseBanner className="absolute left-1/2 top-[14px] -translate-x-1/2 whitespace-nowrap" />
+        <Notices className="absolute left-1/2 top-[62px] w-[640px] -translate-x-1/2" />
         <Players />
         <DiceArea />
         <ResourceCards />

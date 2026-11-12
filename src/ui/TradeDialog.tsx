@@ -25,9 +25,7 @@ const focusInto = (el: HTMLElement | null) => { if (!(document.activeElement as 
 export function useAct() {
   const store = useGameStore()
   return (player: PlayerId, action: Action) => {
-    const r = store.dispatch(player, action)
-    if (!r.ok) console.warn(`[trade] ${r.error.code}: ${r.error.message}`) // i18n messages come with G4.5
-    return r.ok
+    return store.dispatch(player, action).ok // a rejection shows as a notice (Notices.tsx)
   }
 }
 

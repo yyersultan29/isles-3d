@@ -4,6 +4,7 @@ import { Avatar, HexLogo } from './icons'
 import { AwardBadges, BuildRows, DevButton, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, useHand } from './HUD'
 import { useGameView } from './gameView'
 import { GameDialogs } from './Dialogs'
+import { Notices } from './Notices'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
 
 /**
@@ -90,6 +91,7 @@ export function CompactHUD() {
       <div className="absolute inset-x-[8px] flex justify-center" style={{ top: COMPACT_SAFE.top - PHASE_ROW + 2 }}>
         <PhaseBanner className="max-w-full truncate !px-[12px] !py-[5px] !text-[13px]" />
       </div>
+      <Notices className="absolute inset-x-[8px] [&>button]:!text-[13px]" style={{ top: COMPACT_SAFE.top + 4 }} />
 
       {/* ---------- bottom dock ---------- */}
       <div className="absolute inset-x-[8px] bottom-[8px] flex flex-col items-center gap-[8px]" style={{ height: COMPACT_SAFE.bottom - 8 }}>
