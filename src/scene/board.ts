@@ -1,5 +1,5 @@
 import { fbm, noise2, ridged, smoothstep, clamp, mulberry32 } from './noise'
-import { PORT_EDGES, STANDARD_FIXED, axialToScene, buildTopology, hexSides, sceneToAxial, type EdgeId, type PortKind, type Terrain, type TileId } from '../game'
+import { PORT_EDGES, STANDARD_FIXED, axialToScene, buildTopology, hexCorners, hexSides, sceneToAxial, type EdgeId, type PlayerId, type PortKind, type Terrain, type TileId, type VertexId } from '../game'
 
 export type Biome = 'forest' | 'wheat' | 'mountain' | 'pasture' | 'hills' | 'desert'
 export type Player = 'red' | 'blue' | 'white' | 'orange'
@@ -259,7 +259,8 @@ export const VERTICES: [number, number][] = (() => {
 
 // ---------- players ----------
 
-export interface Building { player: Player; tile: [number, number]; corner: number; city: boolean }
+/** `turn` adds a small extra yaw so neighbouring houses don't all face the same way. */
+export interface Building { player: Player; tile: [number, number]; corner: number; city: boolean; turn?: number }
 export interface Road { player: Player; tile: [number, number]; edge: number }
 
 export const BUILDINGS: Building[] = [
@@ -290,6 +291,42 @@ export const ROADS: Road[] = [
   { player: 'orange', tile: [4, 1], edge: 5 },
   { player: 'orange', tile: [3, 2], edge: 1 },
 ]
+
+/** Seat colours (G4.2c): engine players p1–p4 in the scene's piece palette. */
+export const PLAYER_COLOR_OF: Record<PlayerId, Player> = { p1: 'red', p2: 'blue', p3: 'white', p4: 'orange' }
+
+const TOPO = buildTopology()
+const hash = (str: string) => { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 0x01000193) >>> 0; return h }
+
+/** Engine vertex → scene (tile row/col, corner k), using the first hex that has it as a corner. */
+export function vertexToScene(v: VertexId): { tile: [number, number]; corner: number } {
+  const [tile] = TOPO.vertexTiles[v]
+  const [q, r] = tile.split(',').map(Number)
+  return { tile: axialToScene(q, r), corner: hexCorners(q, r).indexOf(v) }
+}
+
+/** Engine edge → scene (tile row/col, side k). */
+export function edgeToScene(e: EdgeId): { tile: [number, number]; edge: number } {
+  const [tile] = TOPO.edgeTiles[e]
+  const [q, r] = tile.split(',').map(Number)
+  return { tile: axialToScene(q, r), edge: hexSides(q, r).indexOf(e) }
+}
+
+/** Engine buildings and roads as scene pieces, in canonical id order so the result is stable. */
+export function scenePieces(
+  buildings: Readonly<Partial<Record<VertexId, { owner: PlayerId; type: 'settlement' | 'city' }>>>,
+  roads: Readonly<Partial<Record<EdgeId, PlayerId>>>,
+): { buildings: Building[]; roads: Road[] } {
+  const bs = (Object.keys(buildings) as VertexId[]).sort().flatMap((v) => {
+    const b = buildings[v]
+    return b ? [{ ...vertexToScene(v), player: PLAYER_COLOR_OF[b.owner], city: b.type === 'city', turn: hash(v) % 2 }] : []
+  })
+  const rs = (Object.keys(roads) as EdgeId[]).sort().flatMap((e) => {
+    const o = roads[e]
+    return o ? [{ ...edgeToScene(e), player: PLAYER_COLOR_OF[o] }] : []
+  })
+  return { buildings: bs, roads: rs }
+}
 
 export const PLAYER_COLORS: Record<Player, { wall: string; roof: string }> = {
   red: { wall: '#c8302a', roof: '#8e1b17' },

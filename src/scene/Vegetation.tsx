@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { TILES, Tile, tileHeight, hexDist, corner, tileAt, BUILDINGS, ROADS, HARBORS, islandRadius, WATER_Y, EDGES, findTile } from './board'
+import { TILES, Tile, tileHeight, hexDist, corner, tileAt, BUILDINGS, ROADS, HARBORS, islandRadius, WATER_Y, EDGES, VERTICES, findTile, BOARD_MODE } from './board'
 import { mulberry32, noise2, fbm } from './noise'
 import { pineGeometry, broadleafGeometry, bushGeometry, rockGeometry, wheatGeometry, grassTuftGeometry, sheepGeometries } from './models'
 import { addWind } from './shaders'
@@ -12,14 +12,20 @@ export interface Inst { x: number; y: number; z: number; s: number; ry: number; 
 
 // ---------- exclusion: keep props off buildings / roads / harbours ----------
 const blockers: [number, number, number][] = []
-for (const b of BUILDINGS) {
-  const [x, z] = corner(tileAt(...b.tile), b.corner)
-  blockers.push([x, z, b.city ? 0.3 : 0.24])
-}
-for (const r of ROADS) {
-  const t = tileAt(...r.tile)
-  const a = corner(t, r.edge), b = corner(t, (r.edge + 1) % 6)
-  for (let i = 0; i <= 4; i++) blockers.push([a[0] + (b[0] - a[0]) * (i / 4), a[1] + (b[1] - a[1]) * (i / 4), 0.12])
+if (BOARD_MODE === 'demo') {
+  for (const b of BUILDINGS) {
+    const [x, z] = corner(tileAt(...b.tile), b.corner)
+    blockers.push([x, z, b.city ? 0.3 : 0.24])
+  }
+  for (const r of ROADS) {
+    const t = tileAt(...r.tile)
+    const a = corner(t, r.edge), b = corner(t, (r.edge + 1) % 6)
+    for (let i = 0; i <= 4; i++) blockers.push([a[0] + (b[0] - a[0]) * (i / 4), a[1] + (b[1] - a[1]) * (i / 4), 0.12])
+  }
+} else {
+  // G4.2c: in a game any vertex may get a city and any edge a road, so keep props off all of them
+  for (const [x, z] of VERTICES) blockers.push([x, z, 0.3])
+  for (const { a, b } of EDGES) for (let i = 1; i < 4; i++) blockers.push([a[0] + (b[0] - a[0]) * (i / 4), a[1] + (b[1] - a[1]) * (i / 4), 0.12])
 }
 for (const h of HARBORS) {
   const t = tileAt(...h.tile)

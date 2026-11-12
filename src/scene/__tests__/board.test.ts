@@ -1,7 +1,7 @@
 // G4.2a: the scene draws exactly the engine's standard-fixed board.
 import { describe, expect, it } from 'vitest'
-import { buildTopology, createGame, hexCorners, sceneToAxial, PORT_EDGES, STANDARD_FIXED, type TileId } from '../../game'
-import { BOARD_MODE, HARBORS, PORT_HARBOR_KIND, TERRAIN_BIOME, TILES, engineLayout, tileByAxial } from '../board'
+import { apply, buildTopology, createGame, legalActions, type Action, hexCorners, sceneToAxial, PORT_EDGES, STANDARD_FIXED, type TileId } from '../../game'
+import { BOARD_MODE, HARBORS, PLAYER_COLOR_OF, corner, edgeToScene, scenePieces, tileAt, vertexToScene, PORT_HARBOR_KIND, TERRAIN_BIOME, TILES, engineLayout, tileByAxial } from '../board'
 
 describe('G4.2a scene board from the engine', () => {
   it('defaults to the game board outside a browser query', () => {
@@ -50,5 +50,45 @@ describe('G4.2a scene board from the engine', () => {
       expect(h.kind).toBe(PORT_HARBOR_KIND[port.kind])
       expect(h.ratio).toBe(port.kind === 'generic' ? '3:1' : '2:1')
     })
+  })
+
+  it('G4.2c: every engine vertex and edge lands on the same scene point from any hex that has it', () => {
+    const topo = buildTopology()
+    const near = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-9
+    for (const v of topo.vertices) {
+      const { tile, corner: k } = vertexToScene(v)
+      const p = corner(tileAt(...tile), k)
+      for (const t of topo.vertexTiles[v]) {
+        const [q, r] = t.split(',').map(Number)
+        const other = tileByAxial(t as TileId)!
+        expect(near(corner(other, hexCorners(q, r).indexOf(v)), p)).toBe(true)
+      }
+    }
+    for (const e of topo.edges) {
+      const { tile, edge: k } = edgeToScene(e)
+      const t = tileAt(...tile)
+      const ends = [corner(t, k), corner(t, (k + 1) % 6)]
+      const [va, vb] = topo.edgeVertices[e].map((v) => { const s = vertexToScene(v); return corner(tileAt(...s.tile), s.corner) })
+      expect((near(ends[0], va) && near(ends[1], vb)) || (near(ends[0], vb) && near(ends[1], va))).toBe(true)
+    }
+  })
+
+  it('G4.2c: pieces after a full setup convert to scene pieces with seat colours', () => {
+    const r = createGame({ seed: 5 })
+    if (!r.ok) throw new Error(r.error.message)
+    let s = r.state
+    while (s.phase.kind === 'setup') {
+      const p = s.order[s.active]
+      const res = apply(s, p, legalActions(s, p)[0] as Action)
+      if (!res.ok) throw new Error(res.error.code)
+      s = res.state
+    }
+    const pieces = scenePieces(s.buildings, s.roads)
+    expect(pieces.buildings).toHaveLength(8)
+    expect(pieces.roads).toHaveLength(8)
+    for (const b of pieces.buildings) expect(b.city).toBe(false)
+    const colours = new Set(Object.values(s.buildings).map((b) => PLAYER_COLOR_OF[b!.owner]))
+    expect(new Set(pieces.buildings.map((b) => b.player))).toEqual(colours)
+    expect(scenePieces({}, {})).toEqual({ buildings: [], roads: [] })
   })
 })

@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { animTime } from './motion'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { TILES, tileHeight, corner, tileAt, tileByAxial, BOARD_MODE, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight } from './board'
+import { TILES, tileHeight, corner, tileAt, tileByAxial, BOARD_MODE, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight, scenePieces, type Building, type Road } from './board'
 import { tokenTexture } from './textures'
 import { StaticBatch } from './StaticBatch'
 import { mulberry32 } from './noise'
@@ -342,22 +342,41 @@ function Settlement({ player, city }: { player: Player; city: boolean }) {
   )
 }
 
+const DEMO_PIECES = { buildings: BUILDINGS.map((b, i) => ({ ...b, turn: i % 2 })), roads: ROADS }
+
+/**
+ * The pieces on the board (G4.2c): engine state in a game, the showcase set on `?board=demo`.
+ * Recomputed only when the engine replaces `buildings` or `roads` (on an action, never per frame).
+ */
+export function usePieces(): { buildings: Building[]; roads: Road[] } {
+  const buildings = useGame((s) => s.buildings)
+  const roads = useGame((s) => s.roads)
+  return useMemo(() => (BOARD_MODE === 'demo' ? DEMO_PIECES : scenePieces(buildings, roads)), [buildings, roads])
+}
+
+/** Stable key of a piece set: StaticBatch re-merges when it changes. */
+const piecesKey = ({ buildings, roads }: { buildings: Building[]; roads: Road[] }) =>
+  buildings.map((b) => `${b.tile}:${b.corner}:${b.player}:${b.city ? 'c' : 's'}`).join('|') + '/' + roads.map((r) => `${r.tile}:${r.edge}:${r.player}`).join('|')
+
+const buildingYaw = (b: Building, x: number, z: number) => Math.atan2(x, z) + Math.PI / 2 + (b.turn ?? 0) * 0.3
+
 export function Buildings() {
+  const pieces = usePieces()
+  // a new key remounts the batch, so the merged meshes always match the current pieces
   return (
-    <StaticBatch>
-      {BUILDINGS.map((b, i) => {
+    <StaticBatch key={piecesKey(pieces)}>
+      {pieces.buildings.map((b, i) => {
         const t = tileAt(...b.tile)
         const [x, z] = corner(t, b.corner)
         // face roughly toward the board centre for a pleasing composition
-        const ry = Math.atan2(x, z) + Math.PI / 2 + (i % 2) * 0.3
         return (
-          <group key={i} position={[x, 0.02, z]} rotation-y={ry} scale={b.city ? 1.38 : 1.6}>
+          <group key={i} position={[x, 0.02, z]} rotation-y={buildingYaw(b, x, z)} scale={b.city ? 1.38 : 1.6}>
             <Settlement player={b.player} city={b.city} />
           </group>
         )
       })}
-      <Roads />
-      <Lanterns />
+      <Roads roads={pieces.roads} />
+      <Lanterns buildings={pieces.buildings} />
     </StaticBatch>
   )
 }
@@ -366,11 +385,11 @@ export function Buildings() {
  * World positions of the chimney tops. This mirrors the transforms in Buildings, Settlement and
  * Chimney above, so keep the numbers in sync when those change.
  */
-export function chimneyTops(): [number, number, number][] {
-  return BUILDINGS.map((b, i) => {
+export function chimneyTops(buildings: Building[]): [number, number, number][] {
+  return buildings.map((b) => {
     const t = tileAt(...b.tile)
     const [x, z] = corner(t, b.corner)
-    const ry = Math.atan2(x, z) + Math.PI / 2 + (i % 2) * 0.3
+    const ry = buildingYaw(b, x, z)
     const S = b.city ? 1.38 : 1.6
     // local chimney-top position inside the settlement group (cap sits 0.089 above the chimney origin)
     const [lx, ly, lz] = b.city ? [-0.05 - 0.045, 0.012 + 0.016 + 0.13 + 0.04 + 0.09, 0.06] : [0.035, 0.012 + 0.016 + 0.11 + 0.035 + 0.09, -0.05]
@@ -379,15 +398,15 @@ export function chimneyTops(): [number, number, number][] {
   })
 }
 
-function Roads() {
+function Roads({ roads }: { roads: Road[] }) {
   const items = useMemo(
     () =>
-      ROADS.map((r) => {
+      roads.map((r) => {
         const t = tileAt(...r.tile)
         const a = corner(t, r.edge), b = corner(t, (r.edge + 1) % 6)
         return { a, b, mats: playerMats(r.player) }
       }),
-    [],
+    [roads],
   )
   return (
     <group>
@@ -415,15 +434,15 @@ function Roads() {
 const LANTERN_POST = new THREE.MeshStandardMaterial({ color: '#2c2622' })
 
 /** Small lantern posts next to cities; flickering warm light. */
-function Lanterns() {
+function Lanterns({ buildings }: { buildings: Building[] }) {
   const spots = useMemo(
     () =>
-      BUILDINGS.filter((b) => b.city).map((b) => {
+      buildings.filter((b) => b.city).map((b) => {
         const [x, z] = corner(tileAt(...b.tile), b.corner)
         const ox = x + 0.2, oz = z + 0.12
         return [ox, groundHeight(ox, oz), oz] as const
       }),
-    [],
+    [buildings],
   )
   const mats = useRef<THREE.MeshStandardMaterial[]>([])
   useFrame(() => {

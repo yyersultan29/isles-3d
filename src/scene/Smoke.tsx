@@ -1,19 +1,22 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { chimneyTops } from './Pieces'
+import { chimneyTops, usePieces } from './Pieces'
 import { animTime, motion } from './motion'
 
 const PUFFS = 10 // per chimney; enough overlap that the column reads as a wisp, not beads
 const LIFE = 5.5 // seconds a puff takes to rise and fade
 const RISE = 0.32 // world units a puff climbs over its life
+/** 4 players × (5 settlements + 4 cities) on the board at most */
+const MAX_CHIMNEYS = 36
 
 /**
  * Thin chimney smoke: one instanced mesh of soft, low-poly puffs that rise, drift downwind
  * (+x, matching the foliage wind) and shrink away. No per-frame allocations.
  */
 export function Smoke() {
-  const tops = useMemo(() => chimneyTops(), [])
+  const { buildings } = usePieces()
+  const tops = useMemo(() => chimneyTops(buildings).slice(0, MAX_CHIMNEYS), [buildings])
   const geo = useMemo(() => new THREE.IcosahedronGeometry(1, 1), [])
   const mat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: '#e9e4dc', roughness: 1, transparent: true, opacity: 0.3, depthWrite: false }),
@@ -43,7 +46,8 @@ export function Smoke() {
         m.setMatrixAt(k++, o.matrix)
       }
     }
+    m.count = k
     m.instanceMatrix.needsUpdate = true
   })
-  return <instancedMesh ref={ref} args={[geo, mat, tops.length * PUFFS]} frustumCulled={false} renderOrder={3} />
+  return <instancedMesh ref={ref} args={[geo, mat, MAX_CHIMNEYS * PUFFS]} frustumCulled={false} renderOrder={3} />
 }
