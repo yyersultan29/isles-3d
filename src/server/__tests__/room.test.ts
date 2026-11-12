@@ -53,7 +53,7 @@ describe('Room lobby', () => {
   it('a token retakes its seat on a new connection; a wrong token joins as spectator', () => {
     const { room, tokens } = fullRoom()
     const left = room.leave('b')
-    expect(one(left, 'a', 'lobby').seats.find((s) => s.id === 'p2')).toEqual({ id: 'p2', taken: true, connected: false })
+    expect(one(left, 'a', 'lobby').seats.find((s) => s.id === 'p2')).toEqual({ id: 'p2', taken: true, connected: false, absent: false })
     expect(one(send(room, 'b2', { type: 'join', roomId: 'r1', token: tokens.b }), 'b2', 'welcome').you).toBe('p2')
     expect(one(send(room, 'x', { type: 'join', roomId: 'r1', token: 'deadbeef' }), 'x', 'welcome').you).toBe('spectator')
     expect(one(send(room, 'y', { type: 'join', roomId: 'other' }), 'y', 'error').code).toBe('NO_ROOM')
@@ -193,7 +193,7 @@ describe('Room G5.4: presence, takeover, resume numbering', () => {
     const { room, tokens } = fullRoom()
     send(room, 'a', { type: 'start' })
     const left = room.leave('b')
-    expect(one(left, 'a', 'presence').seats.find((s) => s.id === 'p2')).toEqual({ id: 'p2', taken: true, connected: false })
+    expect(one(left, 'a', 'presence').seats.find((s) => s.id === 'p2')).toEqual({ id: 'p2', taken: true, connected: false, absent: false })
     expect(left.some((o) => o.msg.type === 'lobby')).toBe(false)
     const back = send(room, 'b2', { type: 'join', roomId: 'r1', token: tokens.b })
     expect(to(back, 'b2').map((m) => m.type)).toEqual(['welcome', 'snapshot', 'presence'])
@@ -209,7 +209,7 @@ describe('Room G5.4: presence, takeover, resume numbering', () => {
     // the old connection no longer speaks for the seat
     expect(one(send(room, 'a', { type: 'action', clientSeq: 0, action: { type: 'END_TURN' } }), 'a', 'error').code).toBe('NOT_JOINED')
     // presence still shows the seat as connected (through a2)
-    expect(one(out, 'b', 'presence').seats[0]).toEqual({ id: 'p1', taken: true, connected: true })
+    expect(one(out, 'b', 'presence').seats[0]).toEqual({ id: 'p1', taken: true, connected: true, absent: false })
   })
 
   it('a rejoin learns the next clientSeq, so a reloaded client is not mistaken for an old retry', () => {

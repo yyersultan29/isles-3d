@@ -9,6 +9,7 @@ import { focusRing, panel } from './HUD'
 import { SEATS } from './gameView'
 import { useOnline, useSession } from '../store/GameProvider'
 import { inviteLink } from '../net/connect'
+import type { TimerPreset } from '../net/protocol'
 import { COMPACT_SAFE, useViewport } from './layout'
 
 const gold = `h-[42px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[26px] font-display text-[18px] font-semibold text-[#3a2208] disabled:cursor-not-allowed disabled:grayscale-[0.7] disabled:brightness-75 ${focusRing}`
@@ -75,6 +76,8 @@ export function Lobby() {
               ? <>Your seat is open in another tab or device. <a href={location.href} className={`underline ${focusRing}`}>Play here</a></>
               : session.error?.startsWith('NO_ROOM')
               ? <>This game is no longer on the server (it was restarted). <a href="?online" className={`underline ${focusRing}`}>New room</a></>
+              : session.error?.startsWith('ABANDONED')
+              ? <>Nobody played for five minutes, so the room was closed. <a href="?online" className={`underline ${focusRing}`}>New room</a></>
               : <>Connection closed. <a href={location.href} className={`underline ${focusRing}`}>Reload</a> to rejoin your seat.</>}
           </p>
         ) : compact && h < 500 ? (
@@ -134,6 +137,7 @@ export function Lobby() {
                 )
               })}
             </ul>
+            <TimerChoice host={session.host} preset={session.preset} onChange={(t) => online.setTimer(t)} />
             {session.host && (
               <div className="mt-[14px] flex justify-end">
                 <button ref={start} disabled={!allTaken} onClick={() => online.start()} className={gold}>Start game</button>
@@ -144,5 +148,29 @@ export function Lobby() {
       </section>
     </div>,
     document.body,
+  )
+}
+
+const PRESETS: { id: TimerPreset; label: string; hint: string }[] = [
+  { id: 'relaxed', label: 'Relaxed', hint: '3 min per turn' },
+  { id: 'normal', label: 'Normal', hint: '90 s per turn' },
+  { id: 'fast', label: 'Fast', hint: '45 s per turn' },
+  { id: 'off', label: 'Off', hint: 'no time limit' },
+]
+
+/** G5.5: the turn timer; the host picks it, everyone sees it. */
+function TimerChoice({ host, preset, onChange }: { host: boolean; preset: TimerPreset; onChange: (t: TimerPreset) => void }) {
+  const current = PRESETS.find((p) => p.id === preset)!
+  if (!host) return <p className="mt-[10px] text-[13px] text-[#a9a49b]">Turn timer: <span className="font-semibold text-[#ece8e0]">{current.label}</span> ({current.hint})</p>
+  return (
+    <fieldset className="mt-[12px]">
+      <legend className="mb-[6px] text-[13px] text-[#a9a49b]">Turn timer <span className="text-[#ece8e0]">· {current.hint}</span></legend>
+      <div role="radiogroup" aria-label="Turn timer" className="grid grid-cols-4 gap-[6px]">
+        {PRESETS.map((p) => (
+          <button key={p.id} role="radio" aria-checked={p.id === preset} title={p.hint} onClick={() => onChange(p.id)}
+            className={`h-[32px] rounded-[8px] text-[13px] font-semibold ${p.id === preset ? 'bg-[#f2b544] text-[#2a1a06]' : 'bg-white/10 text-white hover:bg-white/20'} ${focusRing}`}>{p.label}</button>
+        ))}
+      </div>
+    </fieldset>
   )
 }

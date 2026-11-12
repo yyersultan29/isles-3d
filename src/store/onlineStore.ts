@@ -13,7 +13,7 @@
 
 import { ENGINE_VERSION, RESOURCE_ORDER, createGame, validate } from '../game'
 import type { Action, EngineError, GameEvent, GameState, LegalAction, PlayerId, PlayerState, PublicGameState, ReplayFile, Result, ResourceCounts, Viewer } from '../game'
-import type { ClientMessage, SeatInfo, ServerMessage } from '../net/protocol'
+import type { ClientMessage, SeatInfo, ServerMessage, TimerInfo, TimerPreset } from '../net/protocol'
 import type { GameEventListener, GameStore, RejectionListener } from './gameStore'
 
 /** The part of WebSocket the store uses: the browser's WebSocket and `ws` both fit. */
@@ -41,6 +41,10 @@ export interface OnlineSession {
   legal: LegalAction[]
   /** the last room-level error (NO_ROOM, NOT_HOST, …) */
   error: string | null
+  /** G5.5: the turn-timer preset (set by the host in the lobby) */
+  preset: TimerPreset
+  /** G5.5: the running turn timer, with `deadline` on this machine's clock (Date.now), or null */
+  timer: (Omit<TimerInfo, 'remainingMs'> & { deadline: number }) | null
 }
 
 export interface OnlineStore extends GameStore {
@@ -52,6 +56,8 @@ export interface OnlineStore extends GameStore {
   close(): void
   /** skip the wait before the next reconnect attempt (a "Retry now" button) */
   reconnectNow(): void
+  /** the host picks the turn-timer preset in the lobby */
+  setTimer(preset: TimerPreset): void
 }
 
 export interface OnlineOptions {
@@ -66,6 +72,8 @@ export interface OnlineOptions {
 }
 
 const OPEN = 1
+/** the server sends the time left; the deadline is kept on this machine's clock (no clock sync needed) */
+const localTimer = (t: TimerInfo | null): OnlineSession['timer'] => (t ? { seats: t.seats, kind: t.kind, totalMs: t.totalMs, deadline: Date.now() + t.remainingMs } : null)
 const zero = (): ResourceCounts => ({ lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 })
 
 /** an opaque hand of `n` cards; holds `must` first when it is known to (an accepted trade) */
@@ -112,7 +120,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
   let seq = -1
   let clientSeq = 0
   const sent = new Map<number, Action>()
-  const session: OnlineSession = { status: 'connecting', roomId: o.roomId, me: null, host: false, token: o.token ?? null, seats: [], legal: [], error: null }
+  const session: OnlineSession = { status: 'connecting', roomId: o.roomId, me: null, host: false, token: o.token ?? null, seats: [], legal: [], error: null, preset: 'normal', timer: null }
   let sessionSnap = { ...session }
   const listeners = new Set<() => void>()
   const eventListeners = new Set<GameEventListener>()
@@ -153,6 +161,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
         session.status = 'lobby'
         session.seats = m.seats
         session.host = !!session.me && session.me === m.host
+        session.preset = m.timer
         sessionChanged()
         return
       case 'presence':
@@ -166,6 +175,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
         gen++
         session.status = 'playing'
         session.legal = m.legal
+        session.timer = localTimer(m.timer)
         sessionChanged()
         notify(null)
         return
@@ -178,6 +188,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
         seq = m.seq
         state = shadowState(m.view)
         session.legal = m.legal
+        session.timer = localTimer(m.timer)
         sessionChanged()
         notify(inOrder ? m.events : null)
         return
@@ -191,7 +202,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
         session.error = `${m.code}: ${m.message}`
         // two tabs must not take the seat back and forth; a room the server no longer has (it
         // restarted: rooms live in memory) won't come back by retrying
-        if (m.code === 'REPLACED' || m.code === 'NO_ROOM') { stopped = true; ws.close() }
+        if (m.code === 'REPLACED' || m.code === 'NO_ROOM' || m.code === 'ABANDONED') { stopped = true; ws.close() }
         sessionChanged()
         return
     }
@@ -251,6 +262,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
     onSession(l) { sessionListeners.add(l); return () => { sessionListeners.delete(l) } },
     start: () => send({ type: 'start' }),
     close: () => { stopped = true; if (timer) clearTimeout(timer); ws.close() },
+    setTimer: (preset) => send({ type: 'settings', timer: preset }),
     reconnectNow: () => { if (timer) { clearTimeout(timer); connect() } },
   }
 }

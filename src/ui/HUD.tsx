@@ -9,6 +9,7 @@ import { GameDialogs } from './Dialogs'
 import { Notices } from './Notices'
 import { Victory } from './Victory'
 import { usePrivacy } from './PassDevice'
+import { TurnClock } from './TurnClock'
 import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
 import { setDevOpen, setPanel, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeOpen } from '../store/ui'
@@ -112,8 +113,10 @@ export const CardsIco = () => (
   </svg>
 )
 
-/** G5.4: an online player without a live connection. */
-export const AwayBadge = () => <span title="Disconnected" className="rounded-[4px] bg-white/10 px-[4px] text-[11px] font-semibold text-[#d6d2ca] ring-1 ring-white/25">away</span>
+/** G5.4: an online player without a live connection; G5.5: one the server is playing for (absent). */
+export const AwayBadge = ({ auto = false }: { auto?: boolean }) => auto
+  ? <span title="Played automatically until they act again" className="rounded-[4px] bg-[#f2b544]/15 px-[4px] text-[11px] font-semibold text-[#f2cf84] ring-1 ring-[#f2b544]/40">auto</span>
+  : <span title="Disconnected" className="rounded-[4px] bg-white/10 px-[4px] text-[11px] font-semibold text-[#d6d2ca] ring-1 ring-white/25">away</span>
 
 /** Small award badges (Longest Road / Largest Army) shown on a player card. */
 export function AwardBadges({ seat }: { seat: SeatView }) {
@@ -127,7 +130,7 @@ export function AwardBadges({ seat }: { seat: SeatView }) {
 }
 
 export const seatLabel = (p: SeatView) =>
-  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}`
+  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}${p.auto ? ', played automatically' : ''}`
 
 function Players() {
   const { seats } = useGameView()
@@ -145,7 +148,7 @@ function Players() {
             <Avatar i={p.avatar} className="h-full w-full" />
           </div>
           <div className="flex-1">
-            <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}<AwardBadges seat={p} />{p.away && <AwayBadge />}</div>
+            <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}<AwardBadges seat={p} />{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
             <div className="flex items-center gap-[22px] text-[14px] text-[#ece8e0] leading-none">
               <span className="flex items-center gap-[5px]"><Trophy />{p.vp}</span>
               <span className="flex items-center gap-[5px]"><CardsIco />{p.cards}</span>
@@ -166,11 +169,13 @@ export function PhaseBanner({ className = '' }: { className?: string }) {
   const rolled = dice && active && (phaseKind === 'actions' || phaseKind === 'discard' || phaseKind === 'moveRobber' || phaseKind === 'steal')
     ? `${active.name} rolled ${dice[0] + dice[1]} (${dice[0]} and ${dice[1]}). ` : ''
   return (
-    <div role="status" aria-live="polite" className={`pointer-events-none rounded-full px-[18px] py-[7px] text-[15px] font-semibold text-[#f4efe6] ${panel} ${className}`}
+    <div role="status" aria-live="polite" className={`pointer-events-none flex items-center rounded-full px-[18px] py-[7px] text-[15px] font-semibold text-[#f4efe6] ${panel} ${className}`}
       style={active ? { boxShadow: `inset 0 0 0 1.5px ${active.color}aa, 0 8px 22px rgba(0,0,0,.5)` } : undefined}>
-      {active && <span aria-hidden className="mr-[8px] inline-block h-[10px] w-[10px] rounded-full align-middle" style={{ background: active.color }} />}
+      {active && <span aria-hidden className="mr-[8px] inline-block h-[10px] w-[10px] shrink-0 rounded-full" style={{ background: active.color }} />}
       {rolled && <span className="sr-only">{rolled}</span>}
-      {phase}
+      {/* a long phase line shortens; the turn clock after it always stays visible */}
+      <span className="min-w-0 truncate">{phase}</span>
+      <TurnClock />
     </div>
   )
 }

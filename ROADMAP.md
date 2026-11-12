@@ -313,7 +313,7 @@ Steps (each verified and reviewed before the next):
   - [x] G5.3a Online store: the GameStore contract over a socket, fed by server views (no UI yet).
   - [x] G5.3b Seat-aware HUD, lobby screen, join by link; hot-seat-only parts (pass screen, autosave) off online.
 - [x] G5.4 Reconnect and presence (seat token, snapshot resync on a `seq` gap).
-- [ ] G5.5 Turn timers and absent-player fallback as logged actions (§20).
+- [x] G5.5 Turn timers and absent-player fallback as logged actions (§20).
 - [ ] G5.6 Hardening: rate limits, logging, error handling, accessibility QA.
 - [ ] G5.7 Hosting decision, deployment and a load test.
 
@@ -421,6 +421,32 @@ Steps (each verified and reviewed before the next):
 - **Regression.** A full online UI game (seed 7) ended on turn 125 after 654 actions with 0 rejections, 0 hand mismatches and 0 live controls out of turn. The result differs from G5.3b because the bot's choices depend on timing in the browser. The hot-seat playthrough with seed 2024 still replays the G4 exit game exactly (turn 194, 939 actions, 0 rejections, 0 hand mismatches); a first attempt was cut short by the Vite dev server reloading the page when ROADMAP.md was edited mid-run, not by the app. Screenshots are in `screenshots/milestones/g5.4/`.
 - **Not yet.** The game waits indefinitely for an away player: turn timers and absent-player fallback are G5.5. Rooms are not persisted across a server restart. Real devices were not tried.
 
+**G5.5 result (2026-11-12):** the game no longer waits forever for a slow or missing player.
+- **Timers (§20).** The server owns the clock.
+  - At `normal`: placement 60 s, roll 15 s, discard 30 s, robber 30 s, actions 90 s. Each completed trade adds 15 s, up to 180 s.
+  - The host picks a preset in the lobby: Relaxed (×2), Normal, Fast (×0.5) or Off. Others see the choice as text.
+  - Snapshots and updates carry `remainingMs`, and the client turns it into a local deadline.
+  - The phase banner shows "· m:ss" next to the phase, and the clock is never truncated. It turns red when the decision is yours and 10 s or less remain, and screen readers hear "10 seconds left" once.
+  - The actions clock survives a trade proposal and the robber interlude.
+- **Timeout actions** are ordinary, logged engine actions (`src/server/timeouts.ts`). Random picks use a separate RNG, so the game's dice are untouched.
+  - Setup: the legal vertex with the most pips. Roll: roll. Discard: random cards.
+  - Robber: the best tile touching the public-VP leader. Steal: a random victim.
+  - Actions: end the turn; an addressed player declines the trade.
+- **Absent players.**
+  - A seat becomes absent after two timed-out turns in a row, or after more than 60 s without a connection.
+  - An absent seat's decisions are taken at once, one per tick; the HUD marks it "auto" in amber, including the screen-reader label. Its own next move clears it.
+  - With no human present nothing is auto-played, and an empty room is closed as `ABANDONED` after 5 minutes.
+- **Tests:** 14 new, 222 in total.
+  - Every timeout action is legal across a whole bot game. Limits and presets are checked.
+  - Room on a fake clock: placement timeout, Off and Fast, host-only preset, the 15 s trade bonus, absent by streak and by disconnect, abandonment.
+  - A full game with three absent seats and one human finishes.
+- **Browser** (`npx tsx scripts/online-timers.mts`, its own server on 8788 with a script-controlled clock), at 1440×900 and 390×844:
+  - The guest sees the host's Fast choice. The first placement shows 30 s, and the urgent clock is red.
+  - A timeout makes the move. A closed tab is shown as "auto" and played automatically, and it returns with "auto" cleared.
+  - 0 console errors.
+- **Regression.** A full online UI game (seed 7) ended on turn 165 after 904 actions with 0 rejections, 0 hand mismatches and the same victory screen in every tab. The hot-seat seed 2024 game still replays exactly (turn 194, 939 actions); its banner looks as before. Screenshots are in `screenshots/milestones/g5.5/`.
+- **Not yet.** No rate limits or room limits (G5.6). Rooms are not persisted across a server restart. Real devices were not tried.
+
 ---
 
 ## 6. Suggested code organization (adapt to actual repo)
@@ -473,7 +499,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
-| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, G5.4 | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; `GAME_DESIGN.md` v1.2 |
+| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, G5.5 | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -481,4 +507,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** review G5.4, then G5.5 (turn timers and absent-player fallback, §20) or G5.6 (rate limits and room limits) before any public hosting.
+**Recommended next action:** review G5.5, then G5.6 (rate limits, room limits, logging and hardening) before any public hosting.

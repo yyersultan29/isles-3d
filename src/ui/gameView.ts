@@ -36,6 +36,8 @@ export interface SeatView {
   active: boolean
   /** online: the seat's player has no live connection (G5.4) */
   away?: boolean
+  /** online: the server plays this seat's decisions until its player acts again (G5.5) */
+  auto?: boolean
 }
 
 const count = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0)
@@ -113,7 +115,8 @@ export function useGameView() {
     const v = gameView(s, me)
     if (!seatsOnline?.length) return v
     const away = new Set(seatsOnline.filter((x) => x.taken && !x.connected).map((x) => x.id))
-    return { ...v, seats: v.seats.map((p) => (away.has(p.id) ? { ...p, away: true } : p)) }
+    const auto = new Set(seatsOnline.filter((x) => x.absent).map((x) => x.id))
+    return { ...v, seats: v.seats.map((p) => (away.has(p.id) || auto.has(p.id) ? { ...p, away: away.has(p.id), auto: auto.has(p.id) } : p)) }
   }, [s, me, seatsOnline])
 }
 

@@ -18,12 +18,24 @@ export type ClientMessage =
   | { type: 'join'; roomId: string; token?: string; claim?: boolean; resume?: string[] }
   /** the host starts the game once every seat is taken */
   | { type: 'start' }
+  /** G5.5: the host picks the turn-timer preset before the start */
+  | { type: 'settings'; timer: TimerPreset }
   /** an intent; `clientSeq` (strictly increasing per seat) makes retries idempotent */
   | { type: 'action'; clientSeq: number; action: Action }
 
 // ---------- server → client ----------
 
-export interface SeatInfo { id: PlayerId; taken: boolean; connected: boolean }
+/**
+ * `absent` (G5.5, §20): two turns timed out in a row or disconnected for over a minute; the
+ * server plays that seat's decisions at once with the timeout defaults until its player acts again
+ */
+export interface SeatInfo { id: PlayerId; taken: boolean; connected: boolean; absent: boolean }
+
+/** Turn-timer presets (§20): relaxed ×2, normal ×1, fast ×0.5, off */
+export type TimerPreset = 'relaxed' | 'normal' | 'fast' | 'off'
+
+/** The running turn timer: who owes the decision and the time left when the message was sent. */
+export interface TimerInfo { seats: PlayerId[]; kind: 'placement' | 'roll' | 'discard' | 'robber' | 'actions'; remainingMs: number; totalMs: number }
 
 export type ServerMessage =
   /**
@@ -33,20 +45,21 @@ export type ServerMessage =
    */
   | { type: 'welcome'; roomId: string; you: Viewer; token?: string; host: boolean; nextSeq: number }
   /** seats before the game starts (and on every change while in the lobby) */
-  | { type: 'lobby'; seats: SeatInfo[]; host: PlayerId | null }
+  | { type: 'lobby'; seats: SeatInfo[]; host: PlayerId | null; timer: TimerPreset }
   /** G5.4: who is connected, after the start (on every join and leave) */
   | { type: 'presence'; seats: SeatInfo[] }
   /** the full view on start, join and reconnect */
-  | { type: 'snapshot'; seq: number; view: PublicGameState; legal: LegalAction[] }
+  | { type: 'snapshot'; seq: number; view: PublicGameState; legal: LegalAction[]; timer: TimerInfo | null }
   /** after each applied action; `seq` = actionCount, so a gap means resync */
-  | { type: 'update'; seq: number; events: GameEvent[]; view: PublicGameState; legal: LegalAction[] }
+  | { type: 'update'; seq: number; events: GameEvent[]; view: PublicGameState; legal: LegalAction[]; timer: TimerInfo | null }
   /** an intent the engine refused (or a malformed message); nothing changed */
   | { type: 'rejected'; clientSeq: number | null; error: EngineError }
   /** lobby or room errors outside the engine (unknown room, not the host, game not started) */
   | { type: 'error'; code: RoomErrorCode; message: string }
 
 /** REPLACED: the same seat joined from another connection; this one is closed (G5.4) */
-export type RoomErrorCode = 'NO_ROOM' | 'NOT_JOINED' | 'NOT_HOST' | 'NOT_READY' | 'ALREADY_STARTED' | 'NOT_STARTED' | 'SPECTATOR' | 'REPLACED'
+/** ABANDONED: nobody played for five minutes; the room is closed (G5.5, §20) */
+export type RoomErrorCode = 'NO_ROOM' | 'NOT_JOINED' | 'NOT_HOST' | 'NOT_READY' | 'ALREADY_STARTED' | 'NOT_STARTED' | 'SPECTATOR' | 'REPLACED' | 'ABANDONED'
 
 // ---------- validation of untrusted input ----------
 
@@ -74,6 +87,9 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       return { type: 'join', roomId: m.roomId, token: m.token as string | undefined, claim: m.claim as boolean | undefined, resume: m.resume as string[] | undefined }
     case 'start':
       return { type: 'start' }
+    case 'settings':
+      if (m.timer !== 'relaxed' && m.timer !== 'normal' && m.timer !== 'fast' && m.timer !== 'off') return null
+      return { type: 'settings', timer: m.timer }
     case 'action':
       if (!Number.isSafeInteger(m.clientSeq) || (m.clientSeq as number) < 0) return null
       if (!isObj(m.action) || typeof m.action.type !== 'string') return null

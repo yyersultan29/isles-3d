@@ -21,6 +21,8 @@ export interface ServerOptions {
   log?: (line: string) => void
   /** G5.4: ping every socket this often; one that missed the previous pong is dropped (default 15 s) */
   heartbeatMs?: number
+  /** G5.5: how often rooms advance their turn timers (default 250 ms) */
+  tickMs?: number
 }
 
 export interface RunningServer {
@@ -88,6 +90,14 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
     }
   }, o.heartbeatMs ?? 15000)
 
+  // G5.5: turn timers and absent players advance here; an abandoned room is dropped
+  const ticker = setInterval(() => {
+    for (const [id, room] of rooms) {
+      deliver(room.tick())
+      if (room.abandoned) { rooms.delete(id); log(`room ${id} abandoned`) }
+    }
+  }, o.tickMs ?? 250)
+
   wss.on('connection', (ws) => {
     const conn = `c${++nextConn}`
     sockets.set(conn, ws)
@@ -120,7 +130,7 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
   })
 
   return new Promise((resolve, reject) => {
-    http.once('error', (e) => { clearInterval(beat); reject(e) })
+    http.once('error', (e) => { clearInterval(beat); clearInterval(ticker); reject(e) })
     http.listen(o.port ?? 8787, o.host ?? '127.0.0.1', () => {
       const port = (http.address() as AddressInfo).port
       log(`listening on http://${o.host ?? '127.0.0.1'}:${port} (ws path /ws)`)
@@ -131,6 +141,7 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
         createRoom,
         close: () => new Promise<void>((done) => {
           clearInterval(beat)
+          clearInterval(ticker)
           for (const ws of sockets.values()) ws.terminate()
           wss.close(() => http.close(() => done()))
         }),
