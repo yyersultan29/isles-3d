@@ -8,6 +8,9 @@ import { createRng, pick } from '../../game/rng'
 import { RESOURCE_ORDER, legalActions, viewFor, type Action, type PlayerId } from '../../game'
 import { newGame, playSetup } from '../../game/__tests__/helpers'
 
+// bots answer at machine speed (hundreds of frames a second); the frame limit is tested on its own
+const BOT_SPEED = { msgBurst: Infinity, msgPerSecond: Infinity }
+
 let server: RunningServer | null = null
 const stores: OnlineStore[] = []
 afterEach(async () => { stores.splice(0).forEach((s) => s.close()); await server?.close(); server = null })
@@ -20,7 +23,7 @@ const key = (a: unknown) => JSON.stringify(a)
 const sameLegal = (a: unknown[], b: unknown[]) => expect(a.map(key).sort()).toEqual(b.map(key).sort())
 
 async function setup() {
-  server = await startServer({ port: 0, room: { settings: { boardPreset: 'standard-fixed' } } })
+  server = await startServer({ port: 0, limits: BOT_SPEED, room: { settings: { boardPreset: 'standard-fixed' } } })
   const room = server.createRoom()
   const url = `ws://127.0.0.1:${server.port}/ws`
   const connect = () => new WebSocket(url) as unknown as SocketLike
@@ -157,7 +160,7 @@ describe('online store over a real server', () => {
 describe('online store G5.4: reconnect', () => {
   const fast = { baseMs: 10, maxMs: 40 }
   async function started() {
-    server = await startServer({ port: 0, room: { settings: { boardPreset: 'standard-fixed' } } })
+    server = await startServer({ port: 0, limits: BOT_SPEED, room: { settings: { boardPreset: 'standard-fixed' } } })
     const room = server.createRoom()
     const url = `ws://127.0.0.1:${server.port}/ws`
     const connect = () => new WebSocket(url) as unknown as SocketLike

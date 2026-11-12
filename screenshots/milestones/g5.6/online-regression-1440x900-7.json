@@ -1,0 +1,52 @@
+{
+ "seed": 7,
+ "viewport": "1440x900",
+ "minutes": 4.9,
+ "final": {
+  "kind": "gameOver",
+  "turn": 205,
+  "actions": 1040
+ },
+ "sameVictoryEverywhere": true,
+ "victory": "Orange wins! 10 victory points on turn 205 Final scores PLAYER SETTLEMENTS CITIES AWARDS VP CARDS TOTAL Orange 0 3 Army 2 10 Red 3 1 Road 2 9 White 0 2 – 1 5 Blue 3 0 – 0 3 View board New room",
+ "rejections": [
+  [],
+  [],
+  [],
+  [],
+  []
+ ],
+ "alertsAtEnd": [
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "ui": {
+  "setup": 16,
+  "roll": 205,
+  "endTurn": 204,
+  "propose": 85,
+  "decline": 126,
+  "cancelOffer": 14,
+  "buyDev": 25,
+  "moveRobber": 44,
+  "accept": 129,
+  "p2pTrade": 71,
+  "bankTrade": 55,
+  "steal": 6,
+  "knight": 14,
+  "road": 27,
+  "roadBuildingCard": 2,
+  "roadBuilding": 4,
+  "city": 6,
+  "settlement": 4,
+  "discard": 3
+ },
+ "steps": 1132,
+ "handMismatch": 0,
+ "otherHandsShown": 0,
+ "notMyTurnEnabled": 0,
+ "errors": []
+}

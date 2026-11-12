@@ -75,7 +75,7 @@ export function Lobby() {
             {session.error?.startsWith('REPLACED')
               ? <>Your seat is open in another tab or device. <a href={location.href} className={`underline ${focusRing}`}>Play here</a></>
               : session.error?.startsWith('NO_ROOM')
-              ? <>This game is no longer on the server (it was restarted). <a href="?online" className={`underline ${focusRing}`}>New room</a></>
+              ? <>This game is no longer on the server (it sat empty, or the server restarted). <a href="?online" className={`underline ${focusRing}`}>New room</a></>
               : session.error?.startsWith('ABANDONED')
               ? <>Nobody played for five minutes, so the room was closed. <a href="?online" className={`underline ${focusRing}`}>New room</a></>
               : <>Connection closed. <a href={location.href} className={`underline ${focusRing}`}>Reload</a> to rejoin your seat.</>}

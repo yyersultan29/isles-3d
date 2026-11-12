@@ -315,6 +315,8 @@ Steps (each verified and reviewed before the next):
 - [x] G5.4 Reconnect and presence (seat token, snapshot resync on a `seq` gap).
 - [x] G5.5 Turn timers and absent-player fallback as logged actions (§20).
 - [ ] G5.6 Hardening: rate limits, logging, error handling, accessibility QA.
+  - [x] G5.6a Server: rate and connection limits, room cleanup, Origin allowlist, structured logs, contained failures.
+  - [ ] G5.6b Client: clear messages for refused or full rooms and dropped frames; accessibility QA of the online screens.
 - [ ] G5.7 Hosting decision, deployment and a load test.
 
 **G5.1 result (2026-11-12):** `src/net/protocol.ts`, `src/server/room.ts` and 8 tests in `src/server/__tests__/room.test.ts`, 183 tests in total.
@@ -447,6 +449,26 @@ Steps (each verified and reviewed before the next):
 - **Regression.** A full online UI game (seed 7) ended on turn 165 after 904 actions with 0 rejections, 0 hand mismatches and the same victory screen in every tab. The hot-seat seed 2024 game still replays exactly (turn 194, 939 actions); its banner looks as before. Screenshots are in `screenshots/milestones/g5.5/`.
 - **Not yet.** No rate limits or room limits (G5.6). Rooms are not persisted across a server restart. Real devices were not tried.
 
+**G5.6a result (2026-11-12):** the server now protects itself; `src/server/limits.ts` holds token buckets and the defaults.
+- **Limits** (all configurable through `startServer({ limits })`):
+  - Frames per connection: a burst of 40, then 10 per second. A dropped frame is answered with `RATE_LIMITED`. A flood (40 drops, refilled at 2 per second) closes the socket with 1008.
+  - Room creation: 10 per minute per address (429 with `Retry-After`), and 500 rooms in total (503).
+  - WebSocket handshakes: 60 per minute per address. Open sockets: 32 per address and 2,000 in total. All of these are refused before the upgrade.
+  - 24 connections per room (`ROOM_FULL`; the client stops retrying).
+  - A socket must join a room within 10 s, or it is closed.
+- **Cleanup.** A room with no connection for 10 minutes is removed, whether it is a lobby, a finished game or anything left over. Abandoned rooms (§20) still go after 5 minutes, and their sockets are unbound. A page that comes back later hears `NO_ROOM`, and the text now says the room sat empty or the server restarted.
+- **Origin allowlist.** `ORIGINS=https://a,https://b npm run server` lets only those pages open sockets or create rooms, and CORS echoes only those origins. The default stays open for local play.
+- **Logs.** One JSON line per event: listening, room created and removed (with the reason), connection open, join (seat or spectator), close (with code), game started, game over, limits hit, and errors. Entries never hold seat tokens, message bodies or addresses.
+- **Failures are contained.** An exception in a room's message, join, leave or tick is logged, and the sender gets `SERVER_ERROR` with nothing changed; the process and the other rooms go on. Anything uncaught outside the server exits the process with a `fatal` log line, for a supervisor to restart.
+- **Client.** `?online` no longer continues at `?room=undefined` when the server refuses to create a room.
+- **Tests:** 10 new, 232 in total. They cover the bucket, the frame limit and the flood close, room creation (429 and 503), handshake caps and rate, a wrong path, `ROOM_FULL`, the join deadline, removal of empty rooms on a fake clock, the Origin allowlist, a throwing room answered with `SERVER_ERROR` while another room still works, and that logs hold no token.
+  - Bot games in the socket and store tests answer at machine speed, hundreds of frames a second, so they lift the frame limit. The UI checks below run with the defaults.
+- **Browser, with default limits:**
+  - A full online UI game (seed 7) ended on turn 205 after 1,040 actions with 0 rejections, 0 hand mismatches and the same victory everywhere. The server log has no limit entries.
+  - The reconnect and timer checks (`scripts/online-reconnect.mts`, `scripts/online-timers.mts`) pass with 0 console errors.
+  - The hot-seat seed 2024 game still replays exactly (turn 194, 939 actions).
+- **Not yet (G5.6b).** A refused room creation (429 or 503) or a full room still shows the generic "Can't reach the game server" before the game. `RATE_LIMITED` lands in the lobby error line as raw text. Behind a proxy all players share one address until G5.7 decides how to trust `X-Forwarded-For`.
+
 ---
 
 ## 6. Suggested code organization (adapt to actual repo)
@@ -499,7 +521,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
-| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, G5.5 | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; `GAME_DESIGN.md` v1.2 |
+| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, G5.6a | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6a server limits and logs; `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -507,4 +529,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** review G5.5, then G5.6 (rate limits, room limits, logging and hardening) before any public hosting.
+**Recommended next action:** review G5.6a, then G5.6b (client error messages and accessibility QA of the online screens) before G5.7 hosting.

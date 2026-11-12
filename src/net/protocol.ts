@@ -59,7 +59,9 @@ export type ServerMessage =
 
 /** REPLACED: the same seat joined from another connection; this one is closed (G5.4) */
 /** ABANDONED: nobody played for five minutes; the room is closed (G5.5, §20) */
-export type RoomErrorCode = 'NO_ROOM' | 'NOT_JOINED' | 'NOT_HOST' | 'NOT_READY' | 'ALREADY_STARTED' | 'NOT_STARTED' | 'SPECTATOR' | 'REPLACED' | 'ABANDONED'
+/** G5.6: RATE_LIMITED: a frame was dropped for sending too fast; ROOM_FULL: the room has too many
+ *  connections; SERVER_ERROR: the server failed on this message (logged), nothing changed */
+export type RoomErrorCode = 'NO_ROOM' | 'NOT_JOINED' | 'NOT_HOST' | 'NOT_READY' | 'ALREADY_STARTED' | 'NOT_STARTED' | 'SPECTATOR' | 'REPLACED' | 'ABANDONED' | 'RATE_LIMITED' | 'ROOM_FULL' | 'SERVER_ERROR'
 
 // ---------- validation of untrusted input ----------
 

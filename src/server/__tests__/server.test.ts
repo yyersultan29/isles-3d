@@ -7,6 +7,9 @@ import { botMove } from '../../game/__tests__/helpers'
 import { createRng } from '../../game/rng'
 import type { PlayerId } from '../../game'
 
+// bots answer at machine speed (hundreds of frames a second); the frame limit is tested on its own
+const BOT_SPEED = { msgBurst: Infinity, msgPerSecond: Infinity }
+
 /** a test client: queues every message; `next` waits for the next one of a type */
 class Client {
   readonly got: ServerMessage[] = []
@@ -37,7 +40,7 @@ let server: RunningServer | null = null
 afterEach(async () => { await server?.close(); server = null })
 
 const boot = async () => {
-  server = await startServer({ port: 0, room: { settings: { boardPreset: 'standard-fixed' } } })
+  server = await startServer({ port: 0, limits: BOT_SPEED, room: { settings: { boardPreset: 'standard-fixed' } } })
   const base = `http://127.0.0.1:${server.port}`
   const url = `ws://127.0.0.1:${server.port}/ws`
   return { base, url }
@@ -47,7 +50,7 @@ const connect = async (url: string) => { const c = new Client(url); await c.open
 describe('WebSocket server', () => {
   it('serves health and creates rooms over HTTP', async () => {
     const { base } = await boot()
-    expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true, rooms: 0 })
+    expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true, rooms: 0, sockets: 0 })
     const r = await fetch(`${base}/rooms`, { method: 'POST' })
     expect(r.status).toBe(201)
     const { roomId } = await r.json() as { roomId: string }

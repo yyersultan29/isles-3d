@@ -201,8 +201,9 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
       case 'error':
         session.error = `${m.code}: ${m.message}`
         // two tabs must not take the seat back and forth; a room the server no longer has (it
-        // restarted: rooms live in memory) won't come back by retrying
-        if (m.code === 'REPLACED' || m.code === 'NO_ROOM' || m.code === 'ABANDONED') { stopped = true; ws.close() }
+        // restarted, or removed it once empty: rooms live in memory) won't come back by retrying, and
+        // neither will a full room (G5.6)
+        if (m.code === 'REPLACED' || m.code === 'NO_ROOM' || m.code === 'ABANDONED' || m.code === 'ROOM_FULL') { stopped = true; ws.close() }
         sessionChanged()
         return
     }

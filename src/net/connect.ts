@@ -23,6 +23,7 @@ export async function createRoomFromUrl(): Promise<boolean> {
   if (!p.has('online') || p.get('room')) return false
   try {
     const r = await fetch(`${serverAddress(p).http}/rooms`, { method: 'POST' })
+    if (!r.ok) return false // G5.6: refused (429 too many rooms, 503 full): never continue at ?room=undefined
     const { roomId } = await r.json() as { roomId: string }
     p.delete('online')
     p.set('room', roomId)
