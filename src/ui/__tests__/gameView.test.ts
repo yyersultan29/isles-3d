@@ -1,7 +1,7 @@
 // G4.4a: HUD data is derived from state and shows only public information for everyone.
 import { describe, expect, it } from 'vitest'
 import { act, fixture, newGame, playSetup } from '../../game/__tests__/helpers'
-import { buildOptions, costText, handOf, phaseText, primaryAction, seats, SEATS } from '../gameView'
+import { buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
 import { COSTS, legalActions } from '../../game'
 
 describe('G4.4a HUD view', () => {
@@ -60,5 +60,18 @@ describe('G4.4a HUD view', () => {
     const empty = fixture({ hands: { p1: { wool: 1, grain: 1, ore: 1 } } })
     empty.deck = []
     expect(buildOptions(empty).find((o) => o.kind === 'dev')!.reason).toBe('The deck is empty')
+  })
+
+  it('G4.4c: discard prompts go one player at a time in turn order; steal lists candidates', () => {
+    const s = fixture({ hands: { p2: { ore: 8 }, p4: { wool: 9 } }, phase: { kind: 'discard', pending: { p4: 4, p2: 4 } } })
+    expect(discardPrompt(s)).toMatchObject({ player: 'p2', count: 4, waiting: ['p2', 'p4'] })
+    const after = act(s, { type: 'DISCARD', cards: { ore: 4 } }, 'p2')
+    expect(discardPrompt(after)).toMatchObject({ player: 'p4', count: 4, waiting: ['p4'] })
+    expect(discardPrompt(fixture())).toBeNull()
+    const st = fixture({ hands: { p2: { ore: 2 }, p3: { wool: 1 } }, phase: { kind: 'steal', tile: '0,0', candidates: ['p2', 'p3'], resume: 'actions' } })
+    expect(stealPrompt(st)).toEqual({ player: 'p1', candidates: [
+      { id: 'p2', name: 'Blue', color: SEATS.p2.color, avatar: SEATS.p2.avatar, cards: 2 },
+      { id: 'p3', name: 'White', color: SEATS.p3.color, avatar: SEATS.p3.avatar, cards: 1 },
+    ] })
   })
 })

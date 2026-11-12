@@ -85,14 +85,14 @@ export function primaryAction(s: GameState): { label: string; short: string; act
   if (s.phase.kind === 'preRoll' && legal.some((a) => a.type === 'ROLL')) return { label: 'Roll Dice', short: 'Roll', action: { type: 'ROLL' }, player }
   if (s.phase.kind === 'actions' && legal.some((a) => a.type === 'END_TURN')) return { label: 'End Turn', short: 'End', action: { type: 'END_TURN' }, player }
   // disabled hints: [desktop label, compact label]
-  const hint: Record<string, [string, string]> = { setup: ['Place on board', 'Place'], discard: ['Discarding…', 'Discard'], moveRobber: ['Move robber', 'Robber'], steal: ['Choose victim', 'Rob'], roadBuilding: ['Place roads', 'Roads'] }
+  const hint: Record<string, [string, string]> = { setup: ['Place on board', 'Place'], discard: ['Discarding…', 'Wait'], moveRobber: ['Move robber', 'Robber'], steal: ['Choose victim', 'Rob'], roadBuilding: ['Place roads', 'Roads'] }
   const [label, short] = hint[s.phase.kind] ?? ['Wait', 'Wait']
   return { label, short, action: null, player }
 }
 
 export function useGameView() {
   const s = useGame((x) => x)
-  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn }), [s])
+  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s) }), [s])
 }
 
 // ---------- G4.4b: hand and build menu ----------
@@ -131,4 +131,28 @@ export function buildOptions(s: GameState): BuildOption[] {
     }
     return { kind, enabled, reason, cost }
   })
+}
+
+// ---------- G4.4c: discard and steal prompts ----------
+
+export interface DiscardPrompt { player: PlayerId; count: number; hand: Record<Resource, number>; waiting: PlayerId[] }
+
+/** The next player who still owes a discard (turn order), with their hand; null outside `discard`. */
+export function discardPrompt(s: GameState): DiscardPrompt | null {
+  if (s.phase.kind !== 'discard') return null
+  const pending = s.phase.pending
+  const waiting = s.order.filter((p) => pending[p])
+  if (!waiting.length) return null
+  const player = waiting[0]
+  return { player, count: pending[player]!, hand: { ...s.players.find((p) => p.id === player)!.resources }, waiting }
+}
+
+export interface StealPrompt { player: PlayerId; candidates: { id: PlayerId; name: string; color: string; avatar: number; cards: number }[] }
+
+export function stealPrompt(s: GameState): StealPrompt | null {
+  if (s.phase.kind !== 'steal') return null
+  return {
+    player: s.order[s.active],
+    candidates: s.phase.candidates.map((id) => ({ id, ...SEATS[id], cards: count(s.players.find((p) => p.id === id)!.resources) })),
+  }
 }

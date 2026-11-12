@@ -3,7 +3,8 @@ import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
 import { AwardBadges, BuildRows, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, useHand } from './HUD'
 import { useGameView } from './gameView'
-import { COMPACT_SAFE, PHASE_ROW } from './layout'
+import { GameDialogs } from './Dialogs'
+import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
 
 /**
  * HUD for narrow and portrait screens. It uses real CSS pixels (no global down-scaling), so text
@@ -15,6 +16,9 @@ export function CompactHUD() {
   const [menu, setMenu] = useState(false)
   const [build, setBuild] = useState(false)
   const { seats } = useGameView()
+  // short (landscape phone) screens: the seven dialogs sit over the disabled dock instead of
+  // climbing over the top bar
+  const short = useViewport().h < 560
   const { counts, ownerName } = useHand()
   const { ref: dice, a, b, primary, act } = useDiceAndAction((el) =>
     gsap.fromTo(el.children, { y: -10, rotate: -25 }, { y: 0, rotate: 0, duration: 0.6, ease: 'bounce.out', stagger: 0.08 }),
@@ -137,6 +141,7 @@ export function CompactHUD() {
           )})}
         </ul>
       </div>
+      <GameDialogs compact className="absolute inset-x-[8px] flex justify-center" style={{ bottom: short ? 8 : COMPACT_SAFE.bottom + 4 }} />
     </div>
   )
 }

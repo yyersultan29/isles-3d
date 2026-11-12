@@ -5,6 +5,7 @@ import { BRAND_NAME } from '../brand'
 import { motion } from '../scene/motion'
 import { useViewport } from './layout'
 import { CompactHUD } from './CompactHUD'
+import { GameDialogs } from './Dialogs'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
 import { setPlacementMode, usePlacementMode } from '../store/ui'
 import type { Resource } from '../game'
@@ -414,6 +415,7 @@ export const HUD = memo(function HUD() {
         <ResourceCards />
         <BuildPanel />
         <BottomLeft />
+        <GameDialogs className="absolute bottom-[132px] left-1/2 -translate-x-[54%]" />
       </div>
     </div>
   )
