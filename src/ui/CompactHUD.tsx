@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { AwardBadges, BuildRows, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
+import { AwardBadges, BuildRows, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, useHand } from './HUD'
 import { useGameView } from './gameView'
 import { COMPACT_SAFE, PHASE_ROW } from './layout'
 
@@ -15,6 +15,7 @@ export function CompactHUD() {
   const [menu, setMenu] = useState(false)
   const [build, setBuild] = useState(false)
   const { seats } = useGameView()
+  const { counts, ownerName } = useHand()
   const { ref: dice, a, b, primary, act } = useDiceAndAction((el) =>
     gsap.fromTo(el.children, { y: -10, rotate: -25 }, { y: 0, rotate: 0, duration: 0.6, ease: 'bounce.out', stagger: 0.08 }),
   )
@@ -119,20 +120,21 @@ export function CompactHUD() {
           </button>
           {build && (
             <section id="compact-build" aria-label="Build" className={`pointer-events-auto absolute bottom-[54px] right-0 w-[246px] rounded-[12px] px-[10px] py-[8px] ${panel}`}>
-              <BuildRows />
+              <BuildRows onChosen={() => setBuild(false)} />
             </section>
           )}
         </div>
 
-        <ul aria-label="Your resources" className="flex gap-[6px]">
-          {RESOURCES.map(({ name, n, Icon, bg }, i) => (
+        <ul aria-label={`${ownerName}'s resources`} className="flex gap-[6px]">
+          {RESOURCES.map(({ key, name, Icon, bg }, i) => { const n = counts[key]; return (
             <li key={i} aria-label={`${name}: ${n}`} title={`${name}: ${n}`} className="relative h-[72px] w-[62px] rounded-[8px] p-[2px] bg-[linear-gradient(180deg,#ffe2a0,#b98a3a_50%,#f2cf84)] shadow-[0_6px_14px_rgba(0,0,0,0.55)]">
               <div className={`relative h-full w-full overflow-hidden rounded-[6px] bg-gradient-to-b ${bg} shadow-[inset_0_0_10px_rgba(0,0,0,0.45)]`}>
                 <Icon aria-hidden className="absolute left-1/2 top-[56%] w-[54px] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_3px_2px_rgba(0,0,0,0.45)]" />
                 <span aria-hidden className="absolute left-[3px] top-[3px] grid h-[20px] w-[20px] place-items-center rounded-[5px] bg-[#1d1a16]/85 text-[13px] font-bold text-white ring-1 ring-[#f2cf84]/60">{n}</span>
+                {n === 0 && <div aria-hidden className="absolute inset-0 bg-black/45" />}
               </div>
             </li>
-          ))}
+          )})}
         </ul>
       </div>
     </div>

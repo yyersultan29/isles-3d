@@ -3,7 +3,7 @@
 // opponents: public VP (never hidden VP cards), hand and dev-card counts, awards.
 
 import { useMemo } from 'react'
-import { legalActions, type Action, type GameState, type PlayerId } from '../game'
+import { COSTS, legalActions, RESOURCE_ORDER, type Action, type GameState, type PlayerId, type Resource } from '../game'
 import { useGame } from '../store/GameProvider'
 
 /** Seat names and colours; colours match the 3D pieces (scene/board.ts PLAYER_COLORS walls). */
@@ -92,5 +92,43 @@ export function primaryAction(s: GameState): { label: string; short: string; act
 
 export function useGameView() {
   const s = useGame((x) => x)
-  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind }), [s])
+  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn }), [s])
+}
+
+// ---------- G4.4b: hand and build menu ----------
+
+export type BuildKind = 'road' | 'settlement' | 'city' | 'dev'
+export interface BuildOption { kind: BuildKind; enabled: boolean; reason: string | null; cost: Partial<Record<Resource, number>> }
+
+const RES_NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
+export const costText = (c: Partial<Record<Resource, number>>) =>
+  RESOURCE_ORDER.filter((r) => c[r]).map((r) => `${c[r]} ${RES_NAME[r]}`).join(', ')
+
+/** The hand the HUD shows: the active player's (hot-seat privacy comes with G4.8). */
+export function handOf(s: GameState): { owner: PlayerId; counts: Record<Resource, number> } {
+  const owner = s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]
+  return { owner, counts: { ...s.players.find((p) => p.id === owner)!.resources } }
+}
+
+/** Build menu rows: enabled exactly when legalActions offers that build; otherwise the first reason that applies. */
+export function buildOptions(s: GameState): BuildOption[] {
+  const p = s.order[s.active]
+  const pl = s.players.find((x) => x.id === p)!
+  const legal = s.phase.kind === 'gameOver' ? [] : legalActions(s, p)
+  const type: Record<BuildKind, string> = { road: 'BUILD_ROAD', settlement: 'BUILD_SETTLEMENT', city: 'BUILD_CITY', dev: 'BUY_DEV' }
+  const pieces: Record<BuildKind, number> = { road: pl.pieces.roads, settlement: pl.pieces.settlements, city: pl.pieces.cities, dev: s.deck.length }
+  return (['road', 'settlement', 'city', 'dev'] as BuildKind[]).map((kind) => {
+    const cost = COSTS[kind]
+    const enabled = legal.some((a) => a.type === type[kind])
+    let reason: string | null = null
+    if (!enabled) {
+      const missing = RESOURCE_ORDER.filter((r) => pl.resources[r] < (cost[r] ?? 0))
+      if (s.phase.kind === 'preRoll') reason = 'Roll the dice first'
+      else if (s.phase.kind !== 'actions') reason = 'Not now'
+      else if (pieces[kind] === 0) reason = kind === 'dev' ? 'The deck is empty' : `No ${kind === 'city' ? 'cities' : kind + 's'} left`
+      else if (missing.length) reason = `Need ${missing.map((r) => `${(cost[r] ?? 0) - pl.resources[r]} more ${RES_NAME[r]}`).join(', ')}`
+      else reason = 'No legal spot'
+    }
+    return { kind, enabled, reason, cost }
+  })
 }

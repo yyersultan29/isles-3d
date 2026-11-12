@@ -5,7 +5,9 @@ import { BRAND_NAME } from '../brand'
 import { motion } from '../scene/motion'
 import { useViewport } from './layout'
 import { CompactHUD } from './CompactHUD'
-import { useGameView, type SeatView } from './gameView'
+import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
+import { setPlacementMode, usePlacementMode } from '../store/ui'
+import type { Resource } from '../game'
 import { useGameStore, useGameEvents } from '../store/GameProvider'
 
 const LOGICAL_W = 1600
@@ -235,21 +237,42 @@ function DiceArea() {
   )
 }
 
-export const RESOURCES = [
-  { name: 'Wood', n: 3, Icon: Logs, bg: 'from-[#5f8a32] to-[#2f4a18]' },
-  { name: 'Brick', n: 2, Icon: Brick, bg: 'from-[#b9522c] to-[#6a2512]' },
-  { name: 'Wool', n: 1, Icon: SheepIcon, bg: 'from-[#8fc04e] to-[#4a7a22]' },
-  { name: 'Grain', n: 4, Icon: WheatIcon, bg: 'from-[#f0b43c] to-[#b7741a]' },
-  { name: 'Ore', n: 1, Icon: Ore, bg: 'from-[#8a96a8] to-[#4a5363]' },
+export const RESOURCES: { key: Resource; name: string; Icon: typeof Logs; bg: string }[] = [
+  { key: 'lumber', name: 'Wood', Icon: Logs, bg: 'from-[#5f8a32] to-[#2f4a18]' },
+  { key: 'brick', name: 'Brick', Icon: Brick, bg: 'from-[#b9522c] to-[#6a2512]' },
+  { key: 'wool', name: 'Wool', Icon: SheepIcon, bg: 'from-[#8fc04e] to-[#4a7a22]' },
+  { key: 'grain', name: 'Grain', Icon: WheatIcon, bg: 'from-[#f0b43c] to-[#b7741a]' },
+  { key: 'ore', name: 'Ore', Icon: Ore, bg: 'from-[#8a96a8] to-[#4a5363]' },
 ]
+const RES_ICON = Object.fromEntries(RESOURCES.map((r) => [r.key, r.Icon])) as Record<Resource, typeof Logs>
+
+/** The shown hand: counts by resource plus an accessible owner label. */
+export function useHand() {
+  const { hand, seats } = useGameView()
+  const owner = seats.find((x) => x.id === hand.owner)!
+  return { counts: hand.counts, ownerName: owner.name, ownerColor: owner.color }
+}
+
+/** Clears the build choice when the turn or phase moves on, and on Escape. Mount once per HUD. */
+export function usePlacementAutoReset() {
+  const { phaseKind, active, turn } = useGameView()
+  useEffect(() => { if (phaseKind !== 'actions') setPlacementMode(null) }, [phaseKind])
+  useEffect(() => { setPlacementMode(null) }, [active, turn])
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') setPlacementMode(null) }
+    window.addEventListener('keydown', f)
+    return () => window.removeEventListener('keydown', f)
+  }, [])
+}
 
 function ResourceCards() {
+  const { counts, ownerName } = useHand()
   return (
     <div className="absolute bottom-0 left-1/2 -translate-x-[54%]">
       {/* wooden tray */}
       <div className="absolute -bottom-[30px] left-1/2 h-[64px] w-[700px] -translate-x-1/2 rounded-[40px_40px_0_0] bg-[linear-gradient(180deg,#5c3d22,#2c1c10)] shadow-[0_-6px_20px_rgba(0,0,0,0.5),inset_0_2px_0_rgba(255,210,160,0.2)]" />
-      <ul aria-label="Your resources" className="relative flex gap-[8px] pb-[12px]">
-        {RESOURCES.map(({ name, n, Icon, bg }, i) => (
+      <ul aria-label={`${ownerName}'s resources`} className="relative flex gap-[8px] pb-[12px]">
+        {RESOURCES.map(({ key, name, Icon, bg }, i) => { const n = counts[key]; return (
           <li
             key={i}
             aria-label={`${name}: ${n}`}
@@ -262,9 +285,10 @@ function ResourceCards() {
               <span aria-hidden className="absolute left-[4px] top-[4px] grid h-[22px] w-[22px] place-items-center rounded-[5px] bg-[#1d1a16]/85 text-[14px] font-bold text-white ring-1 ring-[#f2cf84]/60">
                 {n}
               </span>
+              {n === 0 && <div aria-hidden className="absolute inset-0 bg-black/45" />}
             </div>
           </li>
-        ))}
+        )})}
       </ul>
     </div>
   )
@@ -287,42 +311,53 @@ const HouseIco = ({ city }: { city?: boolean }) => (
   </svg>
 )
 
-export const BUILD_ROWS: [string, ReactNode, ReactNode[]][] = [
-    ['Road: 1 wood, 1 brick', <RoadIco key="r" />, [<Logs key="a" />, <Brick key="b" />]],
-    ['Settlement: 1 wood, 1 brick, 1 wool, 1 grain', <HouseIco key="h" />, [<Logs key="a" />, <Brick key="b" />, <SheepIcon key="c" />, <WheatIcon key="d" />]],
-    ['City: 1 grain, 2 ore', <HouseIco key="c" city />, [<WheatIcon key="a" />, <Ore key="b" />, <Ore key="c" />]],
-  ]
+const BUILD_ICON: Record<BuildKind, ReactNode> = {
+  road: <RoadIco />,
+  settlement: <HouseIco />,
+  city: <HouseIco city />,
+  dev: <span className="grid h-[26px] w-[24px] place-items-center rounded-[4px] border border-[#d9cbb0]/70 text-[14px] font-bold text-[#efe6d4]">?</span>,
+}
+const BUILD_NAME: Record<BuildKind, string> = { road: 'Road', settlement: 'Settlement', city: 'City', dev: 'Development card' }
 
-/** Rows of the build menu (cost icons + arrow); shared by the desktop panel and the compact popover. */
-export function BuildRows() {
+/**
+ * Rows of the build menu (cost icons + arrow); shared by the desktop panel and the compact popover.
+ * Road/settlement/city choose a placement on the board; the dev card is bought at once. A row is
+ * enabled exactly when the engine allows that build; otherwise its tooltip says why.
+ */
+export function BuildRows({ onChosen }: { onChosen?: () => void }) {
+  const { build, primary } = useGameView()
+  const store = useGameStore()
+  const mode = usePlacementMode()
+  const choose = (kind: BuildKind) => {
+    if (kind === 'dev') {
+      if (primary.player) store.dispatch(primary.player, { type: 'BUY_DEV' })
+    } else setPlacementMode(mode === kind ? null : kind)
+    onChosen?.()
+  }
   return (
     <>
-      {BUILD_ROWS.map(([label, ico, costs], i) => (
-        <button
-          key={i}
-          aria-label={`Build ${label}`}
-          title={label}
-          className={`group flex h-[46px] w-full items-center gap-[12px] rounded-[8px] border-b border-white/5 px-[6px] text-left transition-colors hover:bg-white/[0.06] ${focusRing}`}
-        >
-          <span aria-hidden className="w-[28px]">{ico}</span>
-          <span aria-hidden className="flex flex-1 items-center gap-[3px]">
-            {costs.map((c, k) => (
-              <span key={k} className="block h-[26px] w-[34px] [&>svg]:h-full [&>svg]:w-full">{c}</span>
-            ))}
-          </span>
-          <span aria-hidden className="text-[#ece8e0] transition-transform group-hover:translate-x-[2px]"><Arrow /></span>
-        </button>
-      ))}
-      <button
-        disabled
-        aria-label="Development card (not available yet)"
-        title="Development card (not available yet)"
-        className={`flex h-[46px] w-full cursor-not-allowed items-center gap-[12px] rounded-[8px] px-[6px] ${focusRing}`}
-      >
-        <span aria-hidden className="grid h-[26px] w-[24px] place-items-center rounded-[4px] border border-[#d9cbb0]/70 text-[14px] font-bold text-[#efe6d4]">?</span>
-        <span className="flex-1" />
-        <span aria-hidden className="text-[#ece8e0]/40"><Arrow /></span>
-      </button>
+      {build.map(({ kind, enabled, reason, cost }) => {
+        const selected = mode === kind
+        const label = `${kind === 'dev' ? 'Buy' : 'Build'} ${BUILD_NAME[kind]}: ${costText(cost)}${reason ? ` (${reason})` : ''}`
+        const icons = (Object.entries(cost) as [Resource, number][]).flatMap(([r, n]) => Array.from({ length: n }, (_, k) => [r, k] as const))
+        return (
+          <button
+            key={kind}
+            aria-label={label}
+            aria-pressed={kind === 'dev' ? undefined : selected}
+            title={label}
+            disabled={!enabled}
+            onClick={() => choose(kind)}
+            className={`group flex h-[46px] w-full items-center gap-[12px] rounded-[8px] border-b border-white/5 px-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : ''} ${focusRing}`}
+          >
+            <span aria-hidden className="w-[28px]">{BUILD_ICON[kind]}</span>
+            <span aria-hidden className="flex flex-1 items-center gap-[2px]">
+              {icons.map(([r, k]) => { const I = RES_ICON[r]; return <span key={r + k} className="block h-[24px] w-[28px] [&>svg]:h-full [&>svg]:w-full"><I /></span> })}
+            </span>
+            <span aria-hidden className="text-[#ece8e0] transition-transform group-hover:translate-x-[2px]"><Arrow /></span>
+          </button>
+        )
+      })}
     </>
   )
 }
@@ -355,6 +390,7 @@ function BottomLeft() {
 export const HUD = memo(function HUD() {
   const s = useHudScale()
   const { compact } = useViewport()
+  usePlacementAutoReset()
   if (compact) return <CompactHUD />
   return (
     <div className="pointer-events-none fixed inset-0 select-none overflow-hidden font-ui">
