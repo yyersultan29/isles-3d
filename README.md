@@ -17,7 +17,7 @@ npm run shot -- http://localhost:5173/ shots/out.png 2000 1130   # headless Chro
 3. Send the invite link from the lobby to the other players, or open it in three more tabs. Each tab is one seat; a fifth visitor watches.
 4. The first player starts the game once all four seats are taken.
 
-A reload rejoins the same seat: the seat token is kept per tab. Another computer on the same network needs `HOST=0.0.0.0 npm run server` and `npx vite --host`; it then opens the invite link with this computer's address. The game server is local only and is not part of the GitHub Pages deployment.
+A reload, a dropped connection or a closed tab reopened from the invite link rejoins the same seat: the seat token is kept per tab, and the browser remembers its tokens for the room. Rooms live in the server's memory, so restarting `npm run server` ends the games on it. Another computer on the same network needs `HOST=0.0.0.0 npm run server` and `npx vite --host`; it then opens the invite link with this computer's address. The game server is local only and is not part of the GitHub Pages deployment.
 
 
 Debug URL params:

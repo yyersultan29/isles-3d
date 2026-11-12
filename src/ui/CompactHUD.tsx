@@ -80,7 +80,7 @@ export function CompactHUD() {
               className={`flex h-[46px] min-w-0 flex-1 items-center gap-[3px] overflow-hidden rounded-[8px] pl-[3px] pr-[3px] ${panel}`}
               style={{ boxShadow: `inset ${p.active ? 4 : 3}px 0 0 ${p.color}, inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '55'}` }}
             >
-              <div className="h-[30px] w-[30px] shrink-0 overflow-hidden rounded-[6px] ring-2 min-[560px]:h-[36px] min-[560px]:w-[36px]" style={{ ['--tw-ring-color' as string]: p.color }}>
+              <div className={`h-[30px] w-[30px] shrink-0 overflow-hidden rounded-[6px] ring-2 min-[560px]:h-[36px] min-[560px]:w-[36px] ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
                 <Avatar i={p.avatar} className="h-full w-full" />
               </div>
               <div aria-hidden className="min-w-0 leading-none [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:shrink-0">

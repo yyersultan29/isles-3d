@@ -153,3 +153,142 @@ describe('online store over a real server', () => {
     expect(new Set(eventCounts.values()).size).toBe(1)
   }, 120000)
 })
+
+describe('online store G5.4: reconnect', () => {
+  const fast = { baseMs: 10, maxMs: 40 }
+  async function started() {
+    server = await startServer({ port: 0, room: { settings: { boardPreset: 'standard-fixed' } } })
+    const room = server.createRoom()
+    const url = `ws://127.0.0.1:${server.port}/ws`
+    const connect = () => new WebSocket(url) as unknown as SocketLike
+    const players: OnlineStore[] = []
+    for (let i = 0; i < 4; i++) {
+      const s = createOnlineStore({ connect, roomId: room.id, claim: true, reconnect: fast })
+      stores.push(s); players.push(s)
+      await until(() => s.session().me !== null, 'welcome')
+    }
+    players[0].start()
+    await until(() => players.every((s) => s.session().status === 'playing'), 'start')
+    return { room, players, connect }
+  }
+  const bySeat = (players: OnlineStore[], p: PlayerId) => players.find((s) => s.session().me === p)!
+
+  it('a dropped socket rejoins its seat by itself and the game goes on', async () => {
+    const { room, players } = await started()
+    const statuses: string[] = []
+    players[1].onSession(() => statuses.push(players[1].session().status))
+    const gen = players[1].generation()
+    for (const ws of server!.sockets.values()) ws.terminate()
+    await until(() => players.every((s) => s.session().status === 'playing') && statuses.includes('reconnecting'), 'rejoin')
+    expect(players.map((s) => s.session().me)).toEqual(['p1', 'p2', 'p3', 'p4'])
+    expect(players[1].generation()).toBeGreaterThan(gen) // views snap to the rejoin snapshot
+    const s = players[0].getState()
+    const [p, a] = botMove(s, createRng(1))
+    expect(bySeat(players, p).dispatch(p, a).ok).toBe(true)
+    await until(() => players.every((x) => x.getState().actionCount === room.game!.actionCount) && room.game!.actionCount === 1, 'action after rejoin')
+  })
+
+  it('a reloaded tab (a new store with the saved token) continues numbering and its moves are applied', async () => {
+    const { room, players, connect } = await started()
+    const rng = createRng(3)
+    for (let i = 0; i < 10; i++) {
+      const [p, a] = botMove(room.game!, rng)
+      const n = room.game!.actionCount
+      bySeat(players, p).dispatch(p, a)
+      await until(() => room.game!.actionCount === n + 1 && players.every((x) => x.getState().actionCount === n + 1), 'step')
+    }
+    const p = room.game!.order[room.game!.active]
+    const old = bySeat(players, p)
+    const token = old.session().token!
+    old.close()
+    const fresh = createOnlineStore({ connect, roomId: room.id, token, reconnect: fast })
+    stores.push(fresh)
+    await until(() => fresh.session().status === 'playing', 'reloaded rejoin')
+    expect(fresh.session().me).toBe(p)
+    const [q, a] = botMove(fresh.getState(), rng)
+    expect(q).toBe(p)
+    const n = room.game!.actionCount
+    expect(fresh.dispatch(q, a).ok).toBe(true)
+    await until(() => room.game!.actionCount === n + 1, 'reloaded move applied')
+  })
+
+  it('opening the seat elsewhere closes this one for good (no tug of war)', async () => {
+    const { room, players, connect } = await started()
+    const twin = createOnlineStore({ connect, roomId: room.id, token: players[2].session().token!, reconnect: fast })
+    stores.push(twin)
+    await until(() => twin.session().status === 'playing' && players[2].session().status === 'closed', 'replaced')
+    expect(players[2].session().error).toMatch(/^REPLACED/)
+    await new Promise((r) => setTimeout(r, 200))
+    expect(players[2].session().status).toBe('closed')
+    expect(twin.session().status).toBe('playing')
+  })
+
+  it('a room the server no longer has (restart) stops the retries and says so', async () => {
+    const { players, connect } = await started()
+    void connect
+    const port = server!.port
+    await server!.close()
+    server = await startServer({ port })
+    await until(() => players.every((s) => s.session().status === 'closed'), 'gone')
+    expect(players[0].session().error).toMatch(/^NO_ROOM/)
+    const n = server.sockets.size
+    await new Promise((r) => setTimeout(r, 200))
+    expect(server.sockets.size).toBe(n) // nobody keeps knocking
+    expect(n).toBe(0)
+  })
+
+  it('a page opened before the server is up joins once it answers', async () => {
+    const probe = await startServer({ port: 0 })
+    const port = probe.port
+    await probe.close()
+    const s = createOnlineStore({ connect: () => new WebSocket(`ws://127.0.0.1:${port}/ws`) as unknown as SocketLike, roomId: 'later', claim: true, reconnect: fast })
+    stores.push(s)
+    await until(() => s.session().status === 'closed', 'unreachable')
+    server = await startServer({ port })
+    const r = server.createRoom()
+    // the room id is fixed by the page; rename the room for the test
+    server.rooms.delete(r.id)
+    const { Room } = await import('../../server/room')
+    server.rooms.set('later', new Room({ id: 'later' }))
+    await until(() => s.session().status === 'lobby' && s.session().me === 'p1', 'joined after start-up', 5000)
+  })
+
+  it('a full game with sockets dropping at random (also right after a move) still ends with every seat in sync', async () => {
+    const { room, players } = await started()
+    const rng = createRng(2026)
+    const rejected: string[] = []
+    for (const s of players) s.onRejected((e, _p, a) => rejected.push(`${e.code} ${a.type}`))
+    const sockets = () => [...server!.sockets.values()]
+    let drops = 0, lostMoves = 0, steps = 0, rejoins = 0
+    for (const s of players) {
+      let last = s.session().status
+      s.onSession(() => { const now = s.session().status; if (now === 'reconnecting' && last !== 'reconnecting') rejoins++; last = now })
+    }
+    const synced = () => players.every((s) => s.session().status === 'playing' && s.getState().actionCount === room.game!.actionCount)
+    while (room.game!.phase.kind !== 'gameOver' && steps++ < 20000) {
+      const shadow0 = players[0].getState()
+      const p = waiting(shadow0)[0]
+      const actor = bySeat(players, p)
+      const [, a] = botMove(actor.getState(), rng)
+      const n = room.game!.actionCount
+      expect(actor.dispatch(p, a).ok).toBe(true)
+      const r = rng.next()
+      if (r < 0.05) {
+        // drop a random socket while the move may still be in flight
+        const r0 = rejoins
+        sockets()[pick(rng, sockets().length)]?.terminate(); drops++
+        // wait for the client to notice the drop, then for everyone to be back and in sync
+        await until(() => rejoins > r0, 'drop noticed', 5000)
+        await until(synced, 'resync after drop', 5000)
+        if (room.game!.actionCount === n) lostMoves++
+      } else {
+        await until(() => room.game!.actionCount === n + 1 && synced(), 'step')
+      }
+      for (const s of players) sameLegal(legalActions(s.getState(), s.session().me as PlayerId), s.session().legal)
+    }
+    expect(room.game!.phase.kind).toBe('gameOver')
+    expect(drops).toBeGreaterThan(8)
+    expect(rejected).toEqual([])
+    expect(rejoins).toBe(drops)
+  }, 180000)
+})

@@ -19,11 +19,15 @@ export interface ServerOptions {
   host?: string
   room?: Omit<RoomOptions, 'id'>
   log?: (line: string) => void
+  /** G5.4: ping every socket this often; one that missed the previous pong is dropped (default 15 s) */
+  heartbeatMs?: number
 }
 
 export interface RunningServer {
   port: number
   rooms: Map<string, Room>
+  /** open sockets by connection id (for tests and diagnostics) */
+  sockets: Map<ConnId, WebSocket>
   createRoom(): Room
   close(): Promise<void>
 }
@@ -50,9 +54,10 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
   }
 
   const deliver = (out: Outbound[]) => {
-    for (const { to, msg } of out) {
+    for (const { to, msg, close } of out) {
       const ws = sockets.get(to)
       if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg))
+      if (ws && close) { roomOf.delete(to); ws.close(4000, 'replaced') }
     }
   }
   const reply = (ws: WebSocket, msg: ServerMessage) => ws.send(JSON.stringify(msg))
@@ -72,9 +77,22 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
   })
 
   const wss = new WebSocketServer({ server: http, path: '/ws', maxPayload: MAX_PAYLOAD })
+  // a socket that vanished without a close (sleep, lost network) is found by the heartbeat; its
+  // close then frees the seat's presence like any other
+  const alive = new WeakSet<WebSocket>()
+  const beat = setInterval(() => {
+    for (const ws of sockets.values()) {
+      if (!alive.has(ws)) { ws.terminate(); continue }
+      alive.delete(ws)
+      ws.ping()
+    }
+  }, o.heartbeatMs ?? 15000)
+
   wss.on('connection', (ws) => {
     const conn = `c${++nextConn}`
     sockets.set(conn, ws)
+    alive.add(ws)
+    ws.on('pong', () => alive.add(ws))
     log(`${conn} connected`)
     ws.on('message', (data, isBinary) => {
       if (isBinary) return reply(ws, { type: 'rejected', clientSeq: null, error: { code: 'MALFORMED_ACTION', message: 'text frames only' } })
@@ -102,15 +120,17 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
   })
 
   return new Promise((resolve, reject) => {
-    http.once('error', reject)
+    http.once('error', (e) => { clearInterval(beat); reject(e) })
     http.listen(o.port ?? 8787, o.host ?? '127.0.0.1', () => {
       const port = (http.address() as AddressInfo).port
       log(`listening on http://${o.host ?? '127.0.0.1'}:${port} (ws path /ws)`)
       resolve({
         port,
         rooms,
+        sockets,
         createRoom,
         close: () => new Promise<void>((done) => {
+          clearInterval(beat)
           for (const ws of sockets.values()) ws.terminate()
           wss.close(() => http.close(() => done()))
         }),

@@ -187,3 +187,69 @@ describe('Room full game', () => {
     expect(msgs).toBeGreaterThan(1000)
   })
 })
+
+describe('Room G5.4: presence, takeover, resume numbering', () => {
+  it('after the start, leaving and rejoining are broadcast as presence', () => {
+    const { room, tokens } = fullRoom()
+    send(room, 'a', { type: 'start' })
+    const left = room.leave('b')
+    expect(one(left, 'a', 'presence').seats.find((s) => s.id === 'p2')).toEqual({ id: 'p2', taken: true, connected: false })
+    expect(left.some((o) => o.msg.type === 'lobby')).toBe(false)
+    const back = send(room, 'b2', { type: 'join', roomId: 'r1', token: tokens.b })
+    expect(to(back, 'b2').map((m) => m.type)).toEqual(['welcome', 'snapshot', 'presence'])
+    expect(one(back, 'c', 'presence').seats.every((s) => s.connected)).toBe(true)
+  })
+
+  it('the same seat on a new connection replaces the old one, which is told and closed', () => {
+    const { room, tokens } = fullRoom()
+    send(room, 'a', { type: 'start' })
+    const out = send(room, 'a2', { type: 'join', roomId: 'r1', token: tokens.a })
+    expect(out.find((o) => o.to === 'a')).toEqual({ to: 'a', msg: expect.objectContaining({ type: 'error', code: 'REPLACED' }), close: true })
+    expect(one(out, 'a2', 'welcome').you).toBe('p1')
+    // the old connection no longer speaks for the seat
+    expect(one(send(room, 'a', { type: 'action', clientSeq: 0, action: { type: 'END_TURN' } }), 'a', 'error').code).toBe('NOT_JOINED')
+    // presence still shows the seat as connected (through a2)
+    expect(one(out, 'b', 'presence').seats[0]).toEqual({ id: 'p1', taken: true, connected: true })
+  })
+
+  it('a rejoin learns the next clientSeq, so a reloaded client is not mistaken for an old retry', () => {
+    const { room, tokens, seat } = fullRoom()
+    send(room, 'a', { type: 'start' })
+    const rng = createRng(9)
+    // play a few actions through whoever acts, numbering per connection
+    const seqs: Record<string, number> = { a: 0, b: 0, c: 0, d: 0 }
+    const connOf = Object.fromEntries(Object.entries(seat).map(([c, p]) => [p, c]))
+    for (let i = 0; i < 12; i++) {
+      const [p, action] = botMove(room.game!, rng)
+      const c = connOf[p]
+      expect(send(room, c, { type: 'action', clientSeq: seqs[c]++, action }).some((o) => o.msg.type === 'update')).toBe(true)
+    }
+    const p = room.game!.order[room.game!.active]
+    const c = connOf[p]
+    room.leave(c)
+    const w = one(send(room, 'fresh', { type: 'join', roomId: 'r1', token: tokens[c] }), 'fresh', 'welcome')
+    expect(w.nextSeq).toBe(seqs[c])
+    const before = room.game!.actionCount
+    const [, action] = botMove(room.game!, rng)
+    // a reloaded client that started again from 0 would be ignored; from nextSeq it is applied
+    expect(send(room, 'fresh', { type: 'action', clientSeq: 0, action })).toEqual(seqs[c] > 1 ? [] : expect.anything())
+    send(room, 'fresh', { type: 'action', clientSeq: w.nextSeq, action })
+    expect(room.game!.actionCount).toBe(before + 1)
+  })
+})
+
+describe('Room G5.4: resume tokens', () => {
+  it('a reopened tab takes back an idle seat it held, never a connected one', () => {
+    const { room, tokens } = fullRoom()
+    send(room, 'a', { type: 'start' })
+    // the browser held a and b; both are connected, so a fresh tab is a spectator
+    expect(one(send(room, 'x', { type: 'join', roomId: 'r1', resume: [tokens.a, tokens.b] }), 'x', 'welcome').you).toBe('spectator')
+    room.leave('x')
+    room.leave('b') // b's tab was closed
+    const w = one(send(room, 'y', { type: 'join', roomId: 'r1', resume: [tokens.a, tokens.b] }), 'y', 'welcome')
+    expect(w.you).toBe('p2')
+    expect(w.token).toBe(tokens.b) // the tab learns the token it now holds
+    // nothing was taken from a
+    expect(one(send(room, 'a', { type: 'action', clientSeq: 99, action: { type: 'END_TURN' } }), 'a', 'rejected')).toBeTruthy()
+  })
+})

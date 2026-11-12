@@ -312,7 +312,7 @@ Steps (each verified and reviewed before the next):
 - [x] G5.3 Client online mode: lobby, joining by link, rendering server views.
   - [x] G5.3a Online store: the GameStore contract over a socket, fed by server views (no UI yet).
   - [x] G5.3b Seat-aware HUD, lobby screen, join by link; hot-seat-only parts (pass screen, autosave) off online.
-- [ ] G5.4 Reconnect and presence (seat token, snapshot resync on a `seq` gap).
+- [x] G5.4 Reconnect and presence (seat token, snapshot resync on a `seq` gap).
 - [ ] G5.5 Turn timers and absent-player fallback as logged actions (§20).
 - [ ] G5.6 Hardening: rate limits, logging, error handling, accessibility QA.
 - [ ] G5.7 Hosting decision, deployment and a load test.
@@ -390,6 +390,37 @@ Steps (each verified and reviewed before the next):
 - Regression: the hot-seat UI playthrough with seed 2024 replays the G4 exit game exactly (Blue on turn 194 after 939 actions, 195 pass screens, 0 rejections, 0 hand mismatches, 0 errors). Screenshots are in `screenshots/milestones/g5.3b/`.
 - Not yet: reconnect is only tested by reload in the lobby and by that unplanned mid-game reload. Resync on a `seq` gap and presence during the game are G5.4. Real devices on a LAN were not tried.
 
+**G5.4 result (2026-11-12):** a dropped connection, a reload or a closed tab no longer costs a seat.
+- **Client.** The online store reconnects by itself.
+  - The pause grows from 0.5 s to a 5 s cap. The store rejoins with the seat token, and the server answers with a full snapshot.
+  - While a game is on screen the status is `reconnecting`. The page is frozen (`inert`) under a "Reconnecting…" card with "Retry now".
+  - Before the start, a missing server reads "Can’t reach the game server". The page keeps trying and joins once the server answers.
+  - Every update already carries the full view, so a `seq` gap needs no extra round trip: the state is exact, only missed animations are skipped.
+  - A move sent into a dying socket is lost, not replayed; the player simply makes it again.
+- **Bug found and fixed.** After a reload the client counted `clientSeq` from 0 again, and the server silently dropped its moves as old retries.
+  - `welcome` now carries `nextSeq`, and the client continues from it.
+  - A Room test reproduces the old failure, and a store test shows a reloaded client's move is applied.
+- **Server.**
+  - **Presence:** after the start, every join and leave is broadcast as `presence`. The HUD greys out the avatar of a player without a connection and adds an "away" badge (in the screen-reader label too).
+  - **Takeover:** the same seat on a new connection replaces the old one. The old one gets `REPLACED`, is closed with code 4000 and doesn't fight back (no reconnect). Its tab offers "Play here".
+  - **Heartbeat:** every socket is pinged every 15 s, and one that missed a pong is terminated. A sleeping laptop thus shows as away instead of holding the seat silently.
+- **A reopened tab gets its seat back.** sessionStorage dies with the tab, so the browser also keeps the room's tokens in localStorage and offers them on `join` as `resume`.
+  - The server gives back only a seat that has no live connection. Four tabs of one browser keep their own seats, while a closed tab reopened from the link returns to its seat instead of becoming a spectator.
+- **Server restart.** Rooms live in memory, so a restarted server answers `NO_ROOM`. Every tab stops retrying and says the game is gone, with a "New room" link. Persistence is not in scope here.
+- **Tests:** 12 new, 208 in total.
+  - Room: presence, takeover, `nextSeq`, resume tokens.
+  - Server: heartbeat drop, takeover close code.
+  - Store: automatic rejoin mid-game, a reload with the saved token, takeover without a tug of war, `NO_ROOM` after a restart, joining a server that starts later.
+  - A full bot game where 5% of moves are followed by dropping a random socket, possibly with the move still in flight. Three runs gave 373–869 actions with 12–36 drops and 3–9 lost moves. Every game ended, with no rejections, and the legal-action equality held after every resync.
+- **Browser** (`npx tsx scripts/online-reconnect.mts`, its own server on 8788), at 1440×900 and 390×844:
+  - With every socket dropped mid-setup, the frozen card shows and the root is inert. The game comes back with the same seats and state, and the next move is applied.
+  - A closed tab shows as away to the others, and reopening the link returns it to its seat.
+  - A reloaded tab keeps its seat, and its next move is applied.
+  - A server restart leaves every tab saying the room is gone.
+  - 0 console errors (WebSocket connection-refused messages during the restart are expected and filtered).
+- **Regression.** A full online UI game (seed 7) ended on turn 125 after 654 actions with 0 rejections, 0 hand mismatches and 0 live controls out of turn. The result differs from G5.3b because the bot's choices depend on timing in the browser. The hot-seat playthrough with seed 2024 still replays the G4 exit game exactly (turn 194, 939 actions, 0 rejections, 0 hand mismatches); a first attempt was cut short by the Vite dev server reloading the page when ROADMAP.md was edited mid-run, not by the app. Screenshots are in `screenshots/milestones/g5.4/`.
+- **Not yet.** The game waits indefinitely for an away player: turn timers and absent-player fallback are G5.5. Rooms are not persisted across a server restart. Real devices were not tried.
+
 ---
 
 ## 6. Suggested code organization (adapt to actual repo)
@@ -442,7 +473,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
-| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, G5.3b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); `GAME_DESIGN.md` v1.2 |
+| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, G5.4 | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -450,4 +481,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** review G5.3b, then G5.4 (reconnect and presence during a game, resync on a `seq` gap).
+**Recommended next action:** review G5.4, then G5.5 (turn timers and absent-player fallback, §20) or G5.6 (rate limits and room limits) before any public hosting.

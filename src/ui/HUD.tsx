@@ -112,6 +112,9 @@ export const CardsIco = () => (
   </svg>
 )
 
+/** G5.4: an online player without a live connection. */
+export const AwayBadge = () => <span title="Disconnected" className="rounded-[4px] bg-white/10 px-[4px] text-[11px] font-semibold text-[#d6d2ca] ring-1 ring-white/25">away</span>
+
 /** Small award badges (Longest Road / Largest Army) shown on a player card. */
 export function AwardBadges({ seat }: { seat: SeatView }) {
   if (!seat.longestRoad && !seat.largestArmy) return null
@@ -124,7 +127,7 @@ export function AwardBadges({ seat }: { seat: SeatView }) {
 }
 
 export const seatLabel = (p: SeatView) =>
-  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}`
+  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}`
 
 function Players() {
   const { seats } = useGameView()
@@ -138,11 +141,11 @@ function Players() {
           className={`relative flex h-[62px] items-center gap-[12px] overflow-hidden rounded-[8px] pl-[6px] pr-3 transition-transform ${panel} ${p.active ? '-translate-x-[8px]' : ''}`}
           style={{ boxShadow: `inset ${p.active ? 5 : 3}px 0 0 ${p.color}, inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '55'}, 0 8px 22px rgba(0,0,0,.5)` }}
         >
-          <div className="h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[7px] ring-2" style={{ ['--tw-ring-color' as string]: p.color }}>
+          <div className={`h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[7px] ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
             <Avatar i={p.avatar} className="h-full w-full" />
           </div>
           <div className="flex-1">
-            <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}<AwardBadges seat={p} /></div>
+            <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}<AwardBadges seat={p} />{p.away && <AwayBadge />}</div>
             <div className="flex items-center gap-[22px] text-[14px] text-[#ece8e0] leading-none">
               <span className="flex items-center gap-[5px]"><Trophy />{p.vp}</span>
               <span className="flex items-center gap-[5px]"><CardsIco />{p.cards}</span>

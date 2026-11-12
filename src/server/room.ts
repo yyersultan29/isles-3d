@@ -10,7 +10,8 @@ import type { EngineError, GameSettings, GameState, LegalAction, PlayerId, Viewe
 import { parseClientMessage, type RoomErrorCode, type SeatInfo, type ServerMessage } from '../net/protocol'
 
 export type ConnId = string
-export interface Outbound { to: ConnId; msg: ServerMessage }
+/** `close`: the transport closes that connection after sending (a seat taken over elsewhere) */
+export interface Outbound { to: ConnId; msg: ServerMessage; close?: boolean }
 
 export interface RoomOptions {
   id: string
@@ -50,7 +51,7 @@ export class Room {
   receive(conn: ConnId, raw: string): Outbound[] {
     const m = parseClientMessage(raw)
     if (!m) return [{ to: conn, msg: { type: 'rejected', clientSeq: null, error: malformed } }]
-    if (m.type === 'join') return this.join(conn, m.roomId, m.token, m.claim)
+    if (m.type === 'join') return this.join(conn, m.roomId, m.token, m.claim, m.resume)
     const who = this.conns.get(conn)
     if (!who) return [this.err(conn, 'NOT_JOINED', 'join the room first')]
     if (m.type === 'start') return this.start(conn, who)
@@ -60,17 +61,28 @@ export class Room {
   /** A connection closed. */
   leave(conn: ConnId): Outbound[] {
     if (!this.conns.delete(conn)) return []
-    return this.started ? [] : this.lobbyToAll()
+    return this.seatsToAll()
   }
 
   // ---------- lobby ----------
 
-  private join(conn: ConnId, roomId: string, token?: string, claim?: boolean): Outbound[] {
+  private join(conn: ConnId, roomId: string, token?: string, claim?: boolean, resume: string[] = []): Outbound[] {
     if (roomId !== this.id) return [this.err(conn, 'NO_ROOM', `no room ${roomId}`)]
     let you: Viewer = 'spectator'
     let newToken: string | undefined
+    const out: Outbound[] = []
+    const online = new Set(this.conns.values())
     const bySeat = token ? SEATS.find((p) => this.tokens.get(p) === token) : undefined
-    if (bySeat) you = bySeat
+    const byResume = bySeat ? undefined : SEATS.find((p) => !online.has(p) && resume.includes(this.tokens.get(p) ?? '\0'))
+    if (byResume) you = byResume
+    else if (bySeat) {
+      you = bySeat
+      // one live connection per seat: the newest wins (a reload, a new device); the old one is told and closed
+      for (const [c, v] of this.conns) if (v === bySeat && c !== conn) {
+        this.conns.delete(c)
+        out.push({ to: c, msg: { type: 'error', code: 'REPLACED', message: 'this seat was opened on another connection' }, close: true })
+      }
+    }
     else if (claim && !this.started) {
       const free = SEATS.find((p) => !this.tokens.has(p))
       if (free) {
@@ -81,9 +93,12 @@ export class Room {
       }
     }
     this.conns.set(conn, you)
-    const out: Outbound[] = [{ to: conn, msg: { type: 'welcome', roomId: this.id, you, token: newToken, host: you !== 'spectator' && you === this.host } }]
+    const nextSeq = you === 'spectator' ? 0 : (this.lastSeq.get(you) ?? -1) + 1
+    // a resumed seat gets its token again: this tab didn't have it
+    if (byResume) newToken = this.tokens.get(byResume)
+    out.push({ to: conn, msg: { type: 'welcome', roomId: this.id, you, token: newToken, host: you !== 'spectator' && you === this.host, nextSeq } })
     if (this.state) out.push(this.snapshot(conn, you))
-    else out.push(...this.lobbyToAll())
+    out.push(...this.seatsToAll())
     return out
   }
 
@@ -136,9 +151,10 @@ export class Room {
     return SEATS.map((id) => ({ id, taken: this.tokens.has(id), connected: online.has(id) }))
   }
 
-  private lobbyToAll(): Outbound[] {
+  /** seats to everyone: `lobby` before the start, `presence` after */
+  private seatsToAll(): Outbound[] {
     const seats = this.seatsInfo()
-    return [...this.conns.keys()].map((c) => ({ to: c, msg: { type: 'lobby', seats, host: this.host } }))
+    return [...this.conns.keys()].map((c): Outbound => ({ to: c, msg: this.state ? { type: 'presence', seats } : { type: 'lobby', seats, host: this.host } }))
   }
 
   private err(conn: ConnId, code: RoomErrorCode, message: string): Outbound {

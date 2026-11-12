@@ -4,7 +4,7 @@
 
 import { useMemo } from 'react'
 import { COSTS, legalActions, MAX_PROPOSALS_PER_TURN, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource, type Viewer } from '../game'
-import { useGame, useSeat } from '../store/GameProvider'
+import { useGame, useSeat, useSession } from '../store/GameProvider'
 
 /**
  * G5.3b: whose screen it is. `null` is hot-seat (the screen follows whoever the game waits for);
@@ -34,6 +34,8 @@ export interface SeatView {
   longestRoad: boolean
   largestArmy: boolean
   active: boolean
+  /** online: the seat's player has no live connection (G5.4) */
+  away?: boolean
 }
 
 const count = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0)
@@ -106,7 +108,13 @@ export function primaryAction(s: GameState, me: Me = null): { label: string; sho
 export function useGameView() {
   const s = useGame((x) => x)
   const me = useSeat()
-  return useMemo(() => gameView(s, me), [s, me])
+  const seatsOnline = useSession()?.seats
+  return useMemo(() => {
+    const v = gameView(s, me)
+    if (!seatsOnline?.length) return v
+    const away = new Set(seatsOnline.filter((x) => x.taken && !x.connected).map((x) => x.id))
+    return { ...v, seats: v.seats.map((p) => (away.has(p.id) ? { ...p, away: true } : p)) }
+  }, [s, me, seatsOnline])
 }
 
 /** Everything the HUD shows, from one state and one point of view. */

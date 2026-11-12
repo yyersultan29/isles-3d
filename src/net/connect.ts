@@ -3,7 +3,9 @@
 //   ?room=<id>       join that room: take a free seat, or watch when all four are taken
 //   &server=host:port  the game server (default: this page's host, port 8787)
 // The seat token is kept per browser tab (sessionStorage), so a reload of the tab rejoins the same
-// seat, while four tabs of one browser are four different players.
+// seat, while four tabs of one browser are four different players. G5.4: the browser also remembers
+// every token it held in the room (localStorage); a reopened tab offers them and the server gives
+// back a seat whose player is away, never one another tab is using.
 
 import { createOnlineStore, type OnlineStore } from '../store/onlineStore'
 
@@ -35,14 +37,22 @@ const tokenKey = (room: string) => `isles3d.seat.${room}`
 const readToken = (room: string) => { try { return sessionStorage.getItem(tokenKey(room)) ?? undefined } catch { return undefined } }
 const writeToken = (room: string, t: string) => { try { sessionStorage.setItem(tokenKey(room), t) } catch { /* private mode: no rejoin */ } }
 
+const heldKey = (room: string) => `isles3d.held.${room}`
+const readHeld = (room: string): string[] => {
+  try { const v = JSON.parse(localStorage.getItem(heldKey(room)) ?? '[]'); return Array.isArray(v) ? v.filter((t) => typeof t === 'string').slice(-4) : [] } catch { return [] }
+}
+const addHeld = (room: string, t: string) => {
+  try { const held = readHeld(room).filter((x) => x !== t); localStorage.setItem(heldKey(room), JSON.stringify([...held, t].slice(-4))) } catch { /* no storage: no resume */ }
+}
+
 /** The online store for `?room=` (or `?online` when no server answered), else null (a local game). */
 export function onlineStoreFromUrl(): OnlineStore | null {
   const p = params()
   const roomId = p.get('room') ?? (p.has('online') ? 'none' : null)
   if (!roomId || !/^[A-Za-z0-9_-]{1,64}$/.test(roomId)) return null
   const token = readToken(roomId)
-  const store = createOnlineStore({ connect: () => new WebSocket(serverAddress(p).ws), roomId, token, claim: true })
-  store.onSession(() => { const t = store.session().token; if (t) writeToken(roomId, t) })
+  const store = createOnlineStore({ connect: () => new WebSocket(serverAddress(p).ws), roomId, token, claim: true, resume: readHeld(roomId) })
+  store.onSession(() => { const t = store.session().token; if (t) { writeToken(roomId, t); addHeld(roomId, t) } })
   return store
 }
 

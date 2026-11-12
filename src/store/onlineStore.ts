@@ -25,7 +25,8 @@ export interface SocketLike {
   addEventListener(type: 'message', listener: (e: { data: unknown }) => void): void
 }
 
-export type OnlineStatus = 'connecting' | 'lobby' | 'playing' | 'closed'
+/** reconnecting: the game was joined and the connection dropped; the store is retrying */
+export type OnlineStatus = 'connecting' | 'lobby' | 'playing' | 'reconnecting' | 'closed'
 
 export interface OnlineSession {
   status: OnlineStatus
@@ -49,6 +50,8 @@ export interface OnlineStore extends GameStore {
   /** the host starts the game */
   start(): void
   close(): void
+  /** skip the wait before the next reconnect attempt (a "Retry now" button) */
+  reconnectNow(): void
 }
 
 export interface OnlineOptions {
@@ -56,6 +59,10 @@ export interface OnlineOptions {
   roomId: string
   token?: string
   claim?: boolean
+  /** seat tokens this browser held in the room (G5.4): the server gives back one whose seat is idle */
+  resume?: string[]
+  /** pause before reconnect attempt n: min(maxMs, baseMs · 2^n) (defaults 500 ms, 5 s) */
+  reconnect?: { baseMs?: number; maxMs?: number }
 }
 
 const OPEN = 1
@@ -119,25 +126,37 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
     for (const l of [...listeners]) l()
   }
 
-  const ws = o.connect()
+  // ---- the connection (G5.4): reconnects by itself with a growing pause, rejoining with the seat
+  // token; the server answers a rejoin with a full snapshot, so nothing needs replaying here
+  let ws: SocketLike
+  let stopped = false // close() was called, or this seat was opened elsewhere
+  let attempt = 0
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const base = o.reconnect?.baseMs ?? 500, max = o.reconnect?.maxMs ?? 5000
   const send = (m: ClientMessage) => { if (ws.readyState === OPEN) ws.send(JSON.stringify(m)) }
-  ws.addEventListener('open', () => send({ type: 'join', roomId: o.roomId, token: o.token, claim: o.claim }))
-  ws.addEventListener('close', () => { session.status = 'closed'; sessionChanged() })
-  ws.addEventListener('message', (e) => {
+
+  const onMessage = (e: { data: unknown }) => {
     let m: ServerMessage
     try { m = JSON.parse(String(e.data)) } catch { return }
     switch (m.type) {
       case 'welcome':
+        attempt = 0
         session.me = m.you
         session.host = m.host
         if (m.token) session.token = m.token
         session.error = null
+        // after a reload the server still remembers this seat's last intent number
+        clientSeq = Math.max(clientSeq, m.nextSeq)
         sessionChanged()
         return
       case 'lobby':
         session.status = 'lobby'
         session.seats = m.seats
         session.host = !!session.me && session.me === m.host
+        sessionChanged()
+        return
+      case 'presence':
+        session.seats = m.seats
         sessionChanged()
         return
       case 'snapshot':
@@ -151,7 +170,9 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
         notify(null)
         return
       case 'update': {
-        // G5.4 resyncs on a gap; until then an out-of-order update is applied as a snapshot
+        if (m.seq <= seq) return // already covered by a newer snapshot
+        // every update carries the full view, so a gap needs no round trip: the state is exact,
+        // only the missed events (animations, notices) are skipped, and views snap
         const inOrder = m.seq === seq + 1
         if (!inOrder) gen++
         seq = m.seq
@@ -168,10 +189,35 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
       }
       case 'error':
         session.error = `${m.code}: ${m.message}`
+        // two tabs must not take the seat back and forth; a room the server no longer has (it
+        // restarted: rooms live in memory) won't come back by retrying
+        if (m.code === 'REPLACED' || m.code === 'NO_ROOM') { stopped = true; ws.close() }
         sessionChanged()
         return
     }
-  })
+  }
+
+  const connect = () => {
+    timer = null
+    ws = o.connect()
+    ws.addEventListener('open', () => {
+      // a seat token rejoins its seat; without one, claim a seat as asked
+      const token = session.token ?? undefined
+      send({ type: 'join', roomId: o.roomId, token, claim: token ? undefined : o.claim, resume: token || !o.resume?.length ? undefined : o.resume.slice(-4) })
+    })
+    ws.addEventListener('message', onMessage)
+    // a failed connect reports an error and then a close; the close handles it (and Node's `ws`
+    // would throw an error event nobody listens to)
+    ws.addEventListener('error', () => {})
+    ws.addEventListener('close', () => {
+      if (stopped) { session.status = 'closed'; sessionChanged(); return }
+      // joined before: say so and keep the game on screen; never reached: the server isn't there
+      session.status = session.me !== null ? 'reconnecting' : 'closed'
+      sessionChanged()
+      timer = setTimeout(connect, Math.min(max, base * 2 ** attempt++))
+    })
+  }
+  connect()
 
   const notSeated: EngineError = { code: 'NOT_YOUR_TURN', message: 'you are not seated in this game' }
 
@@ -204,6 +250,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
     session: () => sessionSnap,
     onSession(l) { sessionListeners.add(l); return () => { sessionListeners.delete(l) } },
     start: () => send({ type: 'start' }),
-    close: () => ws.close(),
+    close: () => { stopped = true; if (timer) clearTimeout(timer); ws.close() },
+    reconnectNow: () => { if (timer) { clearTimeout(timer); connect() } },
   }
 }

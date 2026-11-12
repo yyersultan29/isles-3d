@@ -20,7 +20,19 @@ export function Lobby() {
   const { compact, h } = useViewport()
   const start = useRef<HTMLButtonElement>(null)
   const status = session?.status
-  const covering = status === 'connecting' || status === 'lobby' || (status === 'closed' && !online?.getState().actionCount)
+  // the first snapshot starts the game on this screen; from then on the board stays visible
+  const started = !!online && online.generation() > 0
+  const covering = !started && !!status && status !== 'playing'
+  // in a game, a dropped connection freezes the screen until the rejoin snapshot arrives
+  const frozen = started && status === 'reconnecting'
+  const retry = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!frozen) return
+    const root = document.getElementById('root')
+    if (root) root.inert = true
+    retry.current?.focus()
+    return () => { if (root) root.inert = false }
+  }, [frozen])
 
   useEffect(() => {
     if (!covering) return
@@ -38,15 +50,32 @@ export function Lobby() {
     try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* the link stays selectable */ }
   }
 
-  // ---- during the game: who you are, and a lost connection
+  // ---- during the game: the connection dropped and the store is rejoining
+  if (frozen) return createPortal(
+    <div className="fixed inset-0 z-[55] grid place-items-center bg-[#08121c]/45 px-[12px] font-ui text-[#f4efe6]">
+      <section role="alertdialog" aria-modal="true" aria-labelledby="reconnect-title" aria-describedby="reconnect-text"
+        className={`w-full max-w-[340px] rounded-[16px] px-[18px] pb-[14px] pt-[14px] text-center ${panel}`}>
+        <h2 id="reconnect-title" className="font-display text-[22px] font-semibold">Reconnecting…</h2>
+        <p id="reconnect-text" className="mt-[4px] text-[14px] text-[#d6d2ca]">The connection to the game dropped. Your seat is kept; the game continues as soon as you are back.</p>
+        <button ref={retry} onClick={() => online.reconnectNow()} className={`mt-[12px] h-[36px] rounded-[9px] bg-white/10 px-[14px] text-[14px] font-semibold text-white hover:bg-white/20 ${focusRing}`}>Retry now</button>
+      </section>
+    </div>,
+    document.body,
+  )
+
+  // ---- during the game: who you are, or why the connection is closed
   if (!covering) {
     const seat = me && me !== 'spectator' ? SEATS[me] : null
     return createPortal(
       // desktop: under the phase banner; compact: above the bottom dock (notices use the top there)
       <div className="pointer-events-none fixed inset-x-0 z-[30] flex justify-center font-ui" style={compact ? { bottom: COMPACT_SAFE.bottom + 6 } : { top: 70 }}>
         {status === 'closed' ? (
-          <p role="alert" className={`pointer-events-auto rounded-full px-[16px] py-[7px] text-[14px] font-semibold text-[#ffd2c2] ring-2 ring-[#d23a2e] ${panel}`}>
-            Connection lost. <a href={location.href} className={`underline ${focusRing}`}>Reload</a> to rejoin your seat.
+          <p role="alert" className={`pointer-events-auto mx-[8px] rounded-[16px] px-[16px] py-[7px] text-[14px] font-semibold text-[#ffd2c2] ring-2 ring-[#d23a2e] ${panel}`}>
+            {session.error?.startsWith('REPLACED')
+              ? <>Your seat is open in another tab or device. <a href={location.href} className={`underline ${focusRing}`}>Play here</a></>
+              : session.error?.startsWith('NO_ROOM')
+              ? <>This game is no longer on the server (it was restarted). <a href="?online" className={`underline ${focusRing}`}>New room</a></>
+              : <>Connection closed. <a href={location.href} className={`underline ${focusRing}`}>Reload</a> to rejoin your seat.</>}
           </p>
         ) : compact && h < 500 ? (
           // a landscape phone has no free strip: the hand already says whose cards these are
@@ -62,7 +91,7 @@ export function Lobby() {
   }
 
   // ---- before the game
-  const title = status === 'connecting' ? 'Connecting…' : status === 'closed' ? 'Can’t reach the game server' : 'Online room'
+  const title = status === 'connecting' ? 'Connecting…' : status === 'reconnecting' ? 'Reconnecting…' : status === 'closed' ? 'Can’t reach the game server' : 'Online room'
   return createPortal(
     <div className="fixed inset-0 z-[55] grid place-items-center bg-[#08121c]/85 px-[12px] font-ui text-[#f4efe6]">
       <section role="dialog" aria-modal="true" aria-labelledby="lobby-title" aria-describedby="lobby-status"
@@ -71,7 +100,7 @@ export function Lobby() {
         <h2 id="lobby-title" className="font-display text-[24px] font-semibold leading-tight">{title}</h2>
         {status === 'closed' ? (
           <p id="lobby-status" className="mt-[6px] text-[14px] text-[#d6d2ca]">
-            Start it with <code className="rounded bg-white/10 px-[4px]">npm run server</code>, then <a href={location.href} className={`underline ${focusRing}`}>reload</a>.
+            Start it with <code className="rounded bg-white/10 px-[4px]">npm run server</code>; this page keeps trying and joins once it answers.
             {session.error && <span className="mt-[4px] block text-[#ffb4a2]">{session.error}</span>}
           </p>
         ) : (

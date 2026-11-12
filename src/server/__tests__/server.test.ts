@@ -146,3 +146,34 @@ describe('WebSocket server', () => {
     for (const c of [...clients, spectator]) c.close()
   }, 60000)
 })
+
+describe('WebSocket server G5.4', () => {
+  it('the heartbeat drops a socket that stopped answering, and the room sees it go away', async () => {
+    server = await startServer({ port: 0, heartbeatMs: 40 })
+    const url = `ws://127.0.0.1:${server.port}/ws`
+    const room = server.createRoom()
+    const a = await connect(url), b = await connect(url)
+    a.send({ type: 'join', roomId: room.id, claim: true }); await a.next('welcome')
+    b.send({ type: 'join', roomId: room.id, claim: true }); await b.next('welcome')
+    // b's machine goes to sleep: its socket stops reading, so no pong comes back
+    ;(b.ws as unknown as { _socket: { pause(): void } })._socket.pause()
+    for (;;) { const l = await a.next('lobby', 2000); if (l.seats[1].taken && !l.seats[1].connected) break }
+    expect(server.sockets.size).toBe(1)
+    a.close()
+  })
+
+  it('a replaced connection is closed with code 4000', async () => {
+    const { url } = await boot()
+    const room = server!.createRoom()
+    const a = await connect(url)
+    a.send({ type: 'join', roomId: room.id, claim: true })
+    const { token } = await a.next('welcome')
+    const closed = new Promise<number>((ok) => a.ws.once('close', (code) => ok(code)))
+    const a2 = await connect(url)
+    a2.send({ type: 'join', roomId: room.id, token })
+    expect((await a2.next('welcome')).you).toBe('p1')
+    expect((await a.next('error')).code).toBe('REPLACED')
+    expect(await closed).toBe(4000)
+    a2.close()
+  })
+})

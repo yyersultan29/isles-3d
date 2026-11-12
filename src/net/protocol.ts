@@ -9,8 +9,13 @@ import type { Action, EngineError, GameEvent, LegalAction, PlayerId, PublicGameS
 // ---------- client → server ----------
 
 export type ClientMessage =
-  /** attach to a room: with a seat token to (re)take that seat, with `claim` to take a free seat, else as a spectator */
-  | { type: 'join'; roomId: string; token?: string; claim?: boolean }
+  /**
+   * attach to a room: with a seat token to (re)take that seat, with `claim` to take a free seat, else
+   * as a spectator. `resume` (G5.4): seat tokens this browser held in the room; the first whose seat
+   * has no live connection is taken back (a closed tab reopened), connected seats are skipped (other
+   * tabs of the same browser keep theirs)
+   */
+  | { type: 'join'; roomId: string; token?: string; claim?: boolean; resume?: string[] }
   /** the host starts the game once every seat is taken */
   | { type: 'start' }
   /** an intent; `clientSeq` (strictly increasing per seat) makes retries idempotent */
@@ -21,10 +26,16 @@ export type ClientMessage =
 export interface SeatInfo { id: PlayerId; taken: boolean; connected: boolean }
 
 export type ServerMessage =
-  /** reply to `join`: who you are; `token` is sent once, when a seat is claimed, to rejoin later */
-  | { type: 'welcome'; roomId: string; you: Viewer; token?: string; host: boolean }
+  /**
+   * reply to `join`: who you are; `token` is sent once, when a seat is claimed, to rejoin later.
+   * `nextSeq`: the lowest `clientSeq` the server will still apply for this seat (G5.4: a reloaded
+   * client starts counting there, or its first intents would be taken for old retries)
+   */
+  | { type: 'welcome'; roomId: string; you: Viewer; token?: string; host: boolean; nextSeq: number }
   /** seats before the game starts (and on every change while in the lobby) */
   | { type: 'lobby'; seats: SeatInfo[]; host: PlayerId | null }
+  /** G5.4: who is connected, after the start (on every join and leave) */
+  | { type: 'presence'; seats: SeatInfo[] }
   /** the full view on start, join and reconnect */
   | { type: 'snapshot'; seq: number; view: PublicGameState; legal: LegalAction[] }
   /** after each applied action; `seq` = actionCount, so a gap means resync */
@@ -34,7 +45,8 @@ export type ServerMessage =
   /** lobby or room errors outside the engine (unknown room, not the host, game not started) */
   | { type: 'error'; code: RoomErrorCode; message: string }
 
-export type RoomErrorCode = 'NO_ROOM' | 'NOT_JOINED' | 'NOT_HOST' | 'NOT_READY' | 'ALREADY_STARTED' | 'NOT_STARTED' | 'SPECTATOR'
+/** REPLACED: the same seat joined from another connection; this one is closed (G5.4) */
+export type RoomErrorCode = 'NO_ROOM' | 'NOT_JOINED' | 'NOT_HOST' | 'NOT_READY' | 'ALREADY_STARTED' | 'NOT_STARTED' | 'SPECTATOR' | 'REPLACED'
 
 // ---------- validation of untrusted input ----------
 
@@ -58,7 +70,8 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       if (!isId(m.roomId)) return null
       if (m.token !== undefined && !isId(m.token, 128)) return null
       if (m.claim !== undefined && typeof m.claim !== 'boolean') return null
-      return { type: 'join', roomId: m.roomId, token: m.token as string | undefined, claim: m.claim as boolean | undefined }
+      if (m.resume !== undefined && (!Array.isArray(m.resume) || m.resume.length > 4 || !m.resume.every((t) => isId(t, 128)))) return null
+      return { type: 'join', roomId: m.roomId, token: m.token as string | undefined, claim: m.claim as boolean | undefined, resume: m.resume as string[] | undefined }
     case 'start':
       return { type: 'start' }
     case 'action':
