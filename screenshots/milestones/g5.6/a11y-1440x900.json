@@ -1,0 +1,70 @@
+{
+ "lobby": {
+  "role": "dialog",
+  "title": "Online room",
+  "text": "Send the link to the other players. The game starts when all four seats are taken.",
+  "focus": "section[role=dialog] \"Online roomSend the link\"",
+  "focusInDialog": true,
+  "action": null
+ },
+ "lobbyAxe": [],
+ "tabStops": [
+  "input:Invite link",
+  "button:Copy link",
+  "button[role=radio]:Normal, 90 s per tur",
+  "input:Invite link",
+  "button:Copy link",
+  "button[role=radio]:Normal, 90 s per tur"
+ ],
+ "arrow": {
+  "checked": "Fast",
+  "focused": "Fast",
+  "tabbable": [
+   "Fast"
+  ]
+ },
+ "full": {
+  "role": "alertdialog",
+  "title": "This room is full",
+  "text": "Too many people are connected to this room right now.",
+  "focus": "a \"New room\"",
+  "focusInDialog": true,
+  "action": "/?online&server=127.0.0.1%3A8788"
+ },
+ "fullAxe": [],
+ "busy": {
+  "role": "alertdialog",
+  "title": "Can’t create a room yet",
+  "text": "Too many rooms were created from this network. Wait a minute, then try again.",
+  "focus": "a \"Try again\"",
+  "focusInDialog": true,
+  "action": "http://localhost:5173/?online&server=127.0.0.1:8788"
+ },
+ "busyAxe": [],
+ "gone": {
+  "role": "alertdialog",
+  "title": "This room is gone",
+  "text": "The game is no longer on the server: the room sat empty, or the server restarted.",
+  "focus": "a \"New room\"",
+  "focusInDialog": true,
+  "action": "/?online&server=127.0.0.1%3A8788"
+ },
+ "goneAxe": [],
+ "unreachable": {
+  "role": "alertdialog",
+  "title": "Can’t reach the game server",
+  "text": "No room could be created because the game server didn’t answer. Start it with npm run server.",
+  "focus": "a \"Try again\"",
+  "focusInDialog": true,
+  "action": "http://localhost:5173/?online&server=127.0.0.1:1"
+ },
+ "unreachableAxe": [],
+ "rateLimited": {
+  "alert": "Too many clicks at once: some were ignored. Try again.",
+  "status": "lobby"
+ },
+ "rateCleared": true,
+ "gameAxe": [],
+ "spectatorAxe": [],
+ "errors": []
+}

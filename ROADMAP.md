@@ -314,9 +314,9 @@ Steps (each verified and reviewed before the next):
   - [x] G5.3b Seat-aware HUD, lobby screen, join by link; hot-seat-only parts (pass screen, autosave) off online.
 - [x] G5.4 Reconnect and presence (seat token, snapshot resync on a `seq` gap).
 - [x] G5.5 Turn timers and absent-player fallback as logged actions (§20).
-- [ ] G5.6 Hardening: rate limits, logging, error handling, accessibility QA.
+- [x] G5.6 Hardening: rate limits, logging, error handling, accessibility QA.
   - [x] G5.6a Server: rate and connection limits, room cleanup, Origin allowlist, structured logs, contained failures.
-  - [ ] G5.6b Client: clear messages for refused or full rooms and dropped frames; accessibility QA of the online screens.
+  - [x] G5.6b Client: clear messages for refused or full rooms and dropped frames; accessibility QA of the online screens.
 - [ ] G5.7 Hosting decision, deployment and a load test.
 
 **G5.1 result (2026-11-12):** `src/net/protocol.ts`, `src/server/room.ts` and 8 tests in `src/server/__tests__/room.test.ts`, 183 tests in total.
@@ -469,6 +469,34 @@ Steps (each verified and reviewed before the next):
   - The hot-seat seed 2024 game still replays exactly (turn 194, 939 actions).
 - **Not yet (G5.6b).** A refused room creation (429 or 503) or a full room still shows the generic "Can't reach the game server" before the game. `RATE_LIMITED` lands in the lobby error line as raw text. Behind a proxy all players share one address until G5.7 decides how to trust `X-Forwarded-For`.
 
+**G5.6b result (2026-11-12):** every way of having no game now says why and offers one action. The online screens pass an accessibility check.
+- **Error states.** The session carries an `errorCode`, and one table gives each case its title, text and action, both in the lobby dialog and in the in-game notice:
+  - room creation refused (429 "Can’t create a room yet", 503 "The server is full");
+  - no server ("Can’t reach the game server", with the `npm run server` hint);
+  - an old link ("This room is gone"), a full room, an abandoned room, and a seat opened in another tab.
+  - "Try again" reloads; "New room" keeps a chosen `&server=`.
+  - A `?online` whose room couldn't be created no longer joins a room called "none": the store starts closed with the reason and opens no socket.
+  - `RATE_LIMITED` shows "Too many clicks at once: some were ignored. Try again." for 4 s. The connection stays, and the player simply acts again.
+- **Accessibility, online screens.**
+  - A closed state is an `alertdialog` with the focus on its action; the open lobby takes the focus on the dialog itself.
+  - Tab stays inside the dialog.
+  - The turn-timer radios have one tab stop, and the arrows select (APG radio pattern); each radio's name includes its hint.
+  - The lobby status is a polite live region, and "Invite link copied" is announced.
+  - The app is now a `<main>` landmark. axe flagged `region` on the game screen, hot-seat as well; the change is semantic only, and the layout is unchanged in a screenshot comparison.
+- **Tests:** 3 new store tests (232 → 235): a failed creation never connects, `ROOM_FULL` stops retrying, and `RATE_LIMITED` clears itself while the connection stays.
+- **Browser** (`npx tsx scripts/online-a11y.mts`, its own servers on 8788 and 8789; axe-core 4.10.2 is loaded from cdnjs into the page for the check only, not a project dependency), at 1440×900 and 390×844:
+  - each closed state shows its title, focuses its action and keeps the focus in the dialog;
+  - Tab cycles invite link → Copy link → the checked radio → back, and ArrowRight selects Fast;
+  - the rate-limit notice appears and clears;
+  - axe reports 0 violations on the lobby, every closed state, the game screen and the spectator screen;
+  - 0 console errors.
+- **Regression.**
+  - A full online UI game (seed 7) ended on turn 141 after 731 actions with 0 rejections, 0 hand mismatches and the same victory everywhere.
+  - The reconnect and timer checks pass; the in-game "room is gone" notice shows the new text.
+  - Hot-seat seed 2024 still replays exactly (turn 194, 939 actions).
+  - Screenshots and the axe results are in `screenshots/milestones/g5.6/` (`b-*`, `a11y-*.json`).
+- **Not yet.** Screen readers were not tried by hand (VoiceOver or NVDA), only axe and keyboard checks. Pages outside the online screens were not re-audited here. Behind a proxy all players share one address until G5.7.
+
 ---
 
 ## 6. Suggested code organization (adapt to actual repo)
@@ -521,7 +549,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
-| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, G5.6a | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6a server limits and logs; `GAME_DESIGN.md` v1.2 |
+| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, G5.6b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -529,4 +557,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** review G5.6a, then G5.6b (client error messages and accessibility QA of the online screens) before G5.7 hosting.
+**Recommended next action:** review G5.6, then G5.7: choose hosting (one small Node service for the game server plus the static client), deploy, and run a load test.

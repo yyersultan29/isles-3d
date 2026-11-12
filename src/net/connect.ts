@@ -7,7 +7,7 @@
 // every token it held in the room (localStorage); a reopened tab offers them and the server gives
 // back a seat whose player is away, never one another tab is using.
 
-import { createOnlineStore, type OnlineStore } from '../store/onlineStore'
+import { createOnlineStore, type OnlineStore, type SessionErrorCode } from '../store/onlineStore'
 
 const params = () => new URLSearchParams(location.search)
 
@@ -17,20 +17,28 @@ export function serverAddress(p = params()): { http: string; ws: string } {
   return { http: `${secure ? 'https' : 'http'}://${host}`, ws: `${secure ? 'wss' : 'ws'}://${host}/ws` }
 }
 
+/** why `?online` has no room (G5.6b); read by onlineStoreFromUrl to explain it */
+let createFailure: { code: SessionErrorCode; message: string } | null = null
+
 /** `?online` without a room: create one and move to its link. Resolves false when nothing to do. */
 export async function createRoomFromUrl(): Promise<boolean> {
   const p = params()
   if (!p.has('online') || p.get('room')) return false
   try {
     const r = await fetch(`${serverAddress(p).http}/rooms`, { method: 'POST' })
-    if (!r.ok) return false // G5.6: refused (429 too many rooms, 503 full): never continue at ?room=undefined
+    // refused (429 too many rooms, 503 full): never continue at ?room=undefined
+    if (!r.ok) {
+      createFailure = r.status === 429 ? { code: 'CREATE_BUSY', message: 'too many rooms created' } : { code: 'CREATE_FULL', message: `server answered ${r.status}` }
+      return false
+    }
     const { roomId } = await r.json() as { roomId: string }
     p.delete('online')
     p.set('room', roomId)
     location.replace(`${location.pathname}?${p}`)
     return true
   } catch {
-    return false // no server: the page explains it (Lobby shows the closed connection)
+    createFailure = { code: 'UNREACHABLE', message: 'no answer from the game server' }
+    return false // the page explains it (Lobby)
   }
 }
 
@@ -51,6 +59,8 @@ export function onlineStoreFromUrl(): OnlineStore | null {
   const p = params()
   const roomId = p.get('room') ?? (p.has('online') ? 'none' : null)
   if (!roomId || !/^[A-Za-z0-9_-]{1,64}$/.test(roomId)) return null
+  // `?online` whose room couldn't be created: a closed store that says why (no socket to room "none")
+  if (!p.get('room')) return createOnlineStore({ connect: () => new WebSocket(serverAddress(p).ws), roomId, failed: createFailure ?? { code: 'UNREACHABLE', message: 'no room was created' } })
   const token = readToken(roomId)
   const store = createOnlineStore({ connect: () => new WebSocket(serverAddress(p).ws), roomId, token, claim: true, resume: readHeld(roomId) })
   store.onSession(() => { const t = store.session().token; if (t) { writeToken(roomId, t); addHeld(roomId, t) } })

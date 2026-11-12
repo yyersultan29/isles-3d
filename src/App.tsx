@@ -20,7 +20,8 @@ export default function App() {
   const online = onlineStore()
   return (
     <GameProvider store={online ?? undefined}>
-      <div className="relative h-full w-full">
+      {/* G5.6b: the game is the page's main landmark (screen-reader navigation) */}
+      <main aria-label="Isles 3D" className="relative h-full w-full">
         <div className="absolute inset-0">
           {webgl && (
             <SceneErrorBoundary>
@@ -30,7 +31,7 @@ export default function App() {
           <SceneStatusNotice initial={webgl ? 'ok' : 'unsupported'} />
         </div>
         <HUD />
-      </div>
+      </main>
       {online ? <Lobby /> : <PassDevice />}
       {/* the showcase board (?board=demo) and online games have no saved games */}
       {BOARD_MODE === 'game' && !online && <Resume />}

@@ -13,7 +13,7 @@
 
 import { ENGINE_VERSION, RESOURCE_ORDER, createGame, validate } from '../game'
 import type { Action, EngineError, GameEvent, GameState, LegalAction, PlayerId, PlayerState, PublicGameState, ReplayFile, Result, ResourceCounts, Viewer } from '../game'
-import type { ClientMessage, SeatInfo, ServerMessage, TimerInfo, TimerPreset } from '../net/protocol'
+import type { ClientMessage, RoomErrorCode, SeatInfo, ServerMessage, TimerInfo, TimerPreset } from '../net/protocol'
 import type { GameEventListener, GameStore, RejectionListener } from './gameStore'
 
 /** The part of WebSocket the store uses: the browser's WebSocket and `ws` both fit. */
@@ -24,6 +24,10 @@ export interface SocketLike {
   addEventListener(type: 'open' | 'close' | 'error', listener: () => void): void
   addEventListener(type: 'message', listener: (e: { data: unknown }) => void): void
 }
+
+/** G5.6b: why the page has no room: a server error, or `?online` could not create one
+ *  (CREATE_BUSY: 429 too many rooms from this network, CREATE_FULL: 503, UNREACHABLE: no answer) */
+export type SessionErrorCode = RoomErrorCode | 'CREATE_BUSY' | 'CREATE_FULL' | 'UNREACHABLE'
 
 /** reconnecting: the game was joined and the connection dropped; the store is retrying */
 export type OnlineStatus = 'connecting' | 'lobby' | 'playing' | 'reconnecting' | 'closed'
@@ -39,8 +43,10 @@ export interface OnlineSession {
   seats: SeatInfo[]
   /** legal actions the server lists for this seat */
   legal: LegalAction[]
-  /** the last room-level error (NO_ROOM, NOT_HOST, …) */
+  /** the last room-level error as "CODE: message" (NO_ROOM, NOT_HOST, …) */
   error: string | null
+  /** G5.6b: its code, for the UI to explain; RATE_LIMITED clears itself after a few seconds */
+  errorCode: SessionErrorCode | null
   /** G5.5: the turn-timer preset (set by the host in the lobby) */
   preset: TimerPreset
   /** G5.5: the running turn timer, with `deadline` on this machine's clock (Date.now), or null */
@@ -69,6 +75,10 @@ export interface OnlineOptions {
   resume?: string[]
   /** pause before reconnect attempt n: min(maxMs, baseMs · 2^n) (defaults 500 ms, 5 s) */
   reconnect?: { baseMs?: number; maxMs?: number }
+  /** G5.6b: there is no room to join (creating one failed): the store starts closed and never connects */
+  failed?: { code: SessionErrorCode; message: string }
+  /** how long a RATE_LIMITED notice stays (default 4 s) */
+  noticeMs?: number
 }
 
 const OPEN = 1
@@ -120,7 +130,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
   let seq = -1
   let clientSeq = 0
   const sent = new Map<number, Action>()
-  const session: OnlineSession = { status: 'connecting', roomId: o.roomId, me: null, host: false, token: o.token ?? null, seats: [], legal: [], error: null, preset: 'normal', timer: null }
+  const session: OnlineSession = { status: 'connecting', roomId: o.roomId, me: null, host: false, token: o.token ?? null, seats: [], legal: [], error: null, errorCode: null, preset: 'normal', timer: null }
   let sessionSnap = { ...session }
   const listeners = new Set<() => void>()
   const eventListeners = new Set<GameEventListener>()
@@ -136,12 +146,13 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
 
   // ---- the connection (G5.4): reconnects by itself with a growing pause, rejoining with the seat
   // token; the server answers a rejoin with a full snapshot, so nothing needs replaying here
-  let ws: SocketLike
+  let ws: SocketLike | null = null
   let stopped = false // close() was called, or this seat was opened elsewhere
   let attempt = 0
   let timer: ReturnType<typeof setTimeout> | null = null
   const base = o.reconnect?.baseMs ?? 500, max = o.reconnect?.maxMs ?? 5000
-  const send = (m: ClientMessage) => { if (ws.readyState === OPEN) ws.send(JSON.stringify(m)) }
+  const send = (m: ClientMessage) => { if (ws?.readyState === OPEN) ws.send(JSON.stringify(m)) }
+  let noticeTimer: ReturnType<typeof setTimeout> | null = null
 
   const onMessage = (e: { data: unknown }) => {
     let m: ServerMessage
@@ -153,6 +164,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
         session.host = m.host
         if (m.token) session.token = m.token
         session.error = null
+        session.errorCode = null
         // after a reload the server still remembers this seat's last intent number
         clientSeq = Math.max(clientSeq, m.nextSeq)
         sessionChanged()
@@ -200,10 +212,18 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
       }
       case 'error':
         session.error = `${m.code}: ${m.message}`
+        session.errorCode = m.code
+        if (m.code === 'RATE_LIMITED') {
+          // a dropped frame: say so for a moment; the player simply acts again
+          if (noticeTimer) clearTimeout(noticeTimer)
+          noticeTimer = setTimeout(() => {
+            if (session.errorCode === 'RATE_LIMITED') { session.error = null; session.errorCode = null; sessionChanged() }
+          }, o.noticeMs ?? 4000)
+        }
         // two tabs must not take the seat back and forth; a room the server no longer has (it
         // restarted, or removed it once empty: rooms live in memory) won't come back by retrying, and
         // neither will a full room (G5.6)
-        if (m.code === 'REPLACED' || m.code === 'NO_ROOM' || m.code === 'ABANDONED' || m.code === 'ROOM_FULL') { stopped = true; ws.close() }
+        if (m.code === 'REPLACED' || m.code === 'NO_ROOM' || m.code === 'ABANDONED' || m.code === 'ROOM_FULL') { stopped = true; ws?.close() }
         sessionChanged()
         return
     }
@@ -211,17 +231,18 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
 
   const connect = () => {
     timer = null
-    ws = o.connect()
-    ws.addEventListener('open', () => {
+    const socket = o.connect()
+    ws = socket
+    socket.addEventListener('open', () => {
       // a seat token rejoins its seat; without one, claim a seat as asked
       const token = session.token ?? undefined
       send({ type: 'join', roomId: o.roomId, token, claim: token ? undefined : o.claim, resume: token || !o.resume?.length ? undefined : o.resume.slice(-4) })
     })
-    ws.addEventListener('message', onMessage)
+    socket.addEventListener('message', onMessage)
     // a failed connect reports an error and then a close; the close handles it (and Node's `ws`
     // would throw an error event nobody listens to)
-    ws.addEventListener('error', () => {})
-    ws.addEventListener('close', () => {
+    socket.addEventListener('error', () => {})
+    socket.addEventListener('close', () => {
       if (stopped) { session.status = 'closed'; sessionChanged(); return }
       // joined before: say so and keep the game on screen; never reached: the server isn't there
       session.status = session.me !== null ? 'reconnecting' : 'closed'
@@ -229,7 +250,13 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
       timer = setTimeout(connect, Math.min(max, base * 2 ** attempt++))
     })
   }
-  connect()
+  if (o.failed) {
+    stopped = true
+    session.status = 'closed'
+    session.error = `${o.failed.code}: ${o.failed.message}`
+    session.errorCode = o.failed.code
+    sessionSnap = { ...session }
+  } else connect()
 
   const notSeated: EngineError = { code: 'NOT_YOUR_TURN', message: 'you are not seated in this game' }
 
@@ -262,8 +289,8 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
     session: () => sessionSnap,
     onSession(l) { sessionListeners.add(l); return () => { sessionListeners.delete(l) } },
     start: () => send({ type: 'start' }),
-    close: () => { stopped = true; if (timer) clearTimeout(timer); ws.close() },
+    close: () => { stopped = true; if (timer) clearTimeout(timer); if (noticeTimer) clearTimeout(noticeTimer); ws?.close() },
     setTimer: (preset) => send({ type: 'settings', timer: preset }),
-    reconnectNow: () => { if (timer) { clearTimeout(timer); connect() } },
+    reconnectNow: () => { if (timer && !stopped) { clearTimeout(timer); connect() } },
   }
 }
