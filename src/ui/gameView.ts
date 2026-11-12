@@ -3,7 +3,7 @@
 // opponents: public VP (never hidden VP cards), hand and dev-card counts, awards.
 
 import { useMemo } from 'react'
-import { COSTS, legalActions, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource } from '../game'
+import { COSTS, legalActions, MAX_PROPOSALS_PER_TURN, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource } from '../game'
 import { useGame } from '../store/GameProvider'
 
 /** Seat names and colours; colours match the 3D pieces (scene/board.ts PLAYER_COLORS walls). */
@@ -92,7 +92,7 @@ export function primaryAction(s: GameState): { label: string; short: string; act
 
 export function useGameView() {
   const s = useGame((x) => x)
-  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s), bank: bankView(s) }), [s])
+  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s), bank: bankView(s), offer: offerView(s), opponents: s.order.filter((p) => p !== s.order[s.active]) }), [s])
 }
 
 // ---------- G4.4b: hand and build menu ----------
@@ -180,4 +180,43 @@ export function bankMax(v: BankView, give: Resource, get: Resource) {
   if (give === get) return 0
   const g = v.rows.find((r) => r.res === give)!, t = v.rows.find((r) => r.res === get)!
   return Math.min(Math.floor(g.have / g.rate), t.bank)
+}
+
+// ---------- G4.4d2: player-to-player offers ----------
+
+export type Counts = Partial<Record<Resource, number>>
+const sum = (c: Counts) => RESOURCE_ORDER.reduce((a, r) => a + (c[r] ?? 0), 0)
+
+/** Why the active player can't propose this offer yet (mirrors rules/trade.ts propose), or null. */
+export function proposeCheck(s: GameState, offer: Counts, request: Counts, to: PlayerId[]): string | null {
+  if (s.phase.kind !== 'actions') return 'Not now'
+  const pl = s.players.find((p) => p.id === s.order[s.active])!
+  if (!sum(offer)) return 'Add cards you give'
+  if (!sum(request)) return 'Add cards you want'
+  if (RESOURCE_ORDER.some((r) => offer[r] && request[r])) return 'A resource can’t be on both sides'
+  if (!to.length) return 'Choose at least one player'
+  const short = RESOURCE_ORDER.find((r) => (offer[r] ?? 0) > pl.resources[r])
+  if (short) return `You have only ${pl.resources[short]} ${RES_NAME[short]}`
+  if (s.tradesProposedThisTurn >= MAX_PROPOSALS_PER_TURN) return `At most ${MAX_PROPOSALS_PER_TURN} offers per turn`
+  return null
+}
+
+export interface OfferRow { id: PlayerId; name: string; color: string; avatar: number; response: 'pending' | 'accept' | 'reject'; canAccept: boolean; canConfirm: boolean; reason: string | null }
+export interface OfferView { id: number; from: PlayerId; offer: Counts; request: Counts; rows: OfferRow[] }
+
+/** The open offer and where each addressed player stands; buttons follow legalActions. */
+export function offerView(s: GameState): OfferView | null {
+  const t = s.trade
+  if (!t || s.phase.kind !== 'actions') return null
+  const confirmable = new Set(legalActions(s, t.from).flatMap((a) => (a.type === 'CONFIRM_TRADE' ? [a.with] : [])))
+  const rows = t.to.map((id) => {
+    const canAccept = legalActions(s, id).some((a) => a.type === 'RESPOND_TRADE' && a.accept)
+    const res = s.players.find((p) => p.id === id)!.resources
+    const short = RESOURCE_ORDER.filter((r) => res[r] < (t.request[r] ?? 0))
+    return {
+      id, ...SEATS[id], response: t.responses[id] ?? 'pending', canAccept, canConfirm: confirmable.has(id),
+      reason: canAccept ? null : short.length ? `Needs ${short.map((r) => `${(t.request[r] ?? 0) - res[r]} more ${RES_NAME[r]}`).join(', ')}` : null,
+    } as OfferRow
+  })
+  return { id: t.id, from: t.from, offer: { ...t.offer }, request: { ...t.request }, rows }
 }

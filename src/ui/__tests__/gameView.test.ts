@@ -1,7 +1,7 @@
 // G4.4a: HUD data is derived from state and shows only public information for everyone.
 import { describe, expect, it } from 'vitest'
 import { act, fixture, newGame, playSetup } from '../../game/__tests__/helpers'
-import { bankMax, bankView, buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
+import { bankMax, bankView, offerView, proposeCheck, buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
 import { COSTS, legalActions } from '../../game'
 
 describe('G4.4a HUD view', () => {
@@ -99,5 +99,31 @@ describe('G4.4a HUD view', () => {
     empty.bank.brick = 1
     expect(bankMax(bankView(empty), 'lumber', 'brick')).toBe(1)
     expect(bankView(fixture({ phase: { kind: 'preRoll' } }))).toMatchObject({ open: false, reason: 'Roll the dice first' })
+  })
+
+  it('G4.4d2: propose checks mirror the engine; the offer view follows responses and legalActions', () => {
+    const s = fixture({ hands: { p1: { lumber: 2, wool: 1 }, p2: { ore: 1 }, p3: { grain: 2 } } })
+    const all = ['p2', 'p3', 'p4'] as const
+    expect(proposeCheck(s, {}, { ore: 1 }, [...all])).toBe('Add cards you give')
+    expect(proposeCheck(s, { lumber: 1 }, {}, [...all])).toBe('Add cards you want')
+    expect(proposeCheck(s, { lumber: 1 }, { lumber: 1 }, [...all])).toBe('A resource can’t be on both sides')
+    expect(proposeCheck(s, { lumber: 1 }, { ore: 1 }, [])).toBe('Choose at least one player')
+    expect(proposeCheck(s, { lumber: 3 }, { ore: 1 }, [...all])).toBe('You have only 2 wood')
+    expect(proposeCheck(s, { lumber: 2 }, { ore: 1 }, [...all])).toBeNull()
+    expect(proposeCheck(fixture({ phase: { kind: 'preRoll' } }), { lumber: 1 }, { ore: 1 }, [...all])).toBe('Not now')
+
+    let t = act(s, { type: 'PROPOSE_TRADE', offer: { lumber: 2 }, request: { ore: 1 } })
+    let v = offerView(t)!
+    expect(v).toMatchObject({ from: 'p1', offer: { lumber: 2 }, request: { ore: 1 } })
+    expect(v.rows.map((r) => [r.id, r.response, r.canAccept, r.canConfirm])).toEqual([
+      ['p2', 'pending', true, false], ['p3', 'pending', false, false], ['p4', 'pending', false, false]])
+    expect(v.rows[1].reason).toBe('Needs 1 more ore')
+    t = act(t, { type: 'RESPOND_TRADE', tradeId: v.id, accept: true }, 'p2')
+    t = act(t, { type: 'RESPOND_TRADE', tradeId: v.id, accept: false }, 'p3')
+    v = offerView(t)!
+    expect(v.rows.map((r) => [r.id, r.response, r.canConfirm])).toEqual([['p2', 'accept', true], ['p3', 'reject', false], ['p4', 'pending', false]])
+    t = act(t, { type: 'CONFIRM_TRADE', tradeId: v.id, with: 'p2' })
+    expect(offerView(t)).toBeNull()
+    expect(t.players[0].resources).toMatchObject({ lumber: 0, ore: 1 })
   })
 })

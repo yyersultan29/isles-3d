@@ -6,5 +6,5 @@ export { viewFor, eventsFor, type PublicGameState, type PublicPlayer, type Viewe
 export { buildTopology, sceneToAxial, axialToScene, hexCorners, hexSides } from './topology'
 export { STANDARD_FIXED, PORT_EDGES, pips, resourceOf } from './board'
 export { COSTS } from './rules/build'
-export { tradeRate } from './rules/trade'
+export { tradeRate, MAX_PROPOSALS_PER_TURN } from './rules/trade'
 export { replay, hashState, canonicalJson, ENGINE_VERSION, type ReplayFile } from './replay'

@@ -102,8 +102,8 @@ function StealDialog() {
 
 /** Whichever dialog the current phase needs (seven, or the open trade panel), positioned above the hand. */
 export function GameDialogs({ compact = false, className = '', style }: { compact?: boolean; className?: string; style?: React.CSSProperties }) {
-  const { phaseKind } = useGameView()
-  const trade = useTradeOpen()
+  const { phaseKind, offer } = useGameView()
+  const trade = useTradeOpen() || !!offer // an open offer stays on screen until it is answered
   const body = phaseKind === 'discard' ? <DiscardDialog compact={compact} />
     : phaseKind === 'steal' ? <StealDialog />
     : phaseKind === 'actions' && trade ? <TradeDialog compact={compact} />
