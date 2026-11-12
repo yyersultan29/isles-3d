@@ -1,8 +1,8 @@
 // G4.4a: HUD data is derived from state and shows only public information for everyone.
 import { describe, expect, it } from 'vitest'
 import { act, fixture, newGame, playSetup } from '../../game/__tests__/helpers'
-import { bankMax, bankView, devView, offerView, proposeCheck, buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
-import { COSTS, legalActions } from '../../game'
+import { bankMax, bankView, devView, finalScores, offerView, proposeCheck, buildOptions, costText, discardPrompt, handOf, stealPrompt, phaseText, primaryAction, seats, SEATS } from '../gameView'
+import { COSTS, apply, createGame, legalActions, type ReplayFile } from '../../game'
 
 describe('G4.4a HUD view', () => {
   it('seats follow turn order, mark the active player and count public VP only', () => {
@@ -143,5 +143,32 @@ describe('G4.4a HUD view', () => {
     const pre = fixture({ phase: { kind: 'preRoll' } })
     pre.players[0].devCards.push(card(95, 'knight'))
     expect(devView(pre)).toMatchObject({ canOpen: true, rows: [{ type: 'knight', playable: true }] })
+  })
+
+  it('G4.5d: final scores reveal VP cards and match the engine’s GAME_WON totals', () => {
+    expect(finalScores(fixture())).toBeNull()
+    const files = import.meta.glob('../../game/__tests__/golden/*.json', { eager: true, import: 'default' }) as Record<string, ReplayFile>
+    let checked = 0
+    for (const f of Object.values(files)) {
+      const g = createGame(f.settings)
+      if (!g.ok) throw new Error('createGame')
+      let s = g.state
+      for (const { player, action } of f.actions) {
+        const r = apply(s, player, action)
+        if (!r.ok) throw new Error(r.error.code)
+        s = r.state
+        const won = r.events.find((e) => e.type === 'GAME_WON')
+        if (!won || won.type !== 'GAME_WON') continue
+        const fs = finalScores(s)!
+        expect(fs.winner).toBe(won.by)
+        expect(fs.rows[0]).toMatchObject({ id: won.by, winner: true })
+        for (const row of fs.rows) {
+          expect(row.total).toBe(won.totals[row.id])
+          expect(row.vpCards).toBe(won.vpCards[row.id])
+        }
+        checked++
+      }
+    }
+    expect(checked).toBeGreaterThan(0)
   })
 })

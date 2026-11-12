@@ -92,7 +92,7 @@ export function primaryAction(s: GameState): { label: string; short: string; act
 
 export function useGameView() {
   const s = useGame((x) => x)
-  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s), bank: bankView(s), offer: offerView(s), dev: devView(s), opponents: s.order.filter((p) => p !== s.order[s.active]) }), [s])
+  return useMemo(() => ({ seats: seats(s), phase: phaseText(s), primary: primaryAction(s), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s), build: buildOptions(s), active: s.order[s.active], turn: s.turn, discard: discardPrompt(s), steal: stealPrompt(s), bank: bankView(s), offer: offerView(s), dev: devView(s), final: finalScores(s), opponents: s.order.filter((p) => p !== s.order[s.active]) }), [s])
 }
 
 // ---------- G4.4b: hand and build menu ----------
@@ -253,4 +253,27 @@ export function devView(s: GameState): DevView {
   })
   const bankTotal = RESOURCE_ORDER.reduce((a, r) => a + s.bank[r], 0)
   return { player, total: pl.devCards.length, rows, yopTake: Math.min(2, bankTotal), bank: { ...s.bank }, canOpen: s.phase.kind === 'preRoll' || s.phase.kind === 'actions' }
+}
+
+// ---------- G4.5d: final scores ----------
+
+export interface FinalRow { id: PlayerId; name: string; color: string; avatar: number; settlements: number; cities: number; longestRoad: boolean; largestArmy: boolean; vpCards: number; knights: number; total: number; winner: boolean }
+
+/** The end-of-game table (§18): every source of points, hidden VP cards revealed; winner first, then by total. */
+export function finalScores(s: GameState): { winner: PlayerId; turn: number; rows: FinalRow[] } | null {
+  if (s.phase.kind !== 'gameOver') return null
+  const winner = s.phase.winner
+  const rows = s.order.map((id) => {
+    const pl = s.players.find((p) => p.id === id)!
+    let settlements = 0, cities = 0
+    for (const b of Object.values(s.buildings)) if (b?.owner === id) { if (b.type === 'city') cities++; else settlements++ }
+    const vpCards = pl.devCards.filter((c) => c.type === 'victoryPoint').length
+    const longestRoad = s.longestRoad === id, largestArmy = s.largestArmy === id
+    return {
+      id, ...SEATS[id], settlements, cities, longestRoad, largestArmy, vpCards, knights: pl.playedKnights,
+      total: settlements + 2 * cities + (longestRoad ? 2 : 0) + (largestArmy ? 2 : 0) + vpCards, winner: id === winner,
+    }
+  })
+  rows.sort((a, b) => Number(b.winner) - Number(a.winner) || b.total - a.total || s.order.indexOf(a.id) - s.order.indexOf(b.id))
+  return { winner, turn: s.turn, rows }
 }

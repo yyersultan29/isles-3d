@@ -7,6 +7,7 @@ import { useViewport } from './layout'
 import { CompactHUD } from './CompactHUD'
 import { GameDialogs } from './Dialogs'
 import { Notices } from './Notices'
+import { Victory } from './Victory'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
 import { setDevOpen, setPanel, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeOpen } from '../store/ui'
 import type { Resource } from '../game'
@@ -438,7 +439,7 @@ export const HUD = memo(function HUD() {
   usePlacementAutoReset()
   if (compact) return <CompactHUD />
   return (
-    <div className="pointer-events-none fixed inset-0 select-none overflow-hidden font-ui">
+    <div className="pointer-events-none fixed inset-0 z-[20] select-none overflow-hidden font-ui">
       <div
         className="absolute left-0 top-0 origin-top-left [&_button]:pointer-events-auto [&_nav]:pointer-events-auto"
         style={{ width: `${100 / s}vw`, height: `${100 / s}vh`, transform: `scale(${s})` }}
@@ -462,6 +463,7 @@ export const HUD = memo(function HUD() {
         <BuildPanel />
         <BottomLeft />
         <GameDialogs className="absolute bottom-[132px] left-1/2 -translate-x-[54%]" />
+        <Victory />
       </div>
     </div>
   )

@@ -5,6 +5,7 @@ import { AwardBadges, BuildRows, DevButton, TradeButton, CardsIco, Die, IconButt
 import { useGameView } from './gameView'
 import { GameDialogs } from './Dialogs'
 import { Notices } from './Notices'
+import { Victory } from './Victory'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
 
 /**
@@ -32,7 +33,7 @@ export function CompactHUD() {
   }, [])
 
   return (
-    <div className="pointer-events-none fixed inset-0 select-none overflow-hidden font-ui text-[#f4efe6] [&_button]:pointer-events-auto">
+    <div className="pointer-events-none fixed inset-0 z-[20] select-none overflow-hidden font-ui text-[#f4efe6] [&_button]:pointer-events-auto">
       {/* ---------- top bar ---------- */}
       <div className="absolute inset-x-[8px] top-[8px] flex items-start gap-[8px]" style={{ height: COMPACT_SAFE.top - PHASE_ROW - 8 }}>
         <div className="relative">
@@ -146,6 +147,7 @@ export function CompactHUD() {
         </ul>
       </div>
       <GameDialogs compact className="absolute inset-x-[8px] flex justify-center" style={{ bottom: short ? 8 : COMPACT_SAFE.bottom + 4 }} />
+      <Victory compact />
     </div>
   )
 }
