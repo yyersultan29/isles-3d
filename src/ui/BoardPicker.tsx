@@ -7,6 +7,8 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent } from 'react'
 import { panel } from './HUD'
+import { usingKeyboard } from './modality'
+import { BOARD_MODE } from '../scene/board'
 import { useGame, useGameStore } from '../store/GameProvider'
 import { placementTargets } from '../store/placement'
 import { setPlacementMode, usePlacementMode } from '../store/ui'
@@ -60,17 +62,35 @@ export function BoardPicker({ className = '', style }: { className?: string; sty
 
   // a build chosen from the menu: take focus (and remember where to go back)
   useEffect(() => {
-    if (!mode || !n) return
+    if (!mode || !n || !usingKeyboard()) return
     // back to the Build button afterwards (the menu row that chose it closes)
     returnTo.current = document.querySelector<HTMLElement>('[data-build-toggle]') ?? (document.activeElement as HTMLElement | null)
     btn.current?.focus()
   }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // a board-only phase (setup, robber, free roads) with focus lost: take it, after dialogs settle
+  // a board-only phase (setup, robber, free roads) starts: the board is the only thing to do, so a
+  // keyboard user goes there (after dialogs settle and return focus); a build-mode change is above
+  const boardOnly = state.phase.kind !== 'actions'
   useEffect(() => {
     if (!n) return
-    const raf = requestAnimationFrame(() => { if (lost(document.activeElement)) btn.current?.focus() })
+    const raf = requestAnimationFrame(() => {
+      const a = document.activeElement
+      if (usingKeyboard() && (lost(a) || (boardOnly && !a?.closest('[role=dialog]')))) btn.current?.focus()
+    })
     return () => cancelAnimationFrame(raf)
+  }, [n > 0]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // nothing focused yet (a fresh page, or after a mouse click on the board): an arrow key or Enter
+  // starts keyboard placement
+  useEffect(() => {
+    if (!n) return
+    const f = (e: globalThis.KeyboardEvent) => {
+      if (!(e.key in KEYS || e.key === 'Enter') || !lost(document.activeElement)) return
+      e.preventDefault()
+      btn.current?.focus()
+    }
+    window.addEventListener('keydown', f)
+    return () => window.removeEventListener('keydown', f)
   }, [n > 0]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // targets gone while focused: go back to where we came from, else to the main action
@@ -110,7 +130,7 @@ export function BoardPicker({ className = '', style }: { className?: string; sty
     setCursor(list[i].at)
   }
 
-  if (!n) return null
+  if (!n || BOARD_MODE !== 'game') return null
   const label = idx >= 0 ? spotLabel(state, list[idx].action) : ''
   const kind = targets.tiles.length ? 'tile' : targets.edges.length ? 'road spot' : 'spot'
   return (
