@@ -12,6 +12,8 @@ export interface PublicPlayer {
   resourceCount: number
   devCardCount: number
   playedKnights: number
+  /** public: everyone sees a card being played (G5.3a: the online client needs it for legality) */
+  playedDevThisTurn: boolean
   pieces: { roads: number; settlements: number; cities: number }
   publicVP: number
   /** own player only */
@@ -58,6 +60,7 @@ export function viewFor(s: GameState, viewer: Viewer): PublicGameState {
         resourceCount: handSize(p.resources),
         devCardCount: p.devCards.length,
         playedKnights: p.playedKnights,
+        playedDevThisTurn: p.playedDevThisTurn,
         pieces: { ...p.pieces },
         publicVP: publicVP(s, p.id),
       }
