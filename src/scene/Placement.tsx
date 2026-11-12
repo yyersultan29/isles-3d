@@ -11,6 +11,7 @@ import { animTime, motion } from './motion'
 import { useGame, useGameStore } from '../store/GameProvider'
 import { placementTargets } from '../store/placement'
 import { setPlacementMode, usePlacementMode } from '../store/ui'
+import { getCursor, setProjector } from '../store/boardCursor'
 import type { Action } from '../game'
 
 // the rails sit flat at board level, so markers use a fixed height (a tile's relief rises near
@@ -20,7 +21,7 @@ const PICK_VERTEX = 0.3
 const PICK_EDGE = 0.22
 const CLICK_SLOP_PX = 6
 
-interface Spot { x: number; z: number; action: Action }
+interface Spot { x: number; z: number; action: Action; at: string }
 interface EdgeSpot extends Spot { ang: number; len: number; a: [number, number]; b: [number, number] }
 
 const vertexPos = (v: Parameters<typeof vertexToScene>[0]) => { const s = vertexToScene(v); return corner(tileAt(...s.tile), s.corner) }
@@ -43,14 +44,14 @@ export function Placement() {
 
   const targets = useMemo(() => placementTargets(state, mode), [state, mode])
   const spots = useMemo(() => {
-    const vertices: Spot[] = targets.vertices.map(({ at, action }) => { const [x, z] = vertexPos(at); return { x, z, action } })
+    const vertices: Spot[] = targets.vertices.map(({ at, action }) => { const [x, z] = vertexPos(at); return { x, z, action, at } })
     const edges: EdgeSpot[] = targets.edges.map(({ at, action }) => {
       const s = edgeToScene(at)
       const t = tileAt(...s.tile)
       const a = corner(t, s.edge), b = corner(t, (s.edge + 1) % 6)
-      return { x: (a[0] + b[0]) / 2, z: (a[1] + b[1]) / 2, ang: -Math.atan2(b[1] - a[1], b[0] - a[0]), len: Math.hypot(b[0] - a[0], b[1] - a[1]), a, b, action }
+      return { x: (a[0] + b[0]) / 2, z: (a[1] + b[1]) / 2, ang: -Math.atan2(b[1] - a[1], b[0] - a[0]), len: Math.hypot(b[0] - a[0], b[1] - a[1]), a, b, action, at }
     })
-    const tiles: Spot[] = targets.tiles.flatMap(({ at, action }) => { const t = tileByAxial(at); return t ? [{ x: t.x, z: t.z, action }] : [] })
+    const tiles: Spot[] = targets.tiles.flatMap(({ at, action }) => { const t = tileByAxial(at); return t ? [{ x: t.x, z: t.z, action, at }] : [] })
     return { vertices, edges, tiles }
   }, [targets])
 
@@ -144,6 +145,28 @@ export function Placement() {
     }
   }, [gl, camera, spots, targets, store, state.phase.kind])
 
+  // keyboard cursor (G4.6a): the HUD picker moves through targets in screen space, so it needs to
+  // know where each target lands on screen with the current camera
+  const byAt = useMemo(() => {
+    const m = new Map<string, { spot: Spot; kind: 'v' | 'e' | 't' }>()
+    spots.vertices.forEach((s) => m.set(s.at, { spot: s, kind: 'v' }))
+    spots.edges.forEach((s) => m.set(s.at, { spot: s, kind: 'e' }))
+    spots.tiles.forEach((s) => m.set(s.at, { spot: s, kind: 't' }))
+    return m
+  }, [spots])
+  useEffect(() => {
+    const v = new THREE.Vector3()
+    setProjector((a) => {
+      const at = 'vertex' in a ? a.vertex : 'edge' in a ? a.edge : 'tile' in a ? a.tile : null
+      const hit = at ? byAt.get(at) : undefined
+      if (!hit) return null
+      const r = gl.domElement.getBoundingClientRect()
+      v.set(hit.spot.x, MARK_Y, hit.spot.z).project(camera)
+      return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]
+    })
+    return () => setProjector(null)
+  }, [byAt, camera, gl])
+
   // gentle pulse (steady under reduced motion) and the hover marker
   const hoverRing = useRef<THREE.Mesh>(null)
   const hoverDot = useRef<THREE.Mesh>(null)
@@ -151,7 +174,8 @@ export function Placement() {
   const hoverHex = useRef<THREE.Mesh>(null)
   useFrame(() => {
     mats.base.opacity = motion.reduced ? 0.8 : 0.62 + 0.28 * (0.5 + 0.5 * Math.sin(animTime.value * 3.2))
-    const { spot, kind } = hover.current
+    const key = getCursor()
+    const { spot, kind } = hover.current.spot ? hover.current : (key && byAt.get(key)) || hover.current
     const g = hoverRef.current
     if (!g) return
     g.visible = !!spot
@@ -177,7 +201,7 @@ export function Placement() {
         <mesh ref={hoverRing} geometry={geo.ring} material={mats.hover} scale={1.45} renderOrder={6} />
         <mesh ref={hoverDot} geometry={geo.dot} material={mats.fill} scale={1.3} renderOrder={7} />
         <mesh ref={hoverBar} geometry={geo.bar} material={mats.fill} renderOrder={7} />
-        <mesh ref={hoverHex} geometry={geo.hex} material={mats.hover} renderOrder={6} />
+        <mesh ref={hoverHex} geometry={geo.hex} material={mats.fill} scale={[1.04, 1, 1.04]} renderOrder={6} />
       </group>
     </group>
   )

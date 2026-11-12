@@ -8,6 +8,7 @@ import { CompactHUD } from './CompactHUD'
 import { GameDialogs } from './Dialogs'
 import { Notices } from './Notices'
 import { Victory } from './Victory'
+import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
 import { setDevOpen, setPanel, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeOpen } from '../store/ui'
 import type { Resource } from '../game'
@@ -231,6 +232,7 @@ function DiceArea() {
         <div className="absolute inset-x-[10px] top-[8px] h-[8px] rounded-full bg-[repeating-linear-gradient(90deg,rgba(0,0,0,0.12)_0_6px,rgba(255,255,255,0.03)_6px_14px)]" />
         <button
           onClick={act}
+          data-primary-action
           disabled={!primary.action}
           className="absolute left-1/2 top-[30px] outline-none focus-visible:ring-4 focus-visible:ring-white/80 h-[46px] w-[176px] -translate-x-1/2 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] font-display text-[21px] font-semibold text-[#3a2208] shadow-[0_0_18px_rgba(255,190,70,0.7),0_4px_0_#8a5410,inset_0_2px_0_rgba(255,255,255,0.7)] transition-[transform,filter] hover:scale-[1.03] active:translate-y-[2px] disabled:cursor-default disabled:grayscale-[0.7] disabled:brightness-75 disabled:hover:scale-100 disabled:text-[18px]"
         >
@@ -463,6 +465,7 @@ export const HUD = memo(function HUD() {
         <BuildPanel />
         <BottomLeft />
         <GameDialogs className="absolute bottom-[132px] left-1/2 -translate-x-[54%]" />
+        <BoardPicker className="absolute inset-x-0 bottom-[132px]" />
         <Victory />
       </div>
     </div>

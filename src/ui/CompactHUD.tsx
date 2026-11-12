@@ -6,6 +6,7 @@ import { useGameView } from './gameView'
 import { GameDialogs } from './Dialogs'
 import { Notices } from './Notices'
 import { Victory } from './Victory'
+import { BoardPicker } from './BoardPicker'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
 
 /**
@@ -99,6 +100,7 @@ export function CompactHUD() {
         <div className="relative flex w-full max-w-[560px] items-center gap-[6px]">
           <button
             onClick={act}
+            data-primary-action
             disabled={!primary.action}
             className="flex h-[48px] disabled:grayscale-[0.7] disabled:brightness-75 items-center gap-[8px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] pl-[6px] pr-[14px] font-display text-[17px] font-semibold text-[#3a2208] shadow-[0_0_12px_rgba(255,190,70,0.6),0_3px_0_#8a5410] outline-none focus-visible:ring-4 focus-visible:ring-white/80 active:translate-y-[2px]"
           >
@@ -119,6 +121,7 @@ export function CompactHUD() {
             <span aria-hidden className="absolute right-[4px] top-[4px] h-[8px] w-[8px] rounded-full bg-[#f2a33a]" />
           </IconButton>
           <button
+            data-build-toggle
             aria-expanded={build}
             aria-controls="compact-build"
             onClick={() => { setBuild((v) => !v); setMenu(false) }}
@@ -147,6 +150,7 @@ export function CompactHUD() {
         </ul>
       </div>
       <GameDialogs compact className="absolute inset-x-[8px] flex justify-center" style={{ bottom: short ? 8 : COMPACT_SAFE.bottom + 4 }} />
+      <BoardPicker className="absolute inset-x-[8px]" style={{ bottom: COMPACT_SAFE.bottom + 4 }} />
       <Victory compact />
     </div>
   )
