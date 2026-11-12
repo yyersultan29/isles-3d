@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
 import { AwardBadges, BuildRows, DevButton, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, RESOURCES, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, useHand } from './HUD'
@@ -26,9 +26,16 @@ export function CompactHUD() {
   const { ref: dice, a, b, primary, act } = useDiceAndAction((el) =>
     gsap.fromTo(el.children, { y: -10, rotate: -25 }, { y: 0, rotate: 0, duration: 0.6, ease: 'bounce.out', stagger: 0.08 }),
   )
-  // Escape closes any open popover
+  // Escape closes any open popover; focus inside it goes back to its toggle (G4.6b)
+  const menuBtn = useRef<HTMLButtonElement>(null)
+  const buildBtn = useRef<HTMLButtonElement>(null)
+  const refocus = () => {
+    const a = document.activeElement
+    if (a?.closest('#compact-menu')) menuBtn.current?.focus()
+    else if (a?.closest('#compact-build')) buildBtn.current?.focus()
+  }
   useEffect(() => {
-    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMenu(false); setBuild(false) } }
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { refocus(); setMenu(false); setBuild(false) } }
     window.addEventListener('keydown', f)
     return () => window.removeEventListener('keydown', f)
   }, [])
@@ -39,6 +46,7 @@ export function CompactHUD() {
       <div className="absolute inset-x-[8px] top-[8px] flex items-start gap-[8px]" style={{ height: COMPACT_SAFE.top - PHASE_ROW - 8 }}>
         <div className="relative">
           <button
+            ref={menuBtn}
             aria-label="Menu"
             aria-expanded={menu}
             aria-controls="compact-menu"
@@ -121,6 +129,7 @@ export function CompactHUD() {
             <span aria-hidden className="absolute right-[4px] top-[4px] h-[8px] w-[8px] rounded-full bg-[#f2a33a]" />
           </IconButton>
           <button
+            ref={buildBtn}
             data-build-toggle
             aria-expanded={build}
             aria-controls="compact-build"
@@ -132,7 +141,7 @@ export function CompactHUD() {
           </button>
           {build && (
             <section id="compact-build" aria-label="Build" className={`pointer-events-auto absolute bottom-[54px] right-0 w-[246px] rounded-[12px] px-[10px] py-[8px] ${panel}`}>
-              <BuildRows onChosen={() => setBuild(false)} />
+              <BuildRows onChosen={() => { refocus(); setBuild(false) }} />
             </section>
           )}
         </div>

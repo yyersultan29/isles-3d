@@ -84,6 +84,9 @@ function BankPanel({ compact }: { compact: boolean }) {
   const first = useRef<HTMLButtonElement>(null)
   const firstGive = bank.rows.find((r) => r.canGive)?.res
   useEffect(() => { focusInto(first.current) }, [])
+  // after a trade the Trade button disables itself; keep keyboard focus at the start of the panel
+  const traded = useRef(false)
+  useEffect(() => { if (traded.current) { traded.current = false; (first.current ?? null)?.focus() } }, [bank])
 
   // drop choices the hand or the bank no longer supports (after a trade, or a new turn)
   const giveRow = give ? bank.rows.find((r) => r.res === give)! : null
@@ -94,7 +97,7 @@ function BankPanel({ compact }: { compact: boolean }) {
     setN((x) => Math.max(1, Math.min(x, max || 1)))
   }, [bank, giveRow, get, max])
 
-  const confirm = () => { if (give && get && n <= max && act(bank.player, { type: 'BANK_TRADE', give, get, count: n })) setN(1) }
+  const confirm = () => { if (give && get && n <= max && act(bank.player, { type: 'BANK_TRADE', give, get, count: n })) { setN(1); traded.current = document.activeElement !== document.body } }
   const summary = give && get ? `${n * giveRow!.rate} ${NAME[give]} → ${n} ${NAME[get]}` : give ? 'Choose what to get' : 'Choose what to give'
 
   return (

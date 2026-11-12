@@ -156,12 +156,16 @@ function Players() {
 
 /** Turn and phase line, announced politely to screen readers. */
 export function PhaseBanner({ className = '' }: { className?: string }) {
-  const { phase, seats } = useGameView()
+  const { phase, seats, phaseKind, dice } = useGameView()
   const active = seats.find((x) => x.active)
+  // G4.6b: the roll is part of the same announcement as the phase it leads to
+  const rolled = dice && active && (phaseKind === 'actions' || phaseKind === 'discard' || phaseKind === 'moveRobber' || phaseKind === 'steal')
+    ? `${active.name} rolled ${dice[0] + dice[1]} (${dice[0]} and ${dice[1]}). ` : ''
   return (
     <div role="status" aria-live="polite" className={`pointer-events-none rounded-full px-[18px] py-[7px] text-[15px] font-semibold text-[#f4efe6] ${panel} ${className}`}
       style={active ? { boxShadow: `inset 0 0 0 1.5px ${active.color}aa, 0 8px 22px rgba(0,0,0,.5)` } : undefined}>
       {active && <span aria-hidden className="mr-[8px] inline-block h-[10px] w-[10px] rounded-full align-middle" style={{ background: active.color }} />}
+      {rolled && <span className="sr-only">{rolled}</span>}
       {phase}
     </div>
   )

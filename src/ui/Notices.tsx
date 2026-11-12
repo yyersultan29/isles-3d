@@ -21,7 +21,7 @@ export function Notices({ className = '', style, align = 'center' }: { className
   return (
     <div className={`pointer-events-none flex flex-col ${align === 'start' ? 'items-start' : 'items-center'} gap-[6px] ${className}`} style={style} aria-live="polite">
       {list.map((n) => (
-        <button key={n.id} role={n.kind === 'error' ? 'alert' : undefined} onClick={() => dismissNotice(n.id)} title="Dismiss"
+        <button key={n.id} tabIndex={-1} role={n.kind === 'error' ? 'alert' : undefined} onClick={() => dismissNotice(n.id)} title="Dismiss"
           className={`pointer-events-auto flex max-w-full items-center gap-[8px] ${align === 'start' ? 'rounded-[12px]' : 'rounded-full'} px-[14px] py-[6px] text-left text-[14px] font-medium text-[#f4efe6] ring-1 ${RING[n.kind]} ${panel} animate-[notice-in_.22s_ease-out]`}>
           {n.kind === 'error'
             ? <span aria-hidden className="grid h-[16px] w-[16px] shrink-0 place-items-center rounded-full bg-[#e0483a] text-[11px] font-bold text-white">!</span>

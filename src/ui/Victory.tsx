@@ -15,7 +15,8 @@ export function Victory({ compact = false }: { compact?: boolean }) {
   const store = useGameStore()
   const [hidden, setHidden] = useState(false)
   const again = useRef<HTMLButtonElement>(null)
-  useEffect(() => { if (final && !hidden) again.current?.focus() }, [final, hidden])
+  const pill = useRef<HTMLButtonElement>(null)
+  useEffect(() => { if (final) (hidden ? pill : again).current?.focus() }, [final, hidden])
   useEffect(() => { if (!final) setHidden(false) }, [final])
   if (!final) return null
   const w = final.rows[0]
@@ -23,7 +24,7 @@ export function Victory({ compact = false }: { compact?: boolean }) {
 
   if (hidden) return (
     <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ bottom: compact ? 160 : 140 }}>
-      <button onClick={() => setHidden(false)} className={`pointer-events-auto h-[40px] rounded-full px-[18px] font-display text-[16px] font-semibold text-[#f4efe6] ring-2 ring-[#f2b544]/80 ${panel} ${focusRing}`}>
+      <button ref={pill} onClick={() => setHidden(false)} className={`pointer-events-auto h-[40px] rounded-full px-[18px] font-display text-[16px] font-semibold text-[#f4efe6] ring-2 ring-[#f2b544]/80 ${panel} ${focusRing}`}>
         {w.name} won · Show results
       </button>
     </div>
