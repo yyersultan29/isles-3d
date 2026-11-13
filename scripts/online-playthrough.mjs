@@ -101,7 +101,7 @@ while (stats.steps++ < 20000) {
       if (s.kind === 'setup' || s.kind === 'roadBuilding' || s.kind === 'moveRobber') { await boardPick(p); did(s.kind) }
       else if (s.kind === 'steal') { await click(p, 'button[aria-label^="Rob "]'); did('steal') }
       else if (s.kind === 'preRoll') {
-        if (s.legal.includes('PLAY_KNIGHT') && rand() < 0.5) { await click(p, 'button[aria-label^="Development cards"]'); await click(p, 'button[aria-label^="Play Knight"]'); did('knight') }
+        if (s.legal.includes('PLAY_KNIGHT') && rand() < 0.5) { await click(p, 'button[aria-label^="My development cards"]'); await click(p, 'button[aria-label^="Play Knight"]'); did('knight') }
         else { await click(p, '[data-primary-action]'); did('roll') }
       } else if (s.kind === 'actions') {
         if (s.trade) {
@@ -122,8 +122,8 @@ while (stats.steps++ < 20000) {
           if (L.includes('BUILD_CITY')) { await buildRow(p, 'Build City'); await boardPick(p); did('city') }
           else if (L.includes('BUILD_SETTLEMENT')) { await buildRow(p, 'Build Settlement'); await boardPick(p); did('settlement') }
           else if (L.includes('BUY_DEV') && rand() < 0.6) { await buildRow(p, 'Buy Development card'); did('buyDev') }
-          else if (L.includes('PLAY_ROAD_BUILDING') && rand() < 0.5) { await click(p, 'button[aria-label^="Development cards"]'); await click(p, 'button[aria-label^="Play Road Building"]'); did('roadBuildingCard') }
-          else if (L.includes('PLAY_KNIGHT') && rand() < 0.4) { await click(p, 'button[aria-label^="Development cards"]'); await click(p, 'button[aria-label^="Play Knight"]'); did('knight') }
+          else if (L.includes('PLAY_ROAD_BUILDING') && rand() < 0.5) { await click(p, 'button[aria-label^="My development cards"]'); await click(p, 'button[aria-label^="Play Road Building"]'); did('roadBuildingCard') }
+          else if (L.includes('PLAY_KNIGHT') && rand() < 0.4) { await click(p, 'button[aria-label^="My development cards"]'); await click(p, 'button[aria-label^="Play Knight"]'); did('knight') }
           else if (L.includes('BUILD_ROAD') && turnMemo.roads < 1 && rand() < 0.8) { turnMemo.roads++; await buildRow(p, 'Build Road'); await boardPick(p); did('road') }
           else if (L.includes('PROPOSE_TRADE') && turnMemo.p2p < 1 && rand() < 0.35) {
             turnMemo.p2p++

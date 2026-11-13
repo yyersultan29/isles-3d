@@ -5,7 +5,7 @@
 import { useEffect } from 'react'
 import { useGameEvents, useGameStore } from '../store/GameProvider'
 import { errorText } from './i18n'
-import { clearNotices, dismissNotice, eventNotices, ownRollNotice, pushNotice, useNotices, type NoticeKind } from './noticeQueue'
+import { clearNotices, dismissNotice, boughtNotice, eventNotices, ownRollNotice, pushNotice, useNotices, type NoticeKind } from './noticeQueue'
 import { handOf, useGameView } from './gameView'
 import { usePrivacy } from './PassDevice'
 import { panel } from './HUD'
@@ -21,8 +21,12 @@ export function Notices({ className = '', style, align = 'center' }: { className
     if (events.some((e) => e.type === 'GAME_STARTED')) clearNotices()
     for (const n of eventNotices(events)) pushNotice(n)
     // G7.2: the viewer's own roll that paid nothing (never for a spectator or behind the pass screen)
-    const own = ownRollNotice(events, me === 'spectator' || covered ? null : handOf(state, me).owner)
+    const viewer = me === 'spectator' || covered ? null : handOf(state, me).owner
+    const own = ownRollNotice(events, viewer)
     if (own) pushNotice(own)
+    // G7.4: the buyer sees which card they got
+    const bought = boughtNotice(events, viewer)
+    if (bought) pushNotice(bought)
   })
   useEffect(() => store.onRejected((e) => pushNotice({ kind: 'error', text: errorText(e.code) })), [store])
   return (

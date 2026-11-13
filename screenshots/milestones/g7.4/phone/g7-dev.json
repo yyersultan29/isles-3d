@@ -1,0 +1,72 @@
+{
+ "viewport": "390x844",
+ "compact": true,
+ "errors": [],
+ "buy": {
+  "notices": [
+   "Red rolled 7 (4 and 3). Red: build, trade or end your turn",
+   "Red bought a development card.Red, you got a Knight: playable from your next turn."
+  ],
+  "buttonLabel": "My development cards: 1",
+  "buildClearsMain": true,
+  "panel": {
+   "title": "Red: my development cards",
+   "groups": [
+    {
+     "group": "new",
+     "rows": [
+      {
+       "text": "Knight Move the robber and steal a card",
+       "play": false
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "vp": {
+  "title": "White: my development cards",
+  "groups": [
+   {
+    "group": "play",
+    "rows": [
+     {
+      "text": "Knight Move the robber and steal a card Play",
+      "play": true
+     },
+     {
+      "text": "Year of Plenty Take any two resources from the bank Play",
+      "play": true
+     },
+     {
+      "text": "Monopoly Take one resource from every player Play",
+      "play": true
+     }
+    ]
+   },
+   {
+    "group": "vp",
+    "rows": [
+     {
+      "text": "+1 Victory point Hidden from the others, counted at the end",
+      "play": false
+     }
+    ]
+   }
+  ]
+ },
+ "played": {
+  "title": "White: my development cards",
+  "groups": [
+   {
+    "group": "played",
+    "rows": [
+     {
+      "text": "Knight Move the robber and steal a card",
+      "play": false
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -582,7 +582,7 @@ const CardsStackIco = ({ size }: { size: number }) => (
 export function DevButton({ className = '', icon = 24 }: { className?: string; icon?: number }) {
   const { dev } = useGameView()
   const open = useDevOpen()
-  const label = `Development cards: ${dev.total}${dev.canOpen ? '' : ' (Not now)'}`
+  const label = `My development cards: ${dev.total}${dev.canOpen ? '' : ' (Not now)'}`
   return (
     <div className="relative shrink-0">
       <IconButton label={label} aria-pressed={open} disabled={!dev.canOpen} onClick={() => setDevOpen(!open)}

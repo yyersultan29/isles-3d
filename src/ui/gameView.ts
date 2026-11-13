@@ -192,7 +192,7 @@ export function buildOptions(s: GameState, me: Me = null): BuildOption[] {
       if (s.phase.kind === 'preRoll') reason = 'Roll the dice first'
       else if (s.phase.kind !== 'actions') reason = 'Not now'
       else if (pieces[kind] === 0) reason = kind === 'dev' ? 'The deck is empty' : `No ${kind === 'city' ? 'cities' : kind + 's'} left`
-      else if (missing.length) reason = `Need ${missing.map((r) => `${(cost[r] ?? 0) - pl.resources[r]} more ${RES_NAME[r]}`).join(', ')}`
+      else if (missing.length) reason = `Need ${missing.map((r) => `${(cost[r] ?? 0) - pl.resources[r]} ${RES_NAME[r]}`).join(', ')}` // G7.4: short, so the rows fit above the dice
       else reason = 'No legal spot'
     }
     return { kind, enabled, reason, cost }
@@ -298,9 +298,17 @@ export function offerView(s: GameState, me: Me = null): OfferView | null {
 // ---------- G4.4e: development cards ----------
 
 export type DevKind = 'knight' | 'roadBuilding' | 'yearOfPlenty' | 'monopoly' | 'victoryPoint'
-export interface DevRow { type: DevKind; count: number; playable: boolean; reason: string | null }
+/**
+ * G7.4: which group a row belongs to. `play` can be played now; `new` was bought this turn (playable
+ * from the next one); `played` would be playable but a card was already played this turn; `wait`
+ * can't be played for another reason (not your turn, not now, no legal road…); `vp` is a victory
+ * point, kept hidden and never played.
+ */
+export type DevGroup = 'play' | 'new' | 'played' | 'wait' | 'vp'
+export interface DevRow { type: DevKind; count: number; playable: boolean; reason: string | null; group: DevGroup }
 export interface DevView { player: PlayerId; total: number; rows: DevRow[]; yopTake: number; bank: Record<Resource, number>; canOpen: boolean }
 
+export const DEV_GROUPS: DevGroup[] = ['play', 'new', 'played', 'wait', 'vp']
 const DEV_ORDER: DevKind[] = ['knight', 'roadBuilding', 'yearOfPlenty', 'monopoly', 'victoryPoint']
 const PLAY_TYPE: Record<Exclude<DevKind, 'victoryPoint'>, Action['type']> = { knight: 'PLAY_KNIGHT', roadBuilding: 'PLAY_ROAD_BUILDING', yearOfPlenty: 'PLAY_YEAR_OF_PLENTY', monopoly: 'PLAY_MONOPOLY' }
 
@@ -309,23 +317,32 @@ export function devView(s: GameState, me: Me = null): DevView {
   const player = me && me !== 'spectator' ? me : s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]
   const pl = s.players.find((p) => p.id === player)!
   const legal = s.phase.kind === 'gameOver' || me === 'spectator' ? [] : legalActions(s, player)
+  // G7.4: one type can sit in two groups (a knight from an earlier turn and one bought this turn)
   const rows = DEV_ORDER.flatMap((type): DevRow[] => {
     const cards = pl.devCards.filter((c) => c.type === type)
     if (!cards.length) return []
-    if (type === 'victoryPoint') return [{ type, count: cards.length, playable: false, reason: 'Counts at the end' }]
-    const playable = legal.some((a) => a.type === PLAY_TYPE[type])
-    let reason: string | null = null
-    if (!playable) {
-      if (!mine(me, s.order[s.active])) reason = 'Wait for your turn'
-      else if (s.phase.kind !== 'preRoll' && s.phase.kind !== 'actions') reason = 'Not now'
-      else if (pl.playedDevThisTurn) reason = 'One card per turn'
-      else if (cards.every((c) => c.boughtOnTurn >= s.turn)) reason = 'Bought this turn'
-      else if (type === 'roadBuilding') reason = 'No legal road'
-      else if (type === 'yearOfPlenty') reason = 'The bank is empty'
-      else reason = 'Not now'
+    if (type === 'victoryPoint') return [{ type, count: cards.length, playable: false, reason: 'Counts at the end', group: 'vp' }]
+    const fresh = cards.filter((c) => c.boughtOnTurn >= s.turn).length
+    const old = cards.length - fresh
+    const out: DevRow[] = []
+    if (old) {
+      const playable = legal.some((a) => a.type === PLAY_TYPE[type])
+      let reason: string | null = null
+      let group: DevGroup = 'play'
+      if (!playable) {
+        group = 'wait'
+        if (!mine(me, s.order[s.active])) reason = 'Wait for your turn'
+        else if (s.phase.kind !== 'preRoll' && s.phase.kind !== 'actions') reason = 'Not now'
+        else if (pl.playedDevThisTurn) { reason = 'One card per turn'; group = 'played' }
+        else if (type === 'roadBuilding') reason = 'No legal road'
+        else if (type === 'yearOfPlenty') reason = 'The bank is empty'
+        else reason = 'Not now'
+      }
+      out.push({ type, count: old, playable, reason, group })
     }
-    return [{ type, count: cards.length, playable, reason }]
-  })
+    if (fresh) out.push({ type, count: fresh, playable: false, reason: 'Bought this turn', group: 'new' })
+    return out
+  }).sort((a, b) => DEV_GROUPS.indexOf(a.group) - DEV_GROUPS.indexOf(b.group))
   const bankTotal = RESOURCE_ORDER.reduce((a, r) => a + s.bank[r], 0)
   const canOpen = me !== 'spectator' && (s.phase.kind === 'preRoll' || s.phase.kind === 'actions')
   return { player, total: me === 'spectator' ? 0 : pl.devCards.length, rows: me === 'spectator' ? [] : rows, yopTake: Math.min(2, bankTotal), bank: { ...s.bank }, canOpen }

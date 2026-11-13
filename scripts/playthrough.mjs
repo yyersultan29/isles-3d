@@ -72,7 +72,7 @@ while (stats.steps++ < 20000) {
     }
     if (s.kind === 'steal') { await click('button[aria-label^="Rob "]'); did('steal'); continue }
     const playDev = async (type, label) => {
-      await click('button[aria-label^="Development cards"]')
+      await click('button[aria-label^="My development cards"]')
       await click(`button[aria-label^="Play ${label}"]`)
       if (type === 'PLAY_YEAR_OF_PLENTY') {
         for (let i = 0; i < 2; i++) { const r = RES.filter((x) => s.bank[x] > 1)[Math.floor(rand() * 3)] ?? 'ore'; const el = await p.$(`button[aria-label^="Take one ${NAME[r]}"]:not([disabled])`); if (el) await el.click() }

@@ -87,6 +87,20 @@ export function ownRollNotice(events: readonly GameEvent[], viewer: PlayerId | n
   return { kind: 'info', text: `${name(viewer)}: no resources this roll`, color: SEATS[viewer].color }
 }
 
+const DEV_NAME: Record<string, string> = { knight: 'a Knight', roadBuilding: 'Road Building', yearOfPlenty: 'Year of Plenty', monopoly: 'Monopoly', victoryPoint: 'a Victory Point' }
+
+/**
+ * G7.4: the viewer's own purchase, with the card they got and when it can be played. Only for the
+ * buyer: the engine's view already hides the card from everyone else (`card: null`), and the
+ * caller passes no viewer behind the pass screen or for a spectator.
+ */
+export function boughtNotice(events: readonly GameEvent[], viewer: PlayerId | null): Omit<Notice, 'id'> | null {
+  const e = events.find((x) => x.type === 'DEV_BOUGHT')
+  if (!viewer || !e || e.by !== viewer || !e.card) return null
+  const when = e.card === 'victoryPoint' ? '+1 point, hidden from the others until the end' : 'playable from your next turn'
+  return { kind: 'good', text: `${name(viewer)}, you got ${DEV_NAME[e.card]}: ${when}.`, color: SEATS[viewer].color }
+}
+
 // ---------------------------------------------------------------- queue
 
 const MAX = 3

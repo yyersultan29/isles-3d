@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameEvent } from '../../game'
 import { deltaText, handDiff } from '../handDelta'
-import { ownRollNotice } from '../noticeQueue'
+import { boughtNotice, ownRollNotice } from '../noticeQueue'
 
 const H = (o: Partial<Record<'lumber' | 'brick' | 'wool' | 'grain' | 'ore', number>> = {}) => ({ lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0, ...o })
 
@@ -29,5 +29,15 @@ describe('G7.2 own roll with nothing gained', () => {
     expect(ownRollNotice([roll('p1', [3, 4])], 'p1')).toBeNull()
     expect(ownRollNotice([roll('p1', [3, 5]), made({ p2: { ore: 1 } })], null)).toBeNull()
     expect(ownRollNotice([roll('p1', [3, 5]), made({})], 'p1')).toBeNull() // "No one produced anything." says it
+  })
+})
+
+describe('G7.4 the buyer sees the card', () => {
+  const bought = (by: 'p1' | 'p2', card: string | null): GameEvent => ({ type: 'DEV_BOUGHT', by, card } as GameEvent)
+  it('names the card and when it plays, only for the buyer', () => {
+    expect(boughtNotice([bought('p1', 'knight')], 'p1')?.text).toMatch(/you got a Knight: playable from your next turn/)
+    expect(boughtNotice([bought('p1', 'victoryPoint')], 'p1')?.text).toMatch(/Victory Point: \+1 point, hidden/)
+    expect(boughtNotice([bought('p2', null)], 'p1')).toBeNull()
+    expect(boughtNotice([bought('p1', 'knight')], null)).toBeNull()
   })
 })

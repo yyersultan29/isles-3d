@@ -1,11 +1,13 @@
-// Development cards panel (ROADMAP G4.4e). Lists the active player's cards by type; a Play
-// button is enabled exactly when legalActions offers that card (devView). Knight and Road
+// Development cards panel (ROADMAP G4.4e; "My development cards" since G7.4). Lists the player's
+// cards in groups (devView): "Can play" has a Play button, enabled exactly when legalActions offers
+// that card; "Bought this turn", "Already played a card this turn" and "Not now" say why in text
+// instead; victory points are shown as points, never as a card to play. Knight and Road
 // Building play at once and hand over to the board (robber or free-road markers, G4.3);
 // Year of Plenty and Monopoly first ask for resources here.
 
 import { useEffect, useRef, useState } from 'react'
 import { focusRing, panel } from './HUD'
-import { SEATS, useGameView, type DevKind } from './gameView'
+import { SEATS, useGameView, type DevGroup, type DevKind, type DevRow } from './gameView'
 import { NAME, Tile, gold, plain, useAct } from './TradeDialog'
 import { setDevOpen } from '../store/ui'
 import { RESOURCE_ORDER, type Resource } from '../game'
@@ -16,6 +18,14 @@ const CARD: Record<DevKind, { name: string; blurb: string; tint: string }> = {
   yearOfPlenty: { name: 'Year of Plenty', blurb: 'Take any two resources from the bank', tint: '#c9902a' },
   monopoly: { name: 'Monopoly', blurb: 'Take one resource from every player', tint: '#b8452f' },
   victoryPoint: { name: 'Victory Point', blurb: '+1 VP, kept hidden', tint: '#2f6fb3' },
+}
+
+const GROUP: Record<DevGroup, string> = {
+  play: 'Can play',
+  new: 'Bought this turn · playable from your next turn',
+  played: 'Already played a card this turn',
+  wait: 'Not now',
+  vp: 'Victory points',
 }
 
 export function DevGlyph({ type, className = '' }: { type: DevKind; className?: string }) {
@@ -93,35 +103,53 @@ export function DevDialog({ compact }: { compact: boolean }) {
       <div className="mb-[8px] flex items-center justify-between gap-[10px]">
         <h2 id="dev-title" className="whitespace-nowrap font-display text-[19px] font-semibold text-[#f4efe6]">
           <span className="mr-[8px] inline-block h-[11px] w-[11px] rounded-full align-middle" style={{ background: seat.color }} />
-          {pick ? `${seat.name}: ${CARD[pick].name}` : `${seat.name}: development cards`}
+          {pick ? `${seat.name}: ${CARD[pick].name}` : `${seat.name}: my development cards`}
         </h2>
         <button ref={close} aria-label="Close development cards" onClick={() => setDevOpen(false)} className={`grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[8px] bg-white/10 text-[18px] text-white hover:bg-white/20 ${focusRing}`}>×</button>
       </div>
       {pick ? <Picker kind={pick} compact={compact} onDone={() => setDevOpen(false)} onBack={() => setPick(null)} /> : (
         dev.rows.length === 0
-          ? <p className={`${compact ? 'w-[322px]' : 'w-[380px]'} text-[14px] text-[#d6d2ca]`}>No development cards yet. Buy one from the Build menu (1 wool, 1 grain, 1 ore).</p>
+          ? <p className={`${compact ? 'w-[322px]' : 'w-[380px]'} text-[14px] text-[#d6d2ca]`}>No development cards yet. Buy one in Build: 1 wool, 1 grain, 1 ore.</p>
           : (
-            <ul className={`flex ${compact ? 'w-[322px]' : 'w-[390px]'} flex-col gap-[6px]`}>
-              {dev.rows.map((r) => (
-                <li key={r.type} className="flex min-h-[50px] items-center gap-[10px] rounded-[10px] bg-white/[0.05] py-[4px] pl-[5px] pr-[6px]" style={{ boxShadow: `inset 3px 0 0 ${CARD[r.type].tint}` }}>
-                  <span className="relative grid h-[40px] w-[34px] shrink-0 place-items-center rounded-[6px] text-white" style={{ background: `linear-gradient(180deg, ${CARD[r.type].tint}, ${CARD[r.type].tint}99)` }}>
-                    <DevGlyph type={r.type} className="h-[22px] w-[22px]" />
-                    {r.count > 1 && <span className="absolute -right-[6px] -top-[6px] rounded-full bg-[#1d1a16] px-[5px] text-[11px] font-bold text-white ring-1 ring-white/30">×{r.count}</span>}
-                  </span>
-                  <span className="min-w-0 flex-1 leading-tight">
-                    <span className="block text-[15px] font-semibold text-white">{CARD[r.type].name}</span>
-                    <span className="block text-[12px] text-[#bdb8af]">{r.reason && !r.playable ? r.reason : CARD[r.type].blurb}</span>
-                  </span>
-                  {r.type !== 'victoryPoint' && (
-                    <button ref={r.type === firstPlayable ? first : undefined} disabled={!r.playable} onClick={() => play(r.type)}
-                      aria-label={`Play ${CARD[r.type].name}${r.reason ? ` (${r.reason})` : ''}`} title={r.reason ?? CARD[r.type].blurb}
-                      className={`${gold()} !h-[34px] !px-[16px] !text-[15px]`}>Play</button>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className={`flex ${compact ? 'w-[322px]' : 'w-[390px]'} flex-col gap-[8px]`}>
+              {(['play', 'new', 'played', 'wait', 'vp'] as DevGroup[]).map((g) => { const rows = dev.rows.filter((r) => r.group === g); return rows.length ? (
+                <section key={g} aria-label={GROUP[g]} data-dev-group={g}>
+                  <h3 className="mb-[4px] text-[12px] font-semibold uppercase tracking-[0.04em] text-[#bdb8af]">{GROUP[g]}</h3>
+                  <ul className="flex flex-col gap-[6px]">
+                    {rows.map((r) => <DevItem key={r.type} r={r} btnRef={r.type === firstPlayable && g === 'play' ? first : undefined} onPlay={() => play(r.type)} />)}
+                  </ul>
+                </section>
+              ) : null })}
+            </div>
           )
       )}
     </section>
+  )
+}
+
+function DevItem({ r, btnRef, onPlay }: { r: DevRow; btnRef?: React.Ref<HTMLButtonElement>; onPlay: () => void }) {
+  const vp = r.group === 'vp'
+  const sub = vp ? 'Hidden from the others, counted at the end'
+    : r.group === 'wait' ? r.reason ?? '' // the group heading says why for the others
+    : CARD[r.type].blurb
+  return (
+    <li aria-label={vp ? `${r.count} victory point${r.count > 1 ? 's' : ''}` : undefined} className="flex min-h-[50px] items-center gap-[10px] rounded-[10px] bg-white/[0.05] py-[4px] pl-[5px] pr-[6px]" style={{ boxShadow: `inset 3px 0 0 ${CARD[r.type].tint}` }}>
+      {vp ? (
+        <span className="grid h-[40px] w-[34px] shrink-0 place-items-center rounded-full font-display text-[15px] font-bold text-[#2a1a06]" style={{ background: 'radial-gradient(circle at 40% 35%, #ffe7a6, #f2b544 70%)' }}>+{r.count}</span>
+      ) : (
+        <span className={`relative grid h-[40px] w-[34px] shrink-0 place-items-center rounded-[6px] text-white ${r.group === 'play' ? '' : 'opacity-70'}`} style={{ background: `linear-gradient(180deg, ${CARD[r.type].tint}, ${CARD[r.type].tint}99)` }}>
+          <DevGlyph type={r.type} className="h-[22px] w-[22px]" />
+          {r.count > 1 && <span className="absolute -right-[6px] -top-[6px] rounded-full bg-[#1d1a16] px-[5px] text-[11px] font-bold text-white ring-1 ring-white/30">×{r.count}</span>}
+        </span>
+      )}
+      <span className="min-w-0 flex-1 leading-tight">
+        <span className="block text-[15px] font-semibold text-white">{vp ? `Victory point${r.count > 1 ? 's' : ''}` : CARD[r.type].name}</span>
+        <span className="block text-[12px] text-[#bdb8af]">{sub}</span>
+      </span>
+      {r.group === 'play' && (
+        <button ref={btnRef} onClick={onPlay} aria-label={`Play ${CARD[r.type].name}`} title={CARD[r.type].blurb}
+          className={`${gold()} !h-[34px] !px-[16px] !text-[15px]`}>Play</button>
+      )}
+    </li>
   )
 }

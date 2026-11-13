@@ -52,7 +52,7 @@ describe('G4.4a HUD view', () => {
     }
     expect(buildOptions(rich).find((o) => o.kind === 'city')!.enabled).toBe(true)
     const poor = buildOptions(fixture({ hands: { p1: { grain: 1, ore: 1 } }, buildings: [['0,0,N', 'p1']] }))
-    expect(poor.find((o) => o.kind === 'city')!.reason).toBe('Need 1 more grain, 2 more ore')
+    expect(poor.find((o) => o.kind === 'city')!.reason).toBe('Need 1 grain, 2 ore')
     expect(buildOptions(fixture({ phase: { kind: 'preRoll' } })).every((o) => o.reason === 'Roll the dice first')).toBe(true)
     const noRoads = fixture({ hands: { p1: { lumber: 1, brick: 1 } }, buildings: [['0,0,N', 'p1']] })
     noRoads.players[0].pieces.roads = 0
@@ -133,12 +133,14 @@ describe('G4.4a HUD view', () => {
     s.players[0].devCards.push(card(90, 'knight'), card(91, 'knight', 5), card(92, 'monopoly', 5), card(93, 'victoryPoint'), card(94, 'yearOfPlenty'))
     let v = devView(s)
     expect(v.total).toBe(5)
-    expect(v.rows.map((r) => [r.type, r.count, r.playable, r.reason])).toEqual([
-      ['knight', 2, true, null], ['yearOfPlenty', 1, true, null], ['monopoly', 1, false, 'Bought this turn'], ['victoryPoint', 1, false, 'Counts at the end']])
+    // G7.4: the knight bought this turn sits apart from the older one; groups in order
+    expect(v.rows.map((r) => [r.type, r.count, r.playable, r.reason, r.group])).toEqual([
+      ['knight', 1, true, null, 'play'], ['yearOfPlenty', 1, true, null, 'play'], ['knight', 1, false, 'Bought this turn', 'new'],
+      ['monopoly', 1, false, 'Bought this turn', 'new'], ['victoryPoint', 1, false, 'Counts at the end', 'vp']])
     expect(v.yopTake).toBe(2)
     const after = act(s, { type: 'PLAY_YEAR_OF_PLENTY', take: ['ore', 'ore'] })
     v = devView(after)
-    expect(v.rows.find((r) => r.type === 'knight')).toMatchObject({ playable: false, reason: 'One card per turn' })
+    expect(v.rows.find((r) => r.type === 'knight' && r.group !== 'new')).toMatchObject({ playable: false, reason: 'One card per turn', group: 'played' })
     expect(devView(fixture({ phase: { kind: 'discard', pending: { p2: 4 } } }))).toMatchObject({ canOpen: false, rows: [] })
     const pre = fixture({ phase: { kind: 'preRoll' } })
     pre.players[0].devCards.push(card(95, 'knight'))

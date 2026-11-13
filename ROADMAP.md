@@ -863,7 +863,7 @@ Steps:
   - After an offer, each recipient's status reads "Waiting", "Accepted" or "Declined". Confirming with an accepted player is clearly a separate final step.
   - Closing the panel says that the draft is kept ("Your draft is kept until the end of the turn").
   - Hot-seat privacy is unchanged.
-- [ ] **G7.4 Development cards: buy vs mine (UX-4).**
+- [x] **G7.4 Development cards: buy vs mine (UX-4).**
   - The Build row "Buy a development card" (cost, need / have) is clearly separate from the "My cards" button and panel.
   - After a purchase the owner sees the card they got and why it can't be played yet ("Bought this turn — playable from your next turn").
   - The list groups the cards: "Can play", "Bought this turn", "Already played a card this turn", and the hidden victory point shown as a point, not as a card to play.
@@ -992,6 +992,28 @@ Steps:
   - Online, seed 7: 0 rejections or mismatches, 40 offers, 3 trade-then-builds, no other hands shown.
 - Screenshots (JPEG) are in `screenshots/milestones/g7.3/`. Not deployed.
 
+**G7.4 result (2026-11-13):** development cards, buy vs mine.
+- **Buy vs mine.**
+  - The Build row "Buy development card" (cost chips, G7.1) buys.
+  - The card-stack button is now "My development cards: N", and its panel is titled "Red: my development cards".
+  - The empty panel says "Buy one in Build: 1 wool, 1 grain, 1 ore".
+- **After a purchase** the buyer gets a notice of their own: "Red, you got a Knight: playable from your next turn." A victory point reads "+1 point, hidden from the others until the end".
+  - It comes from the `DEV_BOUGHT` event, whose card the engine's view already hides from everyone else. It is never shown to a spectator or behind the pass screen (`boughtNotice`, unit-tested).
+- **Groups.** `devView` rows now carry a group, and one type can sit in two groups, e.g. an older Knight and one bought this turn.
+  - The groups, in order: "Can play", "Bought this turn · playable from your next turn", "Already played a card this turn", "Not now" (with its reason) and "Victory points".
+  - Only "Can play" rows have a Play button. A victory point is a gold "+N" with "Hidden from the others, counted at the end", never a card to play.
+- **Fit fix (a G7.1 regression).** With every row short, the long reasons ("Need 1 more wood, 1 more brick") made the desktop build panel cover End Turn. Reasons now read "Need 1 wood, 1 brick", and `g7-dev.mjs` checks that the build rows clear the main button in that worst case.
+- **`scripts/g7-dev.mjs`** (new), at 1440×900 and 390×844, all as expected:
+  - Buy → the notice names the card; the panel shows it under "Bought this turn" with no Play; the build rows clear the main button.
+  - Playable cards each have Play, and the victory point has none.
+  - After Monopoly, the remaining Knight is under "Already played a card this turn".
+- **Checks.** `tsc -b`, 269 tests and the build pass.
+  - The `g7-baseline` card flows are unchanged: buy 2 clicks (phone 3), Knight 3, Road Building 4, Year of Plenty 5, Monopoly 4. Hover-only reasons with the dev panel open: still 0.
+  - `ux-flows` (3/1/4 desktop, 4/1/4 phone), `hand-trade`, `shortcuts`, `g7-hand` and `g6-audit` (axe, fit at 3 sizes) report 0 errors.
+  - The hot-seat replays are exact: 194/939 desktop, 272/1249 phone.
+  - Online, seed 7: turn 185, 939 actions, 14 Knights and 2 Road Building cards played through the panel, 0 rejections or mismatches, no other hands shown.
+- Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.4/`. Not deployed.
+
 
 ### G8 — Phone play (later, after the owner asks)
 
@@ -1054,7 +1076,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
-| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, G7.3 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, G7.4 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -1062,4 +1084,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G7.4: development cards, buy vs mine. "Buy development card" in Build is clearly not "My cards"; after a purchase the owner sees which card it is and why it can't be played yet. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
+**Recommended next action:** G7.5: development cards step by step. Knight, Road Building, Year of Plenty and Monopoly as short steps that say what to pick and how to cancel before applying; free roads left, resources still to pick, the Monopoly choice before confirming. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.

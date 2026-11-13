@@ -151,7 +151,7 @@ for (const [name, rate] of [['bank4', 4], ['port', 3], ['port2', 2]]) {
     await openBuild(); await tap('button[aria-label^="Buy Development card"]')
     await p.waitForTimeout(300); await shot('3-after-buy')
     const after = await notices()
-    await tap('button[aria-label^="Development cards"]'); await p.waitForTimeout(200)
+    await tap('button[aria-label^="My development cards"]'); await p.waitForTimeout(200)
     const rows = await p.$$eval('[aria-labelledby=dev-title] li', (els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()))
     await hoverAudit('dev-panel'); await shot('3-dev-panel')
     out.flows.buyDev = { clicks, ok: (await n()) === n0 + 1, noticesAfterBuy: after, devRows: rows }
@@ -164,7 +164,7 @@ const playCard = async (type, label, steps) => {
   const pos = await begin(eval(`(g, s, p) => g.legalActions(s, p).some((a) => a.type === '${type}')`))
   if (!pos) { out.flows[label] = 'no position'; return }
   const n0 = await n()
-  await tap('button[aria-label^="Development cards"]'); await tap(`button[aria-label^="Play ${label}"]`)
+  await tap('button[aria-label^="My development cards"]'); await tap(`button[aria-label^="Play ${label}"]`)
   await shot(`4-${label.replace(/ /g, '')}-1`)
   const texts = [await p.evaluate(() => document.querySelector('[aria-labelledby=dev-title]')?.innerText.replace(/\s+/g, ' ').slice(0, 200) ?? null), (await notices()).slice(-2)]
   await steps()
