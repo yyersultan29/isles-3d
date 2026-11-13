@@ -11,7 +11,8 @@
     "shot": "node scripts/screenshot.mjs",
     "deploy": "bash scripts/deploy.sh",
     "test": "vitest run",
-    "server": "tsx src/server/main.ts"
+    "server": "tsx src/server/main.ts",
+    "build:server": "bash scripts/build-server.sh"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",

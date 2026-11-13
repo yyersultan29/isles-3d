@@ -21,7 +21,7 @@ A reload, a dropped connection or a closed tab reopened from the invite link rej
 
 ### Hosting the game server on Render (free)
 
-The client stays on GitHub Pages; the game server runs as a free Render web service described by `render.yaml` (Frankfurt, Node 22, `npm run server`, health check `/health`).
+The client stays on GitHub Pages; the game server runs as a free Render web service described by `render.yaml` (Frankfurt, Node 22, health check `/health`). Its build runs `scripts/build-server.sh`, which installs only esbuild and ws and bundles the server into `server-dist/main.mjs`; the full `npm ci` ran the free build machine out of memory. `npm run build:server` does the same locally.
 
 1. On render.com, sign in with GitHub, choose **New → Blueprint** and pick this repository. Render reads `render.yaml` and creates `isles-3d-server`.
 2. Once it is live, note its address, e.g. `isles-3d-server.onrender.com`, and check `https://<address>/health`.

@@ -7,3 +7,4 @@ shots
 .env.*
 *.tsbuildinfo
 references/colonist-reference.png
+server-dist

@@ -7,8 +7,10 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    buildCommand: npm ci
-    startCommand: npm run server
+    # not `npm ci`: the whole project (three, vite, playwright…) ran the free build machine out of
+    # memory; the server needs only ws and the engine, bundled into one file
+    buildCommand: bash scripts/build-server.sh
+    startCommand: node server-dist/main.mjs
     healthCheckPath: /health
     # a redeploy restarts the process and ends every room: only server-side changes trigger one
     buildFilter:
@@ -19,6 +21,7 @@ services:
         - package.json
         - package-lock.json
         - render.yaml
+        - scripts/build-server.sh
     envVars:
       - key: NODE_VERSION
         value: "22"
