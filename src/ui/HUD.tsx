@@ -12,11 +12,12 @@ import { usePrivacy } from './PassDevice'
 import { TurnClock } from './TurnClock'
 import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
-import { changeDraft, clearDraft, draftCovered, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
+import { changeDraft, clearDraft, draftCovered, draftEmpty, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePanel, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 import { useGame, useGameStore, useGameEvents } from '../store/GameProvider'
 import { affordable, shortfall, tradesText, type Shortfall } from './tradePlan'
 import { HelpButton, useShortcuts } from './shortcuts'
+import { deltaText, handDiff, hintSeen, markHintSeen, type HandCounts } from './handDelta'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -273,8 +274,58 @@ export function useHand() {
   const { hand, seats } = useGameView()
   const owner = seats.find((x) => x.id === hand.owner)!
   // G4.8a: behind the pass-the-device screen the previous or next hand is never rendered
-  if (usePrivacy().covered) return { counts: { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 }, ownerName: '', ownerColor: '#888' }
-  return { counts: hand.counts, ownerName: owner.name, ownerColor: owner.color }
+  if (usePrivacy().covered) return { counts: { lumber: 0, brick: 0, wool: 0, grain: 0, ore: 0 }, owner: null, ownerName: '', ownerColor: '#888' }
+  return { counts: hand.counts, owner: hand.owner, ownerName: owner.name, ownerColor: owner.color }
+}
+
+/**
+ * G7.2: the change in the shown hand since the last render that showed the same owner, kept for
+ * 2.5 s ("+2 grain", "−4 wool"). It covers every way a hand changes (roll, trade, build, discard,
+ * robbery, cards) because it compares counts. A new owner (hot-seat hand-over, a discard prompt),
+ * the pass screen or a new store generation (a loaded or resumed game, an online resync) resets the
+ * baseline, so one player's change is never shown on another's hand and a jump is never a "gain".
+ */
+function useHandDelta(counts: HandCounts, owner: PlayerId | null): { d: Partial<HandCounts>; seq: number } | null {
+  const gen = useGameStore().generation()
+  const prev = useRef<{ owner: PlayerId; gen: number; counts: HandCounts } | null>(null)
+  const [delta, setDelta] = useState<{ d: Partial<HandCounts>; owner: PlayerId; seq: number } | null>(null)
+  useEffect(() => {
+    const p = prev.current
+    prev.current = owner ? { owner, gen, counts } : null
+    if (!owner || !p || p.owner !== owner || p.gen !== gen) { setDelta(null); return }
+    const d = handDiff(p.counts, counts)
+    if (d) setDelta((x) => ({ d, owner, seq: (x?.seq ?? 0) + 1 }))
+  }, [counts, owner, gen])
+  useEffect(() => {
+    if (!delta) return
+    const t = setTimeout(() => setDelta(null), 2500)
+    return () => clearTimeout(t)
+  }, [delta])
+  return delta && delta.owner === owner ? delta : null
+}
+
+/**
+ * G7.2: a one-line hint above the hand, once per device: on the first own turn where a trade is
+ * possible, say that clicking a card puts it in a trade. It stays for that turn until a card is
+ * chosen or a panel opens. Never behind the pass screen.
+ */
+export function HandHint({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
+  const { bank } = useGameView()
+  const { counts, owner } = useHand()
+  const draft = useTradeDraft()
+  const panelOpen = usePanel() !== null
+  const [stage, setStage] = useState<'unseen' | 'showing' | 'done'>(() => (hintSeen() ? 'done' : 'unseen'))
+  const eligible = !!owner && bank.open && RESOURCE_ORDER.some((r) => counts[r] > 0) && draftEmpty(draft) && !panelOpen
+  useEffect(() => {
+    if (stage === 'unseen' && eligible) { markHintSeen(); setStage('showing') }
+    else if (stage === 'showing' && !eligible) setStage('done')
+  }, [stage, eligible])
+  if (stage !== 'showing' || !eligible) return null
+  return (
+    <p data-hand-hint className={`pointer-events-none whitespace-nowrap rounded-full px-[12px] py-[5px] text-[13px] font-medium text-[#f4efe6] ring-1 ring-[#f2cf84]/50 ${panel} animate-[notice-in_.22s_ease-out] ${className}`}>
+      Tip: {compact ? 'tap' : 'click'} a card to put it in a trade
+    </p>
+  )
 }
 
 /** Clears the build choice and closes the trade/dev panels when the turn or phase moves on, and on Escape. Mount once per HUD. */
@@ -300,8 +351,9 @@ export function usePlacementAutoReset() {
  * small "−" takes one back. Otherwise the cards are plain, and the tooltip says why.
  */
 export function HandCards({ compact = false }: { compact?: boolean }) {
-  const { counts, ownerName } = useHand()
+  const { counts, owner, ownerName } = useHand()
   const { bank } = useGameView()
+  const delta = useHandDelta(counts, owner)
   const covered = usePrivacy().covered
   const draft = useTradeDraft()
   const can = bank.open && !covered
@@ -317,14 +369,22 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
           <span className={`relative block h-full w-full overflow-hidden ${compact ? 'rounded-[6px] shadow-[inset_0_0_10px_rgba(0,0,0,0.45)]' : 'rounded-[7px] shadow-[inset_0_0_14px_rgba(0,0,0,0.45)]'} bg-gradient-to-b ${bg}`}>
             {!compact && <span className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.28),transparent_60%)]" />}
             <Icon aria-hidden className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 ${compact ? 'top-[56%] w-[54px] drop-shadow-[0_3px_2px_rgba(0,0,0,0.45)]' : 'top-[54%] w-[78px] drop-shadow-[0_4px_3px_rgba(0,0,0,0.45)]'}`} />
+            {/* G7.2: an empty pile dims only its art; the count and the name stay at full contrast */}
+            {n === 0 && <span aria-hidden className="absolute inset-0 bg-black/50" />}
             <span aria-hidden className={`absolute grid place-items-center rounded-[5px] bg-[#1d1a16]/85 font-bold text-white ring-1 ring-[#f2cf84]/60 ${compact ? 'left-[3px] top-[3px] h-[20px] w-[20px] text-[13px]' : 'left-[4px] top-[4px] h-[22px] w-[22px] text-[14px]'}`}>{n}</span>
-            {chosen > 0 && <span aria-hidden className={`absolute bottom-[3px] right-[3px] rounded-[4px] bg-[#f2b544] px-[5px] font-bold text-[#2a1a06] ${compact ? 'text-[12px]' : 'text-[14px]'}`}>×{chosen}</span>}
-            {n === 0 && <span aria-hidden className="absolute inset-0 bg-black/45" />}
+            <span aria-hidden className={`absolute inset-x-0 bottom-0 flex items-center justify-between bg-[#1d1a16]/70 font-semibold leading-none text-white ${compact ? 'h-[17px] px-[4px] text-[10.5px]' : 'h-[20px] px-[6px] text-[12px]'}`}>
+              <span>{name}</span>
+              {chosen > 0 && <span className={`rounded-[3px] bg-[#f2b544] px-[3px] py-[1px] font-bold text-[#2a1a06] ${compact ? 'text-[10.5px]' : 'text-[12px]'}`}>×{chosen}</span>}
+            </span>
           </span>
         )
+        const d = delta?.d[key]
+        const badge = d ? (
+          <span key={delta!.seq} aria-hidden data-hand-delta className={`pointer-events-none absolute inset-x-0 z-[1] mx-auto w-fit rounded-full px-[7px] py-[1px] font-bold leading-[1.25] text-white shadow-[0_2px_6px_rgba(0,0,0,.55)] ring-1 ring-white/40 animate-[delta-pop_2.5s_ease-out] ${d > 0 ? 'bg-[#2f8a3a]' : 'bg-[#b8322b]'} ${compact ? '-top-[11px] text-[13px]' : '-top-[13px] text-[15px]'}`}>{deltaText(d)}</span>
+        ) : null
         if (!can) {
           const why = covered ? '' : bank.reason ? ` (${bank.reason})` : ''
-          return <li key={key} aria-label={`${name}: ${n}`} title={`${name}: ${n}${why}`} className={`${frame} pointer-events-auto`}>{face}</li>
+          return <li key={key} aria-label={`${name}: ${n}`} title={`${name}: ${n}${why}`} className={`${frame} pointer-events-auto`}>{face}{badge}</li>
         }
         const label = `Trade one ${word} (you have ${n}${chosen ? `, ${chosen} chosen` : ''})`
         return (
@@ -334,6 +394,7 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
               className={`${frame} disabled:cursor-not-allowed ${chosen ? `ring-[3px] ring-[#ffd76a] ${compact ? '-translate-y-[4px]' : '-translate-y-[8px]'}` : 'enabled:hover:-translate-y-[4px]'} ${focusRing}`}>
               {face}
             </button>
+            {badge}
             {chosen > 0 && (
               <button data-hand-card aria-label={`Take back one ${word}`} title={`Take back one ${word}`} onClick={() => changeDraft('give', key, -1)}
                 className={`absolute -right-[6px] grid place-items-center rounded-full bg-[#c8302a] font-bold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,.5)] ${compact ? '-top-[10px] h-[24px] w-[24px] text-[16px]' : '-top-[14px] h-[26px] w-[26px] text-[17px]'} ${focusRing}`}>−</button>
@@ -350,6 +411,7 @@ function ResourceCards() {
     <div className="absolute bottom-0 left-1/2 -translate-x-[54%]">
       {/* wooden tray */}
       <div className="absolute -bottom-[30px] left-1/2 h-[64px] w-[700px] -translate-x-1/2 rounded-[40px_40px_0_0] bg-[linear-gradient(180deg,#5c3d22,#2c1c10)] shadow-[0_-6px_20px_rgba(0,0,0,0.5),inset_0_2px_0_rgba(255,210,160,0.2)]" />
+      <HandHint className="absolute bottom-[124px] left-1/2 -translate-x-1/2" />
       <HandCards />
     </div>
   )

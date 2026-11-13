@@ -71,6 +71,22 @@ export function eventNotices(events: readonly GameEvent[]): Omit<Notice, 'id'>[]
   return out
 }
 
+/**
+ * G7.2: when the viewer rolls (not a seven) and gets nothing, say so briefly. `viewer` is the seat
+ * whose hand is shown (null for a spectator or behind the pass screen). Production is public, so
+ * this tells nobody anything new.
+ */
+export function ownRollNotice(events: readonly GameEvent[], viewer: PlayerId | null): Omit<Notice, 'id'> | null {
+  if (!viewer) return null
+  const roll = events.find((e) => e.type === 'DICE_ROLLED')
+  const made = events.find((e) => e.type === 'RESOURCES_PRODUCED')
+  if (!roll || roll.by !== viewer || !made) return null
+  if (gains(made.gains[viewer] ?? {})) return null
+  // nobody produced: "No one produced anything." already says it
+  if (!Object.values(made.gains).some((g) => g && gains(g))) return null
+  return { kind: 'info', text: `${name(viewer)}: no resources this roll`, color: SEATS[viewer].color }
+}
+
 // ---------------------------------------------------------------- queue
 
 const MAX = 3

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { AwardBadges, BuildRows, HandCards, DevButton, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
+import { AwardBadges, BuildRows, HandCards, HandHint, DevButton, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
 import { useGameView } from './gameView'
 import { HelpButton } from './shortcuts'
 import { GameDialogs } from './Dialogs'
@@ -105,6 +105,7 @@ export function CompactHUD() {
       {/* ---------- bottom dock ---------- */}
       {/* an open build popover sits above the dialogs: it rises over the dock, where the trade panel is (G6.3) */}
       <div className={`absolute inset-x-[8px] bottom-[8px] flex flex-col items-center gap-[8px] ${build ? 'z-[2]' : ''}`} style={{ height: COMPACT_SAFE.bottom - 8 }}>
+        <HandHint compact className="absolute bottom-full mb-[8px] !text-[12.5px]" />
         <div className="relative flex w-full max-w-[560px] items-center gap-[6px]">
           <button
             onClick={act}

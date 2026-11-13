@@ -1,0 +1,68 @@
+{
+ "viewport": "390x844",
+ "compact": true,
+ "errors": [],
+ "afterLoad": {
+  "deltas": []
+ },
+ "hint": {
+  "first": "Tip: tap a card to put it in a trade",
+  "afterCardClick": null,
+  "afterReload": null
+ },
+ "privacy": {
+  "passScreen": true,
+  "deltasBehindPass": [],
+  "hintBehindPass": null,
+  "deltasAfterHandOver": []
+ },
+ "rollPays": {
+  "expected": [
+   "+1"
+  ],
+  "badges": [
+   "+1"
+  ],
+  "notices": [
+   "Red rolled 8 (3 and 5). Red: build, trade or end your turn",
+   "Red +1 grain"
+  ],
+  "badgesAfter3s": []
+ },
+ "rollNothing": {
+  "expected": [],
+  "badges": [],
+  "notices": [
+   "Blue rolled 6 (3 and 3). Blue: build, trade or end your turn",
+   "White +1 woodBlue: no resources this roll"
+  ],
+  "badgesAfter3s": []
+ },
+ "bank": {
+  "expected": [
+   "+1",
+   "−4"
+  ],
+  "badges": [
+   "+1",
+   "−4"
+  ]
+ },
+ "road": {
+  "expected": [
+   "−1",
+   "−1"
+  ],
+  "badges": [
+   "−1",
+   "−1"
+  ]
+ },
+ "zeroPiles": [
+  "0 Wood −1",
+  "0 Brick −1",
+  "3 Wool",
+  "0 Grain",
+  "3 Ore"
+ ]
+}

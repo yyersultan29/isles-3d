@@ -5,7 +5,9 @@
 import { useEffect } from 'react'
 import { useGameEvents, useGameStore } from '../store/GameProvider'
 import { errorText } from './i18n'
-import { clearNotices, dismissNotice, eventNotices, pushNotice, useNotices, type NoticeKind } from './noticeQueue'
+import { clearNotices, dismissNotice, eventNotices, ownRollNotice, pushNotice, useNotices, type NoticeKind } from './noticeQueue'
+import { handOf, useGameView } from './gameView'
+import { usePrivacy } from './PassDevice'
 import { panel } from './HUD'
 
 const RING: Record<NoticeKind, string> = { info: 'ring-white/15', good: 'ring-[#f2b544]/70', warn: 'ring-[#e0812f]/70', error: 'ring-[#e0483a]/80' }
@@ -13,9 +15,14 @@ const RING: Record<NoticeKind, string> = { info: 'ring-white/15', good: 'ring-[#
 export function Notices({ className = '', style, align = 'center' }: { className?: string; style?: React.CSSProperties; align?: 'center' | 'start' }) {
   const store = useGameStore()
   const list = useNotices()
-  useGameEvents((events) => {
+  const { me } = useGameView()
+  const covered = usePrivacy().covered
+  useGameEvents((events, state) => {
     if (events.some((e) => e.type === 'GAME_STARTED')) clearNotices()
     for (const n of eventNotices(events)) pushNotice(n)
+    // G7.2: the viewer's own roll that paid nothing (never for a spectator or behind the pass screen)
+    const own = ownRollNotice(events, me === 'spectator' || covered ? null : handOf(state, me).owner)
+    if (own) pushNotice(own)
   })
   useEffect(() => store.onRejected((e) => pushNotice({ kind: 'error', text: errorText(e.code) })), [store])
   return (

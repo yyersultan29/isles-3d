@@ -18,3 +18,7 @@ canvas { display: block; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* G7.2: hand deltas ("+2" on a card) pop in and fade by 2.5 s; under reduced motion they simply
+   show (base opacity 1) until React removes them */
+@keyframes delta-pop { 0% { opacity: 0; transform: translateY(6px) scale(.8); } 8% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }

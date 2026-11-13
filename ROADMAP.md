@@ -850,7 +850,7 @@ Steps:
   - A row the bank can cover keeps the G6.4 button, labelled "Trade & build", with the trades in short form.
   - The "Buy development card" row reads as a purchase.
   - Desktop panel and phone popover.
-- [ ] **G7.2 The hand shows changes (UX-1).**
+- [x] **G7.2 The hand shows changes (UX-1).**
   - After a roll, a trade, a build, a discard or a robbery, each changed card shows "+2" or "−1" on the card for about 2.5 s. A turn with nothing gained says so briefly ("No resources this roll").
   - Zero piles stay readable (name and number, not just dimmed).
   - On the player's first turn with a trade possible, a one-line hint says that tapping a card adds it to a trade. It is shown once per device.
@@ -950,6 +950,26 @@ Steps:
 - Screenshots (JPEG) and audit JSON are in `screenshots/milestones/g7.1/`. The "before" is `g7.0/`.
 - Not deployed (needs the owner's approval).
 
+**G7.2 result (2026-11-13):** the hand shows what changed.
+- **Deltas.** Each changed card shows "+N" (green) or "−N" (red, a real minus) on its top edge for 2.5 s; they pop in and fade, and under reduced motion they simply show.
+  - They come from comparing the shown hand's counts, so a roll, a trade, a build, a discard, a robbery and the cards all show the same way (`src/ui/handDelta.ts`, `useHandDelta` in HUD.tsx).
+  - The baseline resets on a new hand owner (hot-seat hand-over, a discard prompt), behind the pass screen, and on a new store generation (a loaded or resumed game, an online resync). So a jump is never shown as a gain, and one player's change never shows on another's hand.
+- **Nothing gained.** An own roll (not a seven) that pays others but not the roller adds "Red: no resources this roll" to the notices (`ownRollNotice`, unit-tested). When nobody produced, the existing "No one produced anything." already says it. Production is public, so this reveals nothing.
+- **Zero piles.** Each card now has its name on a strip at the bottom (the trade count "×N" sits there too). An empty pile dims only its art: the count and the name stay at full contrast.
+- **Hint.** "Tip: click (tap) a card to put it in a trade" sits above the hand on the first own turn where a trade is possible. It stays until a card is chosen, a panel opens or the turn ends, and is stored once per device (`localStorage`, wrapped in try/catch).
+- **`scripts/g7-hand.mjs`** (new), at 1440×900 and 390×844, all as expected:
+  - Rolls: the paying roll's badges equal the change ("+1"); "no resources this roll" when only others gained; badges gone after 3 s.
+  - Trades and builds: the bank 4:1 shows "−4" and "+1"; a road shows "−1" and "−1".
+  - No badge after loading a game, none behind the pass screen and none after the hand-over.
+  - The hint shows on a fresh device, ends on a card click, and doesn't come back after a reload.
+- **Checks.** `tsc -b`, 266 tests and the build pass.
+  - `ux-flows` matches G6 (3/1/4 desktop, 4/1/4 phone).
+  - `hand-trade`, `shortcuts` and `g6-audit` (axe, fit at 3 sizes) report 0 errors.
+  - The G7.0 roll flow's `handDeltaOnCards` goes false → true. Hover-only is unchanged (setup 7/6, actions 0, trade 1, dev 0).
+  - The hot-seat replays are exact: 194/939 desktop, 272/1249 phone.
+  - Online, seed 7: turn 121, 635 actions, 0 rejections or mismatches, no other hands shown.
+- Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.2/`. Not deployed.
+
 
 ### G8 — Phone play (later, after the owner asks)
 
@@ -1012,7 +1032,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
-| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, G7.1 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, G7.2 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -1020,4 +1040,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G7.2: the hand shows what changed ("+1 grain" on the cards after a roll, a trade or a build) and a count of cards chosen for the trade. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
+**Recommended next action:** G7.3: trade modes, Bank / ports and Players, over the shared draft, with the result before confirming and the reason next to the main button. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
