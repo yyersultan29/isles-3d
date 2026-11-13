@@ -1,7 +1,7 @@
 /// <reference types="node" />
 // `npm run server`: the local game server (ROADMAP G5.2). PORT and HOST override the defaults;
-// ORIGINS (comma-separated) limits which pages may connect (G5.6). Log lines are JSON, one per
-// line, with a timestamp.
+// ORIGINS (comma-separated) limits which pages may connect (G5.6); TRUST_PROXY=1 behind a hosting
+// proxy such as Render (G5.7). Log lines are JSON, one per line, with a timestamp.
 import { startServer, type LogEntry } from './server'
 
 const log = (e: LogEntry) => console.log(JSON.stringify({ t: new Date().toISOString(), ...e }))
@@ -10,6 +10,7 @@ const server = await startServer({
   port: Number(process.env.PORT ?? 8787),
   host: process.env.HOST ?? '127.0.0.1',
   origins: process.env.ORIGINS ? process.env.ORIGINS.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
+  trustProxy: process.env.TRUST_PROXY === '1',
   log,
 })
 

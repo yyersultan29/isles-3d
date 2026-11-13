@@ -79,6 +79,9 @@ export interface OnlineOptions {
   failed?: { code: SessionErrorCode; message: string }
   /** how long a RATE_LIMITED notice stays (default 4 s) */
   noticeMs?: number
+  /** G5.7: an idle open page sends a keep-alive this often (default 4 min): a free host sleeps after
+   *  15 minutes without inbound messages, and a sleeping server loses its rooms */
+  keepAliveMs?: number
 }
 
 const OPEN = 1
@@ -153,6 +156,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
   const base = o.reconnect?.baseMs ?? 500, max = o.reconnect?.maxMs ?? 5000
   const send = (m: ClientMessage) => { if (ws?.readyState === OPEN) ws.send(JSON.stringify(m)) }
   let noticeTimer: ReturnType<typeof setTimeout> | null = null
+  const keepAlive = setInterval(() => send({ type: 'ping' }), o.keepAliveMs ?? 240_000)
 
   const onMessage = (e: { data: unknown }) => {
     let m: ServerMessage
@@ -289,7 +293,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
     session: () => sessionSnap,
     onSession(l) { sessionListeners.add(l); return () => { sessionListeners.delete(l) } },
     start: () => send({ type: 'start' }),
-    close: () => { stopped = true; if (timer) clearTimeout(timer); if (noticeTimer) clearTimeout(noticeTimer); ws?.close() },
+    close: () => { stopped = true; if (timer) clearTimeout(timer); if (noticeTimer) clearTimeout(noticeTimer); clearInterval(keepAlive); ws?.close() },
     setTimer: (preset) => send({ type: 'settings', timer: preset }),
     reconnectNow: () => { if (timer && !stopped) { clearTimeout(timer); connect() } },
   }

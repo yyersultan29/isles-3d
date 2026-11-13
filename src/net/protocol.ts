@@ -20,6 +20,8 @@ export type ClientMessage =
   | { type: 'start' }
   /** G5.5: the host picks the turn-timer preset before the start */
   | { type: 'settings'; timer: TimerPreset }
+  /** G5.7: keep-alive from an idle page (a free host sleeps after minutes without inbound messages); no reply */
+  | { type: 'ping' }
   /** an intent; `clientSeq` (strictly increasing per seat) makes retries idempotent */
   | { type: 'action'; clientSeq: number; action: Action }
 
@@ -89,6 +91,8 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       return { type: 'join', roomId: m.roomId, token: m.token as string | undefined, claim: m.claim as boolean | undefined, resume: m.resume as string[] | undefined }
     case 'start':
       return { type: 'start' }
+    case 'ping':
+      return { type: 'ping' }
     case 'settings':
       if (m.timer !== 'relaxed' && m.timer !== 'normal' && m.timer !== 'fast' && m.timer !== 'off') return null
       return { type: 'settings', timer: m.timer }

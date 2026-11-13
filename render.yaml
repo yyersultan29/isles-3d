@@ -1,0 +1,30 @@
+# Render Blueprint for the game server (ROADMAP G5.7). The client stays on GitHub Pages.
+# Free plan: the service sleeps after 15 minutes without inbound HTTP requests or WebSocket
+# messages and wakes in about a minute; rooms live in memory, so a sleep or a redeploy ends them.
+services:
+  - type: web
+    name: isles-3d-server
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci
+    startCommand: npm run server
+    healthCheckPath: /health
+    # a redeploy restarts the process and ends every room: only server-side changes trigger one
+    buildFilter:
+      paths:
+        - src/server/**
+        - src/net/**
+        - src/game/**
+        - package.json
+        - package-lock.json
+        - render.yaml
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "1"
+      - key: ORIGINS
+        value: https://yyersultan29.github.io

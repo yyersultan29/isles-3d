@@ -39,6 +39,9 @@ export interface ServerOptions {
   origins?: string[]
   /** G5.6: the server's clock for limits and room cleanup (tests) */
   now?: () => number
+  /** G5.7: behind a hosting proxy (Render) every socket comes from the proxy: take the client address
+   *  from the last X-Forwarded-For entry, the one the proxy appended (earlier ones can be forged) */
+  trustProxy?: boolean
 }
 
 export interface RunningServer {
@@ -70,6 +73,11 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
   const connects = new Buckets(L.connectBurst, L.connectsPerMinute / 60, now)
   let nextConn = 0
 
+  const clientAddress = (req: IncomingMessage) => {
+    const xff = o.trustProxy ? req.headers['x-forwarded-for'] : undefined
+    const last = (Array.isArray(xff) ? xff.join(',') : xff)?.split(',').map((s) => s.trim()).filter(Boolean).pop()
+    return last ?? req.socket.remoteAddress ?? 'unknown'
+  }
   const originAllowed = (origin: string | undefined) => !o.origins || (!!origin && o.origins.includes(origin))
 
   const addRoom = () => {
@@ -136,7 +144,7 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
     }
     if (req.method === 'POST' && req.url === '/rooms') {
       if (origin && !originAllowed(origin)) return json(403, { error: 'origin not allowed' })
-      if (!roomCreates.take(req.socket.remoteAddress ?? 'unknown')) {
+      if (!roomCreates.take(clientAddress(req))) {
         log({ ev: 'limit', what: 'room.create' })
         return json(429, { error: 'too many rooms created; try again in a minute' }, { 'retry-after': '60' })
       }
@@ -157,7 +165,7 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
       log({ ev: 'limit', what })
       socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`)
     }
-    const address = req.socket.remoteAddress ?? 'unknown'
+    const address = clientAddress(req)
     if (new URL(req.url ?? '/', 'http://x').pathname !== '/ws') return refuse('404 Not Found', 'ws.path')
     if (!originAllowed(req.headers.origin)) return refuse('403 Forbidden', 'ws.origin')
     if (!connects.take(address)) return refuse('429 Too Many Requests', 'ws.connect')

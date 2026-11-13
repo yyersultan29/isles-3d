@@ -10,8 +10,8 @@ class Client {
   readonly got: ServerMessage[] = []
   readonly ws: WebSocket
   readonly closed: Promise<number>
-  constructor(url: string, origin?: string) {
-    this.ws = new WebSocket(url, origin ? { origin } : undefined)
+  constructor(url: string, origin?: string, headers?: Record<string, string>) {
+    this.ws = new WebSocket(url, { ...(origin ? { origin } : {}), ...(headers ? { headers } : {}) })
     this.ws.on('message', (d) => this.got.push(JSON.parse(d.toString())))
     this.closed = new Promise((ok) => this.ws.once('close', (code) => ok(code)))
   }
@@ -194,6 +194,27 @@ describe('server hardening G5.6', () => {
     expect(await b.wait((m) => m.type === 'welcome')).toMatchObject({ you: 'p1' })
     expect(log.some((e) => e.ev === 'error' && e.where === 'message' && e.message === 'boom')).toBe(true)
     expect(log.some((e) => e.ev === 'error' && e.where === 'tick' && e.message === 'tick boom')).toBe(true)
+  })
+
+  it('behind a trusted proxy the address is the last X-Forwarded-For entry, which a client cannot forge', async () => {
+    const { url } = await boot({ trustProxy: true, limits: { socketsPerAddress: 1 } })
+    const open = (xff: string) => { const c = new Client(url, undefined, { 'x-forwarded-for': xff }); clients.push(c); return c.open() }
+    await open('10.0.0.1')
+    await open('6.6.6.6, 10.0.0.2') // another client
+    await expect(open('7.7.7.7, 10.0.0.1')).rejects.toThrow('429') // a forged first entry doesn't help
+  })
+
+  it('a keep-alive ping gets no reply and changes nothing', async () => {
+    const { url } = await boot()
+    const room = server!.createRoom()
+    const a = await connect(url)
+    a.send({ type: 'join', roomId: room.id, claim: true })
+    await a.wait((m) => m.type === 'welcome')
+    const before = a.got.length
+    a.send({ type: 'ping' })
+    a.send({ type: 'ping' })
+    await sleep(80)
+    expect(a.got.length).toBe(before)
   })
 
   it('log entries name events, rooms and seats but never a seat token', async () => {

@@ -17,7 +17,20 @@ npm run shot -- http://localhost:5173/ shots/out.png 2000 1130   # headless Chro
 3. Send the invite link from the lobby to the other players, or open it in three more tabs. Each tab is one seat; a fifth visitor watches.
 4. The first player starts the game once all four seats are taken.
 
-A reload, a dropped connection or a closed tab reopened from the invite link rejoins the same seat: the seat token is kept per tab, and the browser remembers its tokens for the room. Rooms live in the server's memory, so restarting `npm run server` ends the games on it; a room with nobody connected for 10 minutes is removed. Another computer on the same network needs `HOST=0.0.0.0 npm run server` and `npx vite --host`; it then opens the invite link with this computer's address. The game server is local only and is not part of the GitHub Pages deployment.
+A reload, a dropped connection or a closed tab reopened from the invite link rejoins the same seat: the seat token is kept per tab, and the browser remembers its tokens for the room. Rooms live in the server's memory, so restarting `npm run server` ends the games on it; a room with nobody connected for 10 minutes is removed. Another computer on the same network needs `HOST=0.0.0.0 npm run server` and `npx vite --host`; it then opens the invite link with this computer's address.
+
+### Hosting the game server on Render (free)
+
+The client stays on GitHub Pages; the game server runs as a free Render web service described by `render.yaml` (Frankfurt, Node 22, `npm run server`, health check `/health`).
+
+1. On render.com, sign in with GitHub, choose **New → Blueprint** and pick this repository. Render reads `render.yaml` and creates `isles-3d-server`.
+2. Once it is live, note its address, e.g. `isles-3d-server.onrender.com`, and check `https://<address>/health`.
+3. Build the site against it: `GAME_SERVER=<address> npm run deploy`. Then `https://<user>.github.io/isles-3d/?online` creates a room on the server.
+
+What the free plan means:
+- The service sleeps after 15 minutes without inbound requests or WebSocket messages and takes about a minute to wake. `?online` says it is waking the server and keeps asking for 90 s. Open pages send a keep-alive every 4 minutes, so a lobby or a slow game keeps the server awake.
+- Rooms live in memory: a sleep, a restart or a redeploy ends them. `buildFilter` redeploys only on server-side changes (`src/server`, `src/net`, `src/game`, package files).
+- `ORIGINS` admits only the GitHub Pages site, and `TRUST_PROXY=1` takes each player's address from Render's proxy for the per-address limits.
 
 
 Debug URL params:

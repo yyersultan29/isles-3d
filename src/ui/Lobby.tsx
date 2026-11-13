@@ -196,7 +196,7 @@ function closedReason(code: SessionErrorCode | null, joined: boolean): { title: 
     case 'ROOM_FULL': return { title: 'This room is full', text: 'Too many people are connected to this room right now.', action: fresh }
     case 'CREATE_BUSY': return { title: 'Can’t create a room yet', text: 'Too many rooms were created from this network. Wait a minute, then try again.', action: reload }
     case 'CREATE_FULL': return { title: 'The server is full', text: 'The game server has no room for another game right now. Try again later.', action: reload }
-    case 'UNREACHABLE': return { title: 'Can’t reach the game server', text: 'No room could be created because the game server didn’t answer.', action: reload, serverHint: true }
+    case 'UNREACHABLE': return { title: 'Can’t reach the game server', text: 'No room could be created because the game server didn’t answer for a minute and a half.', action: reload, serverHint: true }
     default: return joined
       ? { title: 'Connection closed', text: 'The connection to the game closed.', action: { label: 'Reload', href: location.href } }
       : { title: 'Can’t reach the game server', text: 'This page keeps trying and joins once the server answers.', action: reload, serverHint: true }

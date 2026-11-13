@@ -95,7 +95,11 @@ out.goneAxe = await axe(gone)
 await gone.screenshot({ path: `${D}/room-gone.png` })
 await gone.close()
 const none = await open(`${APP}?online&server=127.0.0.1:1`)
-await none.waitForSelector('#lobby-title:text-is("Can’t reach the game server")')
+// G5.7: first the page says it is waking the server up (a free host sleeps), then gives up
+await none.waitForSelector('[role=status]:has-text("Waking up the game server")')
+out.waking = await none.evaluate(() => document.querySelector('p[role=status]')?.textContent)
+await none.screenshot({ path: `${D}/waking.png` })
+await none.waitForSelector('#lobby-title:text-is("Can’t reach the game server")', { timeout: 120_000 }) // after the 90 s wake-up wait
 out.unreachable = await dialogState(none)
 out.unreachableAxe = await axe(none)
 await none.screenshot({ path: `${D}/unreachable.png` })

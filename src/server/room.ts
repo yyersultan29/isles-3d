@@ -79,6 +79,7 @@ export class Room {
     const m = parseClientMessage(raw)
     if (!m) return [{ to: conn, msg: { type: 'rejected', clientSeq: null, error: malformed } }]
     if (m.type === 'join') return this.join(conn, m.roomId, m.token, m.claim, m.resume)
+    if (m.type === 'ping') return []
     const who = this.conns.get(conn)
     if (!who) return [this.err(conn, 'NOT_JOINED', 'join the room first')]
     if (m.type === 'start') return this.start(conn, who)
