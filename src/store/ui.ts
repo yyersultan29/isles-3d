@@ -82,7 +82,6 @@ export function useSeen(): PlayerId | null {
 
 type Cards = Partial<Record<Resource, number>>
 export interface TradeDraft { give: Cards; want: Cards }
-export type TradeTab = 'bank' | 'players'
 const EMPTY: TradeDraft = { give: {}, want: {} }
 
 /**
@@ -106,7 +105,6 @@ export const draftCovered = (d: TradeDraft, hand: Record<Resource, number>) =>
 export const draftEmpty = (d: TradeDraft) => !Object.keys(d.give).length && !Object.keys(d.want).length
 
 let draft: TradeDraft = EMPTY
-let tab: TradeTab = 'bank'
 const draftListeners = new Set<() => void>()
 const emitDraft = () => { for (const l of [...draftListeners]) l() }
 
@@ -114,9 +112,6 @@ export function setDraft(d: TradeDraft) { if (d !== draft) { draft = d; emitDraf
 export const clearDraft = () => setDraft(EMPTY)
 export const getDraft = () => draft
 export const changeDraft = (side: 'give' | 'want', r: Resource, n: number, max?: number) => setDraft(draftAdd(draft, side, r, n, max))
-export function setTradeTab(t: TradeTab) { if (t !== tab) { tab = t; emitDraft() } }
-export const getTradeTab = () => tab
 
 const subscribeDraft = (l: () => void) => { draftListeners.add(l); return () => { draftListeners.delete(l) } }
 export const useTradeDraft = (): TradeDraft => useSyncExternalStore(subscribeDraft, () => draft)
-export const useTradeTab = (): TradeTab => useSyncExternalStore(subscribeDraft, () => tab)

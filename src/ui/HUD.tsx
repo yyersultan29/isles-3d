@@ -12,7 +12,7 @@ import { usePrivacy } from './PassDevice'
 import { TurnClock } from './TurnClock'
 import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
-import { changeDraft, clearDraft, draftCovered, draftEmpty, getDraft, setDevOpen, setPanel, setPlacementMode, setTradeOpen, setTradeTab, useDevOpen, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
+import { changeDraft, clearDraft, draftCovered, getDraft, setDevOpen, setPanel, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
 import type { Resource } from '../game'
 import { useGameStore, useGameEvents } from '../store/GameProvider'
 
@@ -281,7 +281,7 @@ export function usePlacementAutoReset() {
     if (phaseKind !== 'actions') { setPlacementMode(null); setTradeOpen(false) }
     if (phaseKind !== 'actions' && phaseKind !== 'preRoll') setDevOpen(false) // knights may be played before the roll
   }, [phaseKind])
-  useEffect(() => { setPlacementMode(null); setPanel(null); clearDraft(); setTradeTab('bank') }, [active, turn])
+  useEffect(() => { setPlacementMode(null); setPanel(null); clearDraft() }, [active, turn])
   // G6.2: a trade draft the hand can no longer pay (after a trade or a robbery) is dropped
   useEffect(() => { if (!draftCovered(getDraft(), hand.counts)) clearDraft() }, [hand])
   useEffect(() => {
@@ -327,7 +327,7 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
         return (
           <li key={key} className="relative">
             <button data-hand-card aria-label={label} title={n ? label : `${name}: none to trade`} disabled={chosen >= n}
-              onClick={() => { changeDraft('give', key, 1, n); setTradeTab('players'); setTradeOpen(true) }}
+              onClick={() => { changeDraft('give', key, 1, n); setTradeOpen(true) }}
               className={`${frame} disabled:cursor-not-allowed ${chosen ? `ring-[3px] ring-[#ffd76a] ${compact ? '-translate-y-[4px]' : '-translate-y-[8px]'}` : 'enabled:hover:-translate-y-[4px]'} ${focusRing}`}>
               {face}
             </button>
@@ -433,13 +433,13 @@ const TradeIco = ({ size }: { size: number }) => (
   <svg aria-hidden viewBox="0 0 24 24" style={{ width: size, height: size }} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h14l-4-4" /><path d="M20 16H6l4 4" /></svg>
 )
 
-/** Opens the trade panel (G4.4d): on the Bank tab, or on Players when the hand has filled a draft (G6.2). */
+/** Opens the trade panel (G4.4d; bank and players in one panel since G6.3). */
 export function TradeButton({ className = '', icon = 24 }: { className?: string; icon?: number }) {
   const { bank } = useGameView()
   const open = useTradeOpen()
   const label = `Trade with the bank${bank.reason ? ` (${bank.reason})` : ''}`
   return (
-    <IconButton label={label} aria-pressed={open} disabled={!bank.open} onClick={() => { if (!open) setTradeTab(draftEmpty(getDraft()) ? 'bank' : 'players'); setTradeOpen(!open) }}
+    <IconButton label={label} aria-pressed={open} disabled={!bank.open} onClick={() => setTradeOpen(!open)}
       className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
       <TradeIco size={icon} />
     </IconButton>

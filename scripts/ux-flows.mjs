@@ -7,6 +7,8 @@
 // in for one click on the spot). Reported per flow: the clicks the acting player needs, other
 // players' clicks (hot-seat answers), the panels it opens, and whether the game state changed as
 // intended. The flows are written against the current UI; G6 steps update them alongside the UI.
+// G6.3: one trade panel (want a card, pay the bank in one click; offers start from the hand), and
+// the phone build popover opens over an open trade panel instead of under it.
 import { chromium } from 'playwright-core'
 import { mkdirSync, writeFileSync } from 'node:fs'
 const [W, H] = [Number(process.argv[2] ?? 1440), Number(process.argv[3] ?? 900)]
@@ -76,11 +78,7 @@ const place = async () => { // one click on a highlighted spot
 }
 const unpass = async () => { while (await p.$('[aria-labelledby=pass-title]')) { await p.click('[aria-labelledby=pass-title] button'); await p.waitForTimeout(250) } }
 const buildRow = async (prefix) => {
-  if (compact) {
-    // on a phone the trade panel covers the Build button: it has to be closed first
-    if (await p.$('[aria-labelledby=trade-title]')) { await p.screenshot({ path: `${D}/covered-build.png` }); await tap('button[aria-label="Close trade"]'); out.coveredBuild = true }
-    if (!(await p.$('#compact-build'))) await tap('[data-build-toggle]')
-  }
+  if (compact && !(await p.$('#compact-build'))) await tap('[data-build-toggle]')
   await tap(`button[aria-label^="${prefix}"]`)
 }
 const openTrade = () => tap('button[aria-label^="Trade with the bank"]')
@@ -93,11 +91,11 @@ const begin = async (cond) => { const pos = await position(cond); if (!pos) thro
   const before = await snap()
   await p.screenshot({ path: `${D}/1-start.png` })
   await openTrade()
-  await p.screenshot({ path: `${D}/1-bank-tab.png` })
-  await tap('button[aria-label^="Give wood at"]')
-  await tap('button[aria-label^="Get brick ("]')
-  await tap('button[aria-label^="Confirm trade"]')
-  await buildRow('Build Road') // also closes the trade panel
+  await p.screenshot({ path: `${D}/1-trade-open.png` })
+  await tap('button[aria-label^="Want one brick"]')
+  await p.screenshot({ path: `${D}/1-pay-options.png` })
+  await tap('[aria-label="Pay the bank"] button[aria-label^="Pay 4 wood for"]') // the trade closes the panel
+  await buildRow('Build Road')
   await place()
   const after = await snap()
   out.flows.bankThenRoad = { clicks, others, panels: [...panels], ok: after.res.lumber === before.res.lumber - 5 && after.res.brick === 0 && after.actions === before.actions + 2, position: pos }
@@ -119,12 +117,10 @@ const begin = async (cond) => { const pos = await position(cond); if (!pos) thro
 {
   const pos = await begin((g, s, p, me) => me.resources.wool >= 1 && me.resources.ore === 0 && s.players.some((o) => o.id !== p && o.resources.ore >= 1))
   const before = await snap()
-  await openTrade()
-  await tap('[role=tab]:text-is("Players")')
-  await p.screenshot({ path: `${D}/3-players-tab.png` })
-  await tap('button[aria-label^="Give one wool"]')
+  await tap('button[aria-label^="Trade one wool"]') // the hand card opens the panel with the wool given
   await tap('button[aria-label^="Want one ore"]')
-  await tap('button[aria-label="Propose trade"]')
+  await p.screenshot({ path: `${D}/3-compose.png` })
+  await tap('button[aria-label="Offer to players"]')
   await p.screenshot({ path: `${D}/3-offer.png` })
   // hot-seat: the others answer on this screen (counted apart); the first who can accepts
   for (let i = 0; i < 3; i++) {
@@ -137,6 +133,17 @@ const begin = async (cond) => { const pos = await position(cond); if (!pos) thro
   const stillOpen = !!(await p.$('[aria-labelledby=trade-title]'))
   out.flows.playerTrade = { clicks, others, panelStillOpenAfter: stillOpen, panels: [...panels], ok: after.res.ore === before.res.ore + 1 && after.res.wool === before.res.wool - 1, position: pos }
   await p.screenshot({ path: `${D}/3-after.png` })
+}
+
+// ---- 4. phone: the build popover over an open trade panel is tappable (the G6.0 bug)
+if (compact) {
+  await begin((g, s, p, me) => g.legalActions(s, p).some((a) => a.type === 'BUILD_ROAD'))
+  await openTrade(); await tap('[data-build-toggle]')
+  out.buildOverTrade = await p.evaluate(() => {
+    const row = document.querySelector('#compact-build button[aria-label^="Build Road"]'); const b = row.getBoundingClientRect()
+    return { tradeOpen: !!document.querySelector('[aria-labelledby=trade-title]'), hitIsRow: row.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)) }
+  })
+  await p.screenshot({ path: `${D}/4-build-over-trade.png` })
 }
 
 writeFileSync(`${D}/ux-flows.json`, JSON.stringify(out, null, 1))

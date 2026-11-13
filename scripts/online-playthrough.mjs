@@ -126,8 +126,8 @@ while (stats.steps++ < 20000) {
           else if (L.includes('PROPOSE_TRADE') && turnMemo.p2p < 1 && rand() < 0.35) {
             turnMemo.p2p++
             const give = RES.filter((r) => s.res[r] > 0).sort((a, b) => s.res[b] - s.res[a])[0]; const want = RES.filter((r) => r !== give)[Math.floor(rand() * 4)]
-            await click(p, 'button[aria-label^="Trade with the bank"]'); await click(p, '[role=tab]:text-is("Players")')
-            await click(p, `button[aria-label^="Give one ${NAME[give]}"]`); await click(p, `button[aria-label^="Want one ${NAME[want]}"]`); await click(p, 'button[aria-label="Propose trade"]'); did('propose')
+            await click(p, 'button[aria-label^="Trade with the bank"]')
+            await click(p, `button[aria-label^="Give one ${NAME[give]}"]`); await click(p, `button[aria-label^="Want one ${NAME[want]}"]`); await click(p, 'button[aria-label="Offer to players"]'); did('propose')
           } else if (L.includes('BANK_TRADE') && turnMemo.bank < 1) {
             turnMemo.bank++
             const give = RES.filter((r) => s.res[r] >= 2).sort((a, b) => s.res[b] - s.res[a])[0]
@@ -135,9 +135,10 @@ while (stats.steps++ < 20000) {
             const el = give && need.length && await p.$('button[aria-label^="Trade with the bank"]:not([disabled])')
             if (el) {
               await el.click(); await p.waitForTimeout(40)
-              const g = await p.$(`button[aria-label^="Give ${NAME[give]} at"]:not([disabled])`)
-              if (g) { await g.click(); await click(p, `button[aria-label^="Get ${NAME[need[0]]} ("]`); await click(p, 'button[aria-label^="Confirm trade"]'); did('bankTrade') }
-              await click(p, 'button[aria-label="Close trade"]')
+              await click(p, `button[aria-label^="Want one ${NAME[need[0]]}"]`)
+              const g = await p.$(`[aria-label="Pay the bank"] button[aria-label*=" ${NAME[give]} for "]`)
+              if (g) { await g.click(); did('bankTrade') } // a completed trade closes the panel
+              else { await click(p, `button[aria-label="Want one less ${NAME[need[0]]}"]`); await click(p, 'button[aria-label="Close trade"]') }
             }
             continue
           } else { await click(p, '[data-primary-action]'); did('endTurn') }

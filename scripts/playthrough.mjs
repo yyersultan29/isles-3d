@@ -104,8 +104,8 @@ while (stats.steps++ < 20000) {
       if (L.includes('PROPOSE_TRADE') && turnMemo.p2p < 1 && rand() < 0.25) {
         turnMemo.p2p++
         const give = RES.filter((r) => s.res[r] > 0).sort((a, b) => s.res[b] - s.res[a])[0]; const want = RES.filter((r) => r !== give)[Math.floor(rand() * 4)]
-        await click('button[aria-label^="Trade with the bank"]'); await click('[role=tab]:text-is("Players")')
-        await click(`button[aria-label^="Give one ${NAME[give]}"]`); await click(`button[aria-label^="Want one ${NAME[want]}"]`); await click('button[aria-label="Propose trade"]'); did('propose'); continue
+        await click('button[aria-label^="Trade with the bank"]')
+        await click(`button[aria-label^="Give one ${NAME[give]}"]`); await click(`button[aria-label^="Want one ${NAME[want]}"]`); await click('button[aria-label="Offer to players"]'); did('propose'); continue
       }
       if (L.includes('BANK_TRADE') && turnMemo.bank < 2) {
         turnMemo.bank++
@@ -114,9 +114,10 @@ while (stats.steps++ < 20000) {
         const el = give && await p.$('button[aria-label^="Trade with the bank"]:not([disabled])')
         if (el && need.length) {
           await el.click(); await p.waitForTimeout(60)
-          const g = await p.$(`button[aria-label^="Give ${NAME[give]} at"]:not([disabled])`)
-          if (g) { await g.click(); await click(`button[aria-label^="Get ${NAME[need[0]]} ("]`); await click('button[aria-label^="Confirm trade"]'); did('bankTrade') }
-          await click('button[aria-label="Close trade"]'); continue
+          await click(`button[aria-label^="Want one ${NAME[need[0]]}"]`)
+          const g = await p.$(`[aria-label="Pay the bank"] button[aria-label*=" ${NAME[give]} for "]`)
+          if (g) { await g.click(); did('bankTrade') } // a completed trade closes the panel
+          else { await click(`button[aria-label="Want one less ${NAME[need[0]]}"]`); await click('button[aria-label="Close trade"]') }; continue
         }
       }
       await click('[data-primary-action]'); did('endTurn'); continue

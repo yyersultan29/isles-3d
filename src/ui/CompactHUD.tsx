@@ -104,7 +104,8 @@ export function CompactHUD() {
       <Notices className="absolute inset-x-[8px] [&>button]:!text-[13px]" style={{ top: COMPACT_SAFE.top + 4 }} />
 
       {/* ---------- bottom dock ---------- */}
-      <div className="absolute inset-x-[8px] bottom-[8px] flex flex-col items-center gap-[8px]" style={{ height: COMPACT_SAFE.bottom - 8 }}>
+      {/* an open build popover sits above the dialogs: it rises over the dock, where the trade panel is (G6.3) */}
+      <div className={`absolute inset-x-[8px] bottom-[8px] flex flex-col items-center gap-[8px] ${build ? 'z-[2]' : ''}`} style={{ height: COMPACT_SAFE.bottom - 8 }}>
         <div className="relative flex w-full max-w-[560px] items-center gap-[6px]">
           <button
             onClick={act}

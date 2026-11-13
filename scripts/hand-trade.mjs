@@ -1,6 +1,7 @@
 // G6.2 check: the clickable hand fills the trade draft (desktop and compact), the draft survives
 // closing the panel, the "−" takes a card back, axe on the hand and the panel, the draft clears at
-// the end of the turn. Usage: node scripts/hand-trade.mjs width height outDir   (needs `npm run dev`)
+// the end of the turn. G6.3: one panel; with only a wanted card it lists the ways to pay the bank,
+// and a bank trade closes the panel. Usage: node scripts/hand-trade.mjs width height outDir   (needs `npm run dev`)
 import { chromium } from 'playwright-core'
 import { mkdirSync, writeFileSync } from 'node:fs'
 const [W, H] = [Number(process.argv[2]), Number(process.argv[3])]
@@ -67,7 +68,6 @@ out.focusAfterFirst = await p.evaluate(() => document.activeElement?.getAttribut
 await p.click('button[aria-label^="Trade one wool"]'); await p.waitForTimeout(150)
 await p.click('button[aria-label^="Trade one wood"]'); await p.waitForTimeout(150)
 out.panel = !!(await p.$('[aria-labelledby=trade-title]'))
-out.tab = await p.$eval('[role=tab][aria-selected=true]', (e) => e.textContent)
 out.composer = await p.$$eval('#trade-body button[aria-label^="Give one"]', (els) => els.map((e) => e.getAttribute('aria-label')))
 out.status = await p.$eval('#trade-body [aria-live]', (e) => e.textContent)
 await p.screenshot({ path: D + '/1-picked.png' })
@@ -76,18 +76,23 @@ out.afterMinus = await labels()
 // survives closing and switching panels
 await p.click('button[aria-label="Close trade"]'); await p.waitForTimeout(150)
 await p.click('button[aria-label^="Trade with the bank"]'); await p.waitForTimeout(150)
-out.reopenTab = await p.$eval('[role=tab][aria-selected=true]', (e) => e.textContent)
 out.reopenStatus = await p.$eval('#trade-body [aria-live]', (e) => e.textContent)
-await p.click('[role=tab]:text-is("Bank")'); await p.waitForTimeout(150)
-out.bankPreselected = await p.$eval('button[aria-label^="Give wool at"]', (e) => e.getAttribute('aria-pressed'))
-await p.click('[role=tab]:text-is("Players")'); await p.waitForTimeout(150)
 await p.click('button[aria-label^="Want one ore"]'); await p.waitForTimeout(150)
 out.status2 = await p.$eval('#trade-body [aria-live]', (e) => e.textContent)
+out.bankButton = await p.$eval('button[aria-label^="Bank trade"]', (e) => e.getAttribute('aria-label'))
+out.offerButton = await p.$eval('button[aria-label^="Offer to players"]', (e) => e.getAttribute('aria-label') + (e.disabled ? ' [disabled]' : ''))
+await p.screenshot({ path: D + '/2-want.png' })
+// give nothing, want one ore: the ways to pay the bank, one click each
+await p.click('button[aria-label="Take back one wool"]'); await p.click('button[aria-label="Take back one wool"]'); await p.waitForTimeout(150)
+out.payOptions = await p.$$eval('[aria-label="Pay the bank"] button', (els) => els.map((e) => e.getAttribute('aria-label')))
+out.status3 = await p.$eval('#trade-body [aria-live]', (e) => e.textContent)
 if (!(await p.$('#axe'))) await p.addScriptTag({ url: AXE })
 out.axe = await p.evaluate(async () => (await window.axe.run({ include: [['[aria-labelledby=trade-title]'], ['[aria-label$="resources"]']] }, { resultTypes: ['violations'] })).violations.map((v) => v.id + ' ' + v.impact + ' ' + v.nodes.length + ' ' + v.nodes[0].target))
-await p.screenshot({ path: D + '/2-want.png' })
+await p.screenshot({ path: D + '/3-pay.png' })
+const ore0 = await p.evaluate(() => { const s = window.__islesStore.getState(); return s.players.find((x) => x.id === s.order[s.active]).resources.ore })
+await p.click('[aria-label="Pay the bank"] button'); await p.waitForTimeout(300)
+out.afterPay = { panelOpen: !!(await p.$('[aria-labelledby=trade-title]')), oreGained: (await p.evaluate(() => { const s = window.__islesStore.getState(); return s.players.find((x) => x.id === s.order[s.active]).resources.ore })) - ore0, focus: await p.evaluate(() => document.activeElement?.getAttribute('aria-label')) }
 // end of turn clears the draft
-await p.click('button[aria-label="Close trade"]'); await p.waitForTimeout(150)
 await p.click('[data-primary-action], button:has-text("End turn")').catch(() => {})
 await p.waitForTimeout(500)
 out.draftAfterEnd = await p.evaluate(async () => (await import('/src/store/ui.ts')).getDraft())

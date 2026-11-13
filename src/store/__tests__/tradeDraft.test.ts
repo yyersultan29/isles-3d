@@ -1,6 +1,6 @@
 // G6.2: the trade draft in the UI store.
 import { describe, expect, it } from 'vitest'
-import { changeDraft, clearDraft, draftAdd, draftCovered, draftEmpty, getDraft, getTradeTab, setTradeTab, type TradeDraft } from '../ui'
+import { changeDraft, clearDraft, draftAdd, draftCovered, draftEmpty, getDraft, type TradeDraft } from '../ui'
 
 const E: TradeDraft = { give: {}, want: {} }
 const hand = { lumber: 3, brick: 0, wool: 1, grain: 0, ore: 2 }
@@ -32,14 +32,12 @@ describe('draftCovered and the store', () => {
     expect(draftEmpty(E)).toBe(true)
   })
 
-  it('changeDraft and clearDraft update the shared draft; the tab is kept beside it', () => {
+  it('changeDraft and clearDraft update the shared draft', () => {
     clearDraft()
     changeDraft('give', 'wool', 1, 1)
     changeDraft('give', 'wool', 1, 1)
     expect(getDraft()).toEqual({ give: { wool: 1 }, want: {} })
-    setTradeTab('players')
-    expect(getTradeTab()).toBe('players')
-    clearDraft(); setTradeTab('bank')
+    clearDraft()
     expect(draftEmpty(getDraft())).toBe(true)
   })
 })

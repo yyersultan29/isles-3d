@@ -1,6 +1,9 @@
-// Trade panel (ROADMAP G4.4d). Two tabs while composing:
-//  - Bank: rates from the engine's tradeRate (ports included) through bankView(); dispatches BANK_TRADE.
-//  - Players: an offer composer; proposeCheck() mirrors the engine's checks; dispatches PROPOSE_TRADE.
+// Trade panel (ROADMAP G4.4d, one panel since G6.3). While composing, one draft (the UI store, filled
+// from the hand too) has "You give" and "You want", and two ways to trade it:
+//  - Bank: enabled when the draft is one legal bank trade (bankQuote, at the player's rate).
+//  - Offer to players: proposeCheck() mirrors the engine's checks; dispatches PROPOSE_TRADE.
+// With only a wanted kind chosen, the panel lists every way to pay the bank for it (payOptions), one
+// click each. A completed trade closes the panel.
 // While an offer is open (state.trade) the panel shows it instead: each addressed player accepts or
 // declines (hot-seat, on the same screen; online each on their own), the proposer confirms with one
 // who accepted or cancels.
@@ -9,9 +12,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
 import { RESOURCES, focusRing, panel } from './HUD'
-import { SEATS, bankMax, proposeCheck, useGameView, type Counts } from './gameView'
+import { SEATS, proposeCheck, useGameView, type Counts } from './gameView'
+import { bankQuote, payOptions } from './tradePlan'
 import { useGame, useGameStore } from '../store/GameProvider'
-import { changeDraft, clearDraft, getDraft, setTradeOpen, setTradeTab, useTradeDraft, useTradeTab } from '../store/ui'
+import { changeDraft, clearDraft, setTradeOpen, useTradeDraft } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 
 export const NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
@@ -20,8 +24,8 @@ const text = (c: Counts) => RESOURCE_ORDER.filter((r) => c[r]).map((r) => `${c[r
 export const gold = () => `h-[38px] shrink-0 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[20px] font-display text-[17px] font-semibold text-[#3a2208] disabled:grayscale-[0.7] disabled:brightness-75 ${focusRing}`
 export const plain = () => `h-[34px] shrink-0 rounded-[9px] bg-white/10 px-[12px] text-[14px] font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white/10 ${focusRing}`
 const tileW = (compact: boolean) => (compact ? 'w-[58px]' : 'w-[70px]')
-/** Move focus into a panel unless the user is switching tabs or picking cards from the hand (G6.2). */
-const focusInto = (el: HTMLElement | null) => { if (!(document.activeElement as HTMLElement | null)?.matches('[role=tab], [data-hand-card]')) el?.focus() }
+/** Move focus into the panel unless the user is picking cards from the hand (G6.2). */
+const focusInto = (el: HTMLElement | null) => { if (!(document.activeElement as HTMLElement | null)?.matches('[data-hand-card]')) el?.focus() }
 
 export function useAct() {
   const store = useGameStore()
@@ -46,14 +50,14 @@ export function Tile({ res, top, corner, selected, disabled, label, onClick, com
 }
 
 /** A resource tile that adds one per click, with a small remove button once something is chosen. */
-function CountTile({ res, chosen, max, sub, verb, compact, btnRef, onAdd, onRemove }: {
-  res: Resource; chosen: number; max: number; sub: string; verb: string; compact: boolean; btnRef?: React.Ref<HTMLButtonElement>
+function CountTile({ res, chosen, max, sub, hint = '', detail, verb, compact, btnRef, onAdd, onRemove }: {
+  res: Resource; chosen: number; max: number; sub: string; hint?: string; detail: string; verb: string; compact: boolean; btnRef?: React.Ref<HTMLButtonElement>
   onAdd: () => void; onRemove: () => void
 }) {
   return (
     <div className="relative">
-      <Tile res={res} compact={compact} btnRef={btnRef} top={chosen ? `×${chosen}` : ''} corner={sub} selected={chosen > 0} disabled={chosen >= max}
-        label={`${verb} one ${NAME[res]} (${chosen} chosen${sub ? `, you have ${sub}` : ''})`} onClick={onAdd} />
+      <Tile res={res} compact={compact} btnRef={btnRef} top={chosen ? `×${chosen}` : hint} corner={sub} selected={chosen > 0} disabled={chosen >= max}
+        label={`${verb} one ${NAME[res]} (${chosen} chosen${detail ? `, ${detail}` : ''})`} onClick={onAdd} />
       {chosen > 0 && (
         <button aria-label={`${verb} one less ${NAME[res]}`} onClick={onRemove}
           className={`absolute -right-[5px] -top-[7px] grid h-[22px] w-[22px] place-items-center rounded-full bg-[#c8302a] text-[15px] font-bold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,.5)] ${focusRing}`}>−</button>
@@ -74,75 +78,11 @@ function Chips({ c }: { c: Counts }) {
   )
 }
 
-// ---------------------------------------------------------------- bank
+// ---------------------------------------------------------------- composing (bank or players)
 
-function BankPanel({ compact }: { compact: boolean }) {
-  const { bank } = useGameView()
-  const act = useAct()
-  // a single kind picked from the hand (G6.2) starts as the card to give
-  const [give, setGive] = useState<Resource | null>(() => {
-    const g = RESOURCE_ORDER.filter((r) => getDraft().give[r])
-    return g.length === 1 && bank.rows.find((r) => r.res === g[0])!.canGive ? g[0] : null
-  })
-  const [get, setGet] = useState<Resource | null>(null)
-  const [n, setN] = useState(1)
-  const first = useRef<HTMLButtonElement>(null)
-  const firstGive = bank.rows.find((r) => r.canGive)?.res
-  useEffect(() => { focusInto(first.current) }, [])
-  // after a trade the Trade button disables itself; keep keyboard focus at the start of the panel
-  const traded = useRef(false)
-  useEffect(() => { if (traded.current) { traded.current = false; (first.current ?? null)?.focus() } }, [bank])
-
-  // drop choices the hand or the bank no longer supports (after a trade, or a new turn)
-  const giveRow = give ? bank.rows.find((r) => r.res === give)! : null
-  const max = give && get ? bankMax(bank, give, get) : 0
-  useEffect(() => {
-    if (giveRow && !giveRow.canGive) { setGive(null); setGet(null) }
-    if (get && bank.rows.find((r) => r.res === get)!.bank === 0) setGet(null)
-    setN((x) => Math.max(1, Math.min(x, max || 1)))
-  }, [bank, giveRow, get, max])
-
-  const confirm = () => { if (give && get && n <= max && act(bank.player, { type: 'BANK_TRADE', give, get, count: n })) { setN(1); traded.current = document.activeElement !== document.body } }
-  const summary = give && get ? `${n * giveRow!.rate} ${NAME[give]} → ${n} ${NAME[get]}` : give ? 'Choose what to get' : 'Choose what to give'
-
-  return (
-    <>
-      <p className="mb-[4px] text-[13px] text-[#d6d2ca]">You give <span className="text-[#a9a49b]">(rate · you have)</span></p>
-      <div className="flex gap-[8px]">
-        {bank.rows.map((r) => (
-          <Tile key={r.res} res={r.res} compact={compact} btnRef={r.res === firstGive ? first : undefined} top={`${r.rate}:1`} corner={String(r.have)}
-            selected={give === r.res} disabled={!r.canGive}
-            label={`Give ${NAME[r.res]} at ${r.rate} to 1 (you have ${r.have})${r.canGive ? '' : `: need ${r.rate}`}`}
-            onClick={() => { setGive(give === r.res ? null : r.res); if (get === r.res) setGet(null) }} />
-        ))}
-      </div>
-      <p className="mb-[4px] mt-[10px] text-[13px] text-[#d6d2ca]">You get <span className="text-[#a9a49b]">(bank has)</span></p>
-      <div className="flex gap-[8px]">
-        {bank.rows.map((r) => (
-          <Tile key={r.res} res={r.res} compact={compact} top={String(r.bank)} corner=""
-            selected={get === r.res} disabled={!give || give === r.res || r.bank === 0}
-            label={`Get ${NAME[r.res]} (bank has ${r.bank})`}
-            onClick={() => setGet(get === r.res ? null : r.res)} />
-        ))}
-      </div>
-      <p aria-live="polite" className="mt-[10px] text-[14px] font-semibold text-[#f2cf84]">{summary}</p>
-      <div className="mt-[6px] flex items-center justify-between gap-[10px]">
-        <div className="flex items-center gap-[6px]">
-          <button aria-label="One less" disabled={n <= 1} onClick={() => setN(n - 1)} className={`grid h-[30px] w-[30px] place-items-center rounded-[7px] bg-white/10 text-[17px] font-bold text-white disabled:opacity-30 ${focusRing}`}>−</button>
-          <span className="min-w-[24px] text-center text-[16px] font-bold text-white" aria-label={`Count ${n}`}>×{n}</span>
-          <button aria-label="One more" disabled={n >= max} onClick={() => setN(n + 1)} className={`grid h-[30px] w-[30px] place-items-center rounded-[7px] bg-white/10 text-[17px] font-bold text-white disabled:opacity-30 ${focusRing}`}>+</button>
-        </div>
-        <button onClick={confirm} disabled={!give || !get || max < 1} aria-label={give && get ? `Confirm trade: ${summary}` : 'Confirm trade'} className={gold()}>Trade</button>
-      </div>
-    </>
-  )
-}
-
-// ---------------------------------------------------------------- composing an offer
-
-function PlayersPanel({ compact }: { compact: boolean }) {
+function ComposePanel({ compact }: { compact: boolean }) {
   const s = useGame((x) => x)
-  const { hand, opponents } = useGameView()
+  const { hand, opponents, bank, me } = useGameView()
   const act = useAct()
   // the draft lives in the UI store (G6.2): the hand fills it, and it survives closing the panel;
   // it is cleared at the end of the turn and when the hand no longer holds it (usePlacementAutoReset)
@@ -153,26 +93,47 @@ function PlayersPanel({ compact }: { compact: boolean }) {
 
   // a resource sits on one side only
   const add = (side: 'give' | 'want', r: Resource, d: number) => changeDraft(side, r, d, side === 'give' ? hand.counts[r] : 19)
-  const reason = proposeCheck(s, give, want, to)
-  const propose = () => { if (!reason && act(hand.owner, { type: 'PROPOSE_TRADE', offer: give, request: want, to: to.length === opponents.length ? undefined : to })) clearDraft() }
+  const quote = bankQuote(s, give, want, me)
+  const offerReason = proposeCheck(s, give, want, to)
+  const wanted = RESOURCE_ORDER.filter((r) => want[r])
+  const giving = RESOURCE_ORDER.some((r) => give[r])
+  const pay = !giving && wanted.length === 1 ? payOptions(s, wanted[0], want[wanted[0]]!, me) : []
+  const bankTrade = (a: Action) => { if (act(bank.player, a)) { clearDraft(); setTradeOpen(false) } }
+  const offer = () => { if (!offerReason && act(hand.owner, { type: 'PROPOSE_TRADE', offer: give, request: want, to: to.length === opponents.length ? undefined : to })) clearDraft() }
   const firstHeld = RESOURCE_ORDER.find((r) => hand.counts[r] > 0)
+
+  const status = quote.ok ? quote.text : !offerReason ? `Offer ${text(give)} for ${text(want)}` : pay.length ? `Pay the bank, or add cards you give` : offerReason
+  // why the bank can't take this draft, when players could
+  const bankNote = !quote.ok && giving && wanted.length && !offerReason ? `Bank: ${quote.reason}` : ''
 
   return (
     <>
-      <p className="mb-[4px] text-[13px] text-[#d6d2ca]">You give <span className="text-[#a9a49b]">(you have)</span></p>
+      <p className="mb-[4px] text-[13px] text-[#d6d2ca]">You give <span className="text-[#a9a49b]">(bank rate · you have)</span></p>
       <div className="flex gap-[8px]">
-        {RESOURCE_ORDER.map((r) => (
-          <CountTile key={r} res={r} compact={compact} btnRef={r === firstHeld ? first : undefined} verb="Give" chosen={give[r] ?? 0} max={hand.counts[r]} sub={String(hand.counts[r])}
-            onAdd={() => add('give', r, 1)} onRemove={() => add('give', r, -1)} />
+        {bank.rows.map((r) => (
+          <CountTile key={r.res} res={r.res} compact={compact} btnRef={r.res === firstHeld ? first : undefined} verb="Give" chosen={give[r.res] ?? 0} max={hand.counts[r.res]}
+            sub={String(hand.counts[r.res])} hint={`${r.rate}:1`} detail={`you have ${hand.counts[r.res]}, bank rate ${r.rate}:1`}
+            onAdd={() => add('give', r.res, 1)} onRemove={() => add('give', r.res, -1)} />
         ))}
       </div>
-      <p className="mb-[4px] mt-[10px] text-[13px] text-[#d6d2ca]">You want</p>
+      <p className="mb-[4px] mt-[10px] text-[13px] text-[#d6d2ca]">You want <span className="text-[#a9a49b]">(bank has)</span></p>
       <div className="flex gap-[8px]">
-        {RESOURCE_ORDER.map((r) => (
-          <CountTile key={r} res={r} compact={compact} verb="Want" chosen={want[r] ?? 0} max={19} sub=""
-            onAdd={() => add('want', r, 1)} onRemove={() => add('want', r, -1)} />
+        {bank.rows.map((r) => (
+          <CountTile key={r.res} res={r.res} compact={compact} verb="Want" chosen={want[r.res] ?? 0} max={19} sub={String(r.bank)} detail={`bank has ${r.bank}`}
+            onAdd={() => add('want', r.res, 1)} onRemove={() => add('want', r.res, -1)} />
         ))}
       </div>
+      {pay.length > 0 && (
+        <div role="group" aria-label="Pay the bank" className="mt-[10px] flex flex-wrap items-center gap-[6px]">
+          <span className="mr-[2px] text-[13px] text-[#d6d2ca]">Pay the bank</span>
+          {pay.map((o) => { const R = RESOURCES.find((x) => x.key === o.give)!; const label = `Pay ${o.cost} ${NAME[o.give]} for ${o.action.count} ${NAME[o.action.get]}`; return (
+            <button key={o.give} aria-label={label} title={label} onClick={() => bankTrade(o.action)}
+              className={`flex h-[34px] items-center gap-[4px] rounded-[8px] bg-gradient-to-b ${R.bg} pl-[3px] pr-[9px] text-[14px] font-bold text-white ring-1 ring-[#f2cf84]/50 hover:brightness-110 ${focusRing}`}>
+              <R.Icon aria-hidden className="h-[26px] w-[28px]" />{o.text}
+            </button>
+          ) })}
+        </div>
+      )}
       <div role="group" aria-label="Offer to" className="mt-[10px] flex flex-wrap items-center gap-[6px]">
         <span className="mr-[2px] text-[13px] text-[#d6d2ca]">To</span>
         {opponents.map((id) => { const on = to.includes(id); return (
@@ -184,9 +145,16 @@ function PlayersPanel({ compact }: { compact: boolean }) {
           </button>
         ) })}
       </div>
-      <div className="mt-[10px] flex items-center justify-between gap-[10px]">
-        <p aria-live="polite" className="text-[14px] font-semibold text-[#f2cf84]">{reason ?? `Give ${text(give)}, get ${text(want)}`}</p>
-        <button onClick={propose} disabled={!!reason} aria-label="Propose trade" className={gold()}>Propose</button>
+      <div className="mt-[10px] flex items-center justify-between gap-[8px]">
+        <p aria-live="polite" className="min-w-0 text-[14px] font-semibold leading-tight text-[#f2cf84]">
+          {status}{bankNote && <span className="block text-[12px] font-normal text-[#a9a49b]">{bankNote}</span>}
+        </p>
+        <div className="flex shrink-0 gap-[6px]">
+          <button onClick={() => quote.ok && bankTrade(quote.action)} disabled={!quote.ok} title={quote.ok ? quote.text : quote.reason}
+            aria-label={quote.ok ? `Bank trade: ${quote.text}` : `Bank trade unavailable: ${quote.reason}`} className={`${gold()} !px-[14px]`}>Bank</button>
+          <button onClick={offer} disabled={!!offerReason} title={offerReason ?? undefined}
+            aria-label={offerReason ? `Offer to players (${offerReason})` : 'Offer to players'} className={`${gold()} !px-[14px]`}>Offer</button>
+        </div>
       </div>
     </>
   )
@@ -224,7 +192,7 @@ function OfferPanel() {
             {r.response === 'accept' && !offer.canManage && <span className="pr-[6px] text-[14px] text-[#9fd49a]">Accepted</span>}
             {r.response === 'accept' && offer.canManage && (
               <button ref={r.id === firstEnabled ? first : undefined} disabled={!r.canConfirm} aria-label={`Trade with ${r.name}`}
-                onClick={() => act(offer.from, { type: 'CONFIRM_TRADE', tradeId: offer.id, with: r.id })} className={`${gold()} !h-[34px] !px-[14px] !text-[15px]`}>Trade with {r.name}</button>
+                onClick={() => { if (act(offer.from, { type: 'CONFIRM_TRADE', tradeId: offer.id, with: r.id })) setTradeOpen(false) }} className={`${gold()} !h-[34px] !px-[14px] !text-[15px]`}>Trade with {r.name}</button>
             )}
           </li>
         ))}
@@ -240,14 +208,8 @@ function OfferPanel() {
 
 export function TradeDialog({ compact }: { compact: boolean }) {
   const { bank, offer } = useGameView()
-  const tab = useTradeTab()
-  const setTab = setTradeTab
   const seat = SEATS[offer?.from ?? bank.player]
   const title = offer ? `${seat.name} offers a trade` : `${seat.name}: trade`
-  const tabBtn = (id: 'bank' | 'players', label: string) => (
-    <button role="tab" aria-selected={tab === id} aria-controls="trade-body" onClick={() => setTab(id)}
-      className={`h-[30px] rounded-[8px] px-[12px] text-[14px] font-semibold ${tab === id ? 'bg-[#f2b544] text-[#2a1a06]' : 'bg-white/10 text-white hover:bg-white/20'} ${focusRing}`}>{label}</button>
-  )
   return (
     <section role="dialog" aria-labelledby="trade-title" className={`pointer-events-auto rounded-[14px] px-[14px] pb-[12px] pt-[10px] ${panel}`} style={{ boxShadow: `inset 0 0 0 2px ${seat.color}aa, 0 14px 34px rgba(0,0,0,.6)` }}>
       <div className="mb-[8px] flex items-center justify-between gap-[10px]">
@@ -255,15 +217,10 @@ export function TradeDialog({ compact }: { compact: boolean }) {
           <span className="mr-[8px] inline-block h-[11px] w-[11px] rounded-full align-middle" style={{ background: seat.color }} />
           {title}
         </h2>
-        {!offer && (
-          <div className="flex items-center gap-[6px]">
-            <div role="tablist" aria-label="Trade with" className="flex gap-[4px]">{tabBtn('bank', 'Bank')}{tabBtn('players', 'Players')}</div>
-            <button aria-label="Close trade" onClick={() => setTradeOpen(false)} className={`grid h-[30px] w-[30px] place-items-center rounded-[8px] bg-white/10 text-[18px] text-white hover:bg-white/20 ${focusRing}`}>×</button>
-          </div>
-        )}
+        {!offer && <button aria-label="Close trade" onClick={() => setTradeOpen(false)} className={`grid h-[30px] w-[30px] place-items-center rounded-[8px] bg-white/10 text-[18px] text-white hover:bg-white/20 ${focusRing}`}>×</button>}
       </div>
-      <div id="trade-body" role={offer ? undefined : 'tabpanel'}>
-        {offer ? <OfferPanel /> : tab === 'bank' ? <BankPanel key="bank" compact={compact} /> : <PlayersPanel key="players" compact={compact} />}
+      <div id="trade-body">
+        {offer ? <OfferPanel /> : <ComposePanel compact={compact} />}
       </div>
     </section>
   )
