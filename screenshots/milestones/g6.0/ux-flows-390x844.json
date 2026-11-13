@@ -1,0 +1,70 @@
+{
+ "viewport": "390x844",
+ "flows": {
+  "bankThenRoad": {
+   "clicks": 8,
+   "others": 0,
+   "panels": [
+    "trade",
+    "build popover"
+   ],
+   "ok": true,
+   "position": {
+    "seed": 1,
+    "step": 89,
+    "who": "p1",
+    "res": {
+     "lumber": 5,
+     "brick": 0,
+     "wool": 1,
+     "grain": 3,
+     "ore": 0
+    }
+   }
+  },
+  "twoRoads": {
+   "clicks": 6,
+   "firstRoad": 3,
+   "secondRoad": 3,
+   "panels": [
+    "build popover"
+   ],
+   "ok": true,
+   "position": {
+    "seed": 1,
+    "step": 1643,
+    "who": "p4",
+    "res": {
+     "lumber": 2,
+     "brick": 4,
+     "wool": 1,
+     "grain": 0,
+     "ore": 0
+    }
+   }
+  },
+  "playerTrade": {
+   "clicks": 6,
+   "others": 1,
+   "panelStillOpenAfter": true,
+   "panels": [
+    "trade"
+   ],
+   "ok": true,
+   "position": {
+    "seed": 1,
+    "step": 24,
+    "who": "p4",
+    "res": {
+     "lumber": 0,
+     "brick": 2,
+     "wool": 1,
+     "grain": 0,
+     "ore": 0
+    }
+   }
+  }
+ },
+ "errors": [],
+ "coveredBuild": true
+}
