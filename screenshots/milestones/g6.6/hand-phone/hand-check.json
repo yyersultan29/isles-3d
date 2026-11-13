@@ -1,0 +1,74 @@
+{
+ "errors": [],
+ "phase0": "setup",
+ "plain": [
+  "Wood: 0 (Not now)",
+  "Brick: 0 (Not now)",
+  "Wool: 0 (Not now)",
+  "Grain: 0 (Not now)",
+  "Ore: 0 (Not now)"
+ ],
+ "pos": {
+  "seed": 1,
+  "step": 137,
+  "who": "p3",
+  "res": {
+   "lumber": 3,
+   "brick": 0,
+   "wool": 4,
+   "grain": 0,
+   "ore": 0
+  }
+ },
+ "before": [
+  "Trade one wood (you have 3)",
+  "Trade one brick (you have 0) [disabled]",
+  "Trade one wool (you have 4)",
+  "Trade one grain (you have 0) [disabled]",
+  "Trade one ore (you have 0) [disabled]"
+ ],
+ "focusAfterFirst": "Trade one wool (you have 4, 1 chosen)",
+ "panel": true,
+ "composer": [
+  "Give one wood (1 chosen, you have 3, bank rate 4:1)",
+  "Give one less wood",
+  "Give one brick (0 chosen, you have 0, bank rate 4:1)",
+  "Give one wool (2 chosen, you have 4, bank rate 4:1)",
+  "Give one less wool",
+  "Give one grain (0 chosen, you have 0, bank rate 4:1)",
+  "Give one ore (0 chosen, you have 0, bank rate 4:1)"
+ ],
+ "status": "Add cards you want",
+ "afterMinus": [
+  "Trade one wood (you have 3)",
+  "Trade one brick (you have 0) [disabled]",
+  "Trade one wool (you have 4, 2 chosen)",
+  "Trade one grain (you have 0) [disabled]",
+  "Trade one ore (you have 0) [disabled]"
+ ],
+ "reopenStatus": "Add cards you want",
+ "status2": "Offer 2 wool for 1 oreBank: The bank takes 4 wool per card (4:1)",
+ "bankButton": "Bank trade unavailable: The bank takes 4 wool per card (4:1)",
+ "offerButton": "Offer to players",
+ "payOptions": [
+  "Pay 4 wool for 1 ore"
+ ],
+ "status3": "Pay the bank, or add cards you give",
+ "axe": [],
+ "afterPay": {
+  "panelOpen": false,
+  "oreGained": 1,
+  "focus": "Trade with the bank"
+ },
+ "draftBeforeEnd": {
+  "give": {
+   "lumber": 1
+  },
+  "want": {}
+ },
+ "draftAfterEnd": {
+  "give": {},
+  "want": {}
+ },
+ "turnMoved": "p4"
+}

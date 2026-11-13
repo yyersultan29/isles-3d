@@ -1,0 +1,89 @@
+{
+ "viewport": "1440x900",
+ "flows": {
+  "bankThenRoad": {
+   "clicks": 3,
+   "others": 0,
+   "panels": [
+    "trade"
+   ],
+   "ok": true,
+   "position": {
+    "seed": 1,
+    "step": 89,
+    "who": "p1",
+    "res": {
+     "lumber": 5,
+     "brick": 0,
+     "wool": 1,
+     "grain": 3,
+     "ore": 0
+    }
+   }
+  },
+  "cityTwoTrades": {
+   "clicks": 3,
+   "panels": [
+    "trade"
+   ],
+   "ok": true,
+   "position": {
+    "seed": 1,
+    "step": 388,
+    "who": "p3",
+    "res": {
+     "lumber": 1,
+     "brick": 0,
+     "wool": 4,
+     "grain": 0,
+     "ore": 7
+    }
+   }
+  },
+  "twoRoads": {
+   "clicks": 3,
+   "firstRoad": 2,
+   "secondRoad": 1,
+   "panels": [],
+   "ok": true,
+   "position": {
+    "seed": 1,
+    "step": 1643,
+    "who": "p4",
+    "res": {
+     "lumber": 2,
+     "brick": 4,
+     "wool": 1,
+     "grain": 0,
+     "ore": 0
+    }
+   }
+  },
+  "playerTrade": {
+   "clicks": 4,
+   "others": 1,
+   "panelStillOpenAfter": false,
+   "panels": [
+    "trade"
+   ],
+   "ok": true,
+   "position": {
+    "seed": 1,
+    "step": 24,
+    "who": "p4",
+    "res": {
+     "lumber": 0,
+     "brick": 2,
+     "wool": 1,
+     "grain": 0,
+     "ore": 0
+    }
+   }
+  }
+ },
+ "errors": [],
+ "placingAfterTrade": true,
+ "cityPlanText": "For a city: 4 wool → 1 grain, 4 ore → 1 grain",
+ "keptRoadMode": true,
+ "modeMatchesLegal": true
+}

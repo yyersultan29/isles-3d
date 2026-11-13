@@ -57,7 +57,7 @@ const boardPick = async (p) => {
 }
 // G6.5: the build mode stays on after a build while another is affordable: no need to choose it again
 const MODE = { 'Build Road': 'road', 'Build Settlement': 'settlement', 'Build City': 'city' }
-const buildRow = async (p, prefix) => { if (MODE[prefix] && await p.evaluate(async (m) => (await import('/src/store/ui.ts')).getPlacementMode() === m, MODE[prefix])) { did('keptMode'); return } if (await exists(p, '[data-build-toggle]')) { await p.click('[data-build-toggle]'); await p.waitForTimeout(50) } await p.focus(`button[aria-label^="${prefix}"]`); await p.keyboard.press('Enter'); await p.waitForTimeout(50) }
+const buildRow = async (p, prefix) => { if (MODE[prefix] && await p.evaluate(async (m) => window.__islesUi.getPlacementMode() === m, MODE[prefix])) { did('keptMode'); return } if (await exists(p, '[data-build-toggle]')) { await p.click('[data-build-toggle]'); await p.waitForTimeout(50) } await p.focus(`button[aria-label^="${prefix}"]`); await p.keyboard.press('Enter'); await p.waitForTimeout(50) }
 // every tab shows only its own hand, matching its seat; idle tabs have no live controls
 const hook = () => { if (!window.__rej) { window.__rej = []; window.__reloads = (window.__reloads ?? 0) + 1; window.__islesStore.onRejected((e, _p, a) => window.__rej.push(e.code + ' ' + a.type)) } }
 const audit = async () => {

@@ -608,7 +608,7 @@ Steps:
   - After a road, settlement or city the placement mode stays on while the player can afford another and has a legal spot.
   - It ends on Esc, on clicking its row again, or when either runs out.
   - Build rows show how many the hand can pay for (×2) and light up when affordable.
-- [ ] **G6.6 Keyboard shortcuts.**
+- [x] **G6.6 Keyboard shortcuts.**
   - R road, S settlement, C city, D development card, T trade, Esc closes or cancels, Enter confirms the panel's main action.
   - Inactive while typing in a field, behind the pass-the-device screen and outside the player's turn.
   - Listed under the Help button.
@@ -743,6 +743,35 @@ Steps:
   - Online UI game (seed 7): turn 149, 752 actions, 4 trade-then-build moves, 0 rejections, 0 hand mismatches, no live controls out of turn. The online driver never happened to build twice in a row there, so the kept mode online is covered by its unit tests and the local flows, not by that game.
 - Screenshots and JSON are in `screenshots/milestones/g6.5/`.
 
+**G6.6 result (2026-11-13):** keyboard shortcuts, in `src/ui/shortcuts.tsx`.
+- **Keys.** R, S and C choose a road, settlement or city; D buys a card; T opens or closes trade. Each does exactly what its button does, through the same `chooseBuild`, and only when that button is enabled. R on a road short of cards opens the trade for it, as the row does.
+  - Enter makes the trade panel's main action: the bank trade when there is one, else the offer. It does so from anywhere outside a control, and on resource cards (trade tiles, hand cards), where Space still adds a card. A panel opened for a build focuses its Bank button.
+  - Esc cancels a build or closes a panel, as before.
+- **When keys do nothing.** Shortcuts are ignored:
+  - while typing in a field;
+  - with Ctrl, Cmd or Alt held, or when a key is held down;
+  - behind the pass-the-device screen;
+  - outside the player's turn (the buttons are disabled then).
+- **Help.** The Help button, on desktop and phone, opens a "Keyboard shortcuts" popover. Esc or Close returns focus to the button. Build rows and the Trade button carry `aria-keyshortcuts`.
+- **Correction to earlier checks.** The browser scripts read the UI store by importing `/src/store/ui.ts`. After a hot update Vite serves the app `ui.ts?t=…`, which is a separate module, so those reads saw an empty, unused store.
+  - Affected: the G6.2 check that the draft clears at the end of the turn, the G6.5 hot-seat driver's Esc after a build (it never fired; the replay was kept exact by the picker change alone), and the online driver's "row already on" skip.
+  - Fix: the app now exposes the store as a dev-only handle, `window.__islesUi`, like `__islesStore`, and the scripts read that.
+  - Rechecked: `hand-trade.mjs` now puts a card in the draft before ending the turn and sees `{ lumber: 1 }` before and an empty draft after. The hot-seat driver's Esc now really runs, and seed 2024 still replays exactly.
+- **Checks:**
+  - 262 tests pass (3 for `shortcutOf`) and the build passes.
+  - `scripts/shortcuts.mjs` at 1440×900 and 390×844:
+    - nothing happens in setup or behind the pass screen;
+    - R toggles road mode, Esc ends it, and C does nothing while the city row is disabled;
+    - T opens and closes trade;
+    - R on a short road opens the trade with Bank focused, and Enter on a card makes the trade and starts the road (1 action, mode "road", panel closed);
+    - D buys a card;
+    - Help lists 7 keys, axe shows 0 violations, and Esc returns focus to Help.
+  - `ux-flows` matches G6.5 (3 / 3 / 1 / 4 on desktop, 4 / 4 / 1 / 4 on phone).
+  - Hot-seat seed 2024: turn 194, 939 actions, 0 rejections.
+  - Online seed 7: turn 115, 616 actions, 0 rejections, 0 hand mismatches. The online driver still never built twice in a row in that game.
+  - 0 console errors.
+- Screenshots and JSON are in `screenshots/milestones/g6.6/`.
+
 ## 6. Suggested code organization (adapt to actual repo)
 
 ```text
@@ -794,7 +823,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
-| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, G6.5 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
+| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, G6.6 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
 
 ## 9. How to instruct Claude Code
 
@@ -802,4 +831,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G6.6: keyboard shortcuts (R, S, C, D, T, Esc, Enter), listed under Help.
+**Recommended next action:** G6.7: phone, accessibility and exit check (compact flows, axe on the new panels, keyboard-only flows, `ux-flows` against the baseline, regressions; deploy only with the owner's approval).

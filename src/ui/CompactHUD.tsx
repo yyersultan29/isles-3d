@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
 import { AwardBadges, BuildRows, HandCards, DevButton, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
 import { useGameView } from './gameView'
+import { HelpButton } from './shortcuts'
 import { GameDialogs } from './Dialogs'
 import { Notices } from './Notices'
 import { Victory } from './Victory'
@@ -92,9 +93,7 @@ export function CompactHUD() {
           ))}
         </ul>
 
-        <IconButton label="Help" className="!h-[46px] !w-[40px] shrink-0">
-          <span aria-hidden className="text-[18px] font-bold">?</span>
-        </IconButton>
+        <HelpButton className="!h-[46px] !w-[40px]" />
       </div>
 
       {/* ---------- phase line, under the top bar (inside COMPACT_SAFE.top) ---------- */}

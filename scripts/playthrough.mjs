@@ -35,7 +35,7 @@ const boardPick = async () => {
   await p.keyboard.press('Enter'); await p.waitForTimeout(90)
   // G6.5: the build mode now stays on while another is affordable; this driver ends it after each
   // build (Escape), as the old one-shot mode did, so the seed 2024 game replays the same actions
-  if (await p.evaluate(async () => (await import('/src/store/ui.ts')).getPlacementMode())) { await p.keyboard.press('Escape'); await p.waitForTimeout(60) }
+  if (await p.evaluate(async () => window.__islesUi.getPlacementMode())) { await p.keyboard.press('Escape'); await p.waitForTimeout(60) }
 }
 const buildRow = async (prefix) => {
   if (await exists('[data-build-toggle]')) { await p.click('[data-build-toggle]'); await p.waitForTimeout(60) }

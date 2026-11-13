@@ -12,10 +12,11 @@ import { usePrivacy } from './PassDevice'
 import { TurnClock } from './TurnClock'
 import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
-import { changeDraft, clearDraft, draftCovered, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
-import type { Resource } from '../game'
+import { changeDraft, clearDraft, draftCovered, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
+import type { Action, PlayerId, Resource } from '../game'
 import { useGame, useGameStore, useGameEvents } from '../store/GameProvider'
-import { affordable, shortfall, tradesText } from './tradePlan'
+import { affordable, shortfall, tradesText, type Shortfall } from './tradePlan'
+import { HelpButton, useShortcuts } from './shortcuts'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -89,9 +90,10 @@ function Nav() {
   )
 }
 
-export function IconButton({ children, label, className = '', ...rest }: { children: ReactNode; label: string; className?: string } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className'>) {
+export function IconButton({ children, label, className = '', ref, ...rest }: { children: ReactNode; label: string; className?: string; ref?: React.Ref<HTMLButtonElement> } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className'>) {
   return (
     <button
+      ref={ref}
       aria-label={label}
       title={label}
       {...rest}
@@ -386,6 +388,19 @@ const BUILD_NAME: Record<BuildKind, string> = { road: 'Road', settlement: 'Settl
  * build is legal afterwards) it stays a button that opens the trade panel with those trades filled
  * in, and the trade then starts the placement.
  */
+/**
+ * What choosing a build does (a menu row or its shortcut, G6.6): an enabled row toggles its placement
+ * mode or buys the card; a row short of cards that the bank can cover opens the trade for it (G6.4).
+ */
+export function chooseBuild(kind: BuildKind, o: { enabled: boolean; plan: Shortfall | null; player: PlayerId | null; mode: PlacementMode; dispatch: (p: PlayerId, a: Action) => void }) {
+  if (!o.enabled) {
+    if (o.plan?.covered) { setDraft(o.plan.draft); setTradeOpen(true); setBuildGoal(kind) }
+  } else if (kind === 'dev') {
+    if (o.player) o.dispatch(o.player, { type: 'BUY_DEV' })
+  } else setPlacementMode(o.mode === kind ? null : kind)
+}
+const BUILD_KEY: Record<BuildKind, string> = { road: 'R', settlement: 'S', city: 'C', dev: 'D' }
+
 export function BuildRows({ onChosen }: { onChosen?: () => void }) {
   const { build, primary, me } = useGameView()
   const s = useGame((x) => x)
@@ -394,12 +409,7 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
   const hidden = usePrivacy().covered
   const plans = useMemo(() => Object.fromEntries(build.map((b) => [b.kind, b.enabled || hidden ? null : shortfall(s, b.kind, me)])), [s, me, build, hidden])
   const choose = (kind: BuildKind, enabled: boolean) => {
-    const plan = plans[kind]
-    if (!enabled) {
-      if (plan?.covered) { setDraft(plan.draft); setTradeOpen(true); setBuildGoal(kind) }
-    } else if (kind === 'dev') {
-      if (primary.player) store.dispatch(primary.player, { type: 'BUY_DEV' })
-    } else setPlacementMode(mode === kind ? null : kind)
+    chooseBuild(kind, { enabled, plan: plans[kind], player: primary.player, mode, dispatch: (p, a) => store.dispatch(p, a) })
     onChosen?.()
   }
   return (
@@ -423,6 +433,7 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
             title={label}
             disabled={!enabled && !tradable}
             data-trade-for={tradable ? kind : undefined}
+            aria-keyshortcuts={BUILD_KEY[kind]}
             onClick={() => choose(kind, enabled)}
             className={`group flex h-[46px] w-full items-center gap-[12px] rounded-[8px] border-b border-white/5 px-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : enabled ? 'shadow-[inset_3px_0_0_#f2b544]' : ''} ${focusRing}`}
           >
@@ -462,7 +473,7 @@ export function TradeButton({ className = '', icon = 24 }: { className?: string;
   const open = useTradeOpen()
   const label = `Trade with the bank${bank.reason ? ` (${bank.reason})` : ''}`
   return (
-    <IconButton label={label} aria-pressed={open} disabled={!bank.open} onClick={() => setTradeOpen(!open)}
+    <IconButton label={label} aria-pressed={open} aria-keyshortcuts="T" disabled={!bank.open} onClick={() => setTradeOpen(!open)}
       className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
       <TradeIco size={icon} />
     </IconButton>
@@ -511,6 +522,7 @@ export const HUD = memo(function HUD() {
   const s = useHudScale()
   const { compact } = useViewport()
   usePlacementAutoReset()
+  useShortcuts()
   if (compact) return <CompactHUD />
   return (
     <div className="pointer-events-none fixed inset-0 z-[20] select-none overflow-hidden font-ui">
@@ -524,9 +536,7 @@ export const HUD = memo(function HUD() {
           <IconButton label="Fullscreen">
             <svg aria-hidden viewBox="0 0 24 24" className="h-[20px] w-[20px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
           </IconButton>
-          <IconButton label="Help">
-            <span aria-hidden className="text-[20px] font-bold">?</span>
-          </IconButton>
+          <HelpButton />
         </div>
         <PhaseBanner className="absolute left-1/2 top-[14px] -translate-x-1/2 whitespace-nowrap" />
         {/* bottom-left corner above the action buttons: notices never cover tokens, ports or the HUD */}

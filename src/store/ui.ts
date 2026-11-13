@@ -123,3 +123,7 @@ export const getBuildGoal = () => buildGoal
 const subscribeDraft = (l: () => void) => { draftListeners.add(l); return () => { draftListeners.delete(l) } }
 export const useTradeDraft = (): TradeDraft => useSyncExternalStore(subscribeDraft, () => draft)
 export const useBuildGoal = () => useSyncExternalStore(subscribeDraft, () => buildGoal)
+
+// dev-only handle for browser checks (like window.__islesStore): scripts must read this instance, not
+// import the module themselves (after a hot update Vite serves the app `ui.ts?t=…`, another instance)
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __islesUi: unknown }).__islesUi = { getPlacementMode, getDraft, getPanel, getBuildGoal }

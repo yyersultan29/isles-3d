@@ -40,7 +40,7 @@ export function Tile({ res, top, corner, selected, disabled, label, onClick, com
 }) {
   const r = RESOURCES.find((x) => x.key === res)!
   return (
-    <button ref={btnRef} aria-label={label} title={label} aria-pressed={selected} disabled={disabled} onClick={onClick}
+    <button ref={btnRef} data-tile aria-label={label} title={label} aria-pressed={selected} disabled={disabled} onClick={onClick}
       className={`relative h-[60px] [@media(max-height:560px)]:h-[46px] ${tileW(compact)} overflow-hidden rounded-[8px] bg-gradient-to-b ${r.bg} transition-[transform,opacity] disabled:cursor-not-allowed ${selected ? '' : 'disabled:opacity-35'} ${selected ? 'ring-[3px] ring-[#ffd76a] -translate-y-[2px]' : 'ring-1 ring-[#f2cf84]/50 hover:-translate-y-[1px]'} ${focusRing}`}>
       <r.Icon aria-hidden className="absolute left-1/2 top-[55%] w-[70%] -translate-x-1/2 [@media(max-height:560px)]:w-[52%] -translate-y-1/2" />
       {top && <span aria-hidden className="absolute left-[3px] top-[3px] rounded-[4px] bg-[#1d1a16]/85 px-[4px] text-[12px] font-bold text-white">{top}</span>}
@@ -95,7 +95,9 @@ function ComposePanel({ compact }: { compact: boolean }) {
   const forBuild = goal && plan?.covered && plan.trades.length && sameDraft(plan.draft, draft) ? { kind: goal, trades: plan.trades, text: tradesText(s, bank.player, plan.trades) } : null
   const [to, setTo] = useState<PlayerId[]>(opponents)
   const first = useRef<HTMLButtonElement>(null)
-  useEffect(() => { focusInto(first.current) }, [])
+  const main = useRef<HTMLButtonElement>(null)
+  // opened for a build (G6.4): the Bank button is what comes next; otherwise the first card to give
+  useEffect(() => { focusInto(main.current ?? first.current) }, [])
 
   // a resource sits on one side only
   const add = (side: 'give' | 'want', r: Resource, d: number) => changeDraft(side, r, d, side === 'give' ? hand.counts[r] : 19)
@@ -167,11 +169,11 @@ function ComposePanel({ compact }: { compact: boolean }) {
         </p>
         <div className="flex shrink-0 gap-[6px]">
           {forBuild
-            ? <button onClick={tradeThenBuild} title={forBuild.text} className={`${gold()} !px-[14px]`}
+            ? <button ref={main} data-main-action onClick={tradeThenBuild} title={forBuild.text} className={`${gold()} !px-[14px]`}
                 aria-label={`${forBuild.kind === 'dev' ? 'Bank trade for a development card' : `Bank trade, then build the ${BUILD_WORD[forBuild.kind]}`}: ${forBuild.text}`}>Bank</button>
-            : <button onClick={() => quote.ok && bankTrade(quote.action)} disabled={!quote.ok} title={quote.ok ? quote.text : quote.reason}
+            : <button data-main-action onClick={() => quote.ok && bankTrade(quote.action)} disabled={!quote.ok} title={quote.ok ? quote.text : quote.reason}
                 aria-label={quote.ok ? `Bank trade: ${quote.text}` : `Bank trade unavailable: ${quote.reason}`} className={`${gold()} !px-[14px]`}>Bank</button>}
-          <button onClick={offer} disabled={!!offerReason} title={offerReason ?? undefined}
+          <button data-main-action onClick={offer} disabled={!!offerReason} title={offerReason ?? undefined}
             aria-label={offerReason ? `Offer to players (${offerReason})` : 'Offer to players'} className={`${gold()} !px-[14px]`}>Offer</button>
         </div>
       </div>

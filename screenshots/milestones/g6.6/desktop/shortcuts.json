@@ -1,0 +1,48 @@
+{
+ "errors": [],
+ "passScreen": false,
+ "behindPassOrSetup": {
+  "mode": null,
+  "trade": false
+ },
+ "passScreen2": true,
+ "tBehindPass": false,
+ "r1": "road",
+ "r2": null,
+ "esc": null,
+ "cDisabled": null,
+ "t1": true,
+ "t2": false,
+ "shortRoad": {
+  "trade": true,
+  "focus": "Bank trade, then build the road: 4 wool → 1 brick"
+ },
+ "enterOnCard": {
+  "actions": 1,
+  "mode": "road",
+  "trade": false,
+  "chosenBefore": 2,
+  "position": {
+   "lumber": 1,
+   "brick": 0,
+   "wool": 4,
+   "grain": 0,
+   "ore": 1
+  }
+ },
+ "dBuys": 1,
+ "help": [
+  "R",
+  "S",
+  "C",
+  "D",
+  "T",
+  "Enter",
+  "Esc"
+ ],
+ "axe": [],
+ "helpClosed": {
+  "open": false,
+  "focus": "Help"
+ }
+}
