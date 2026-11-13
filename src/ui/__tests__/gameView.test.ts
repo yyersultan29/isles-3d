@@ -147,6 +147,14 @@ describe('G4.4a HUD view', () => {
     expect(devView(pre)).toMatchObject({ canOpen: true, rows: [{ type: 'knight', playable: true }] })
   })
 
+  it('G7.5: a card\'s board step names the card and what is left', () => {
+    const name = SEATS[fixture().order[0]].name
+    expect(phaseText(fixture({ phase: { kind: 'moveRobber', source: 'knight', resume: 'actions' } }))).toBe(`${name}: Knight: pick a tile for the robber`)
+    expect(phaseText(fixture({ phase: { kind: 'moveRobber', source: 'seven', resume: 'actions' } }))).toBe(`${name}: move the robber`)
+    expect(phaseText(fixture({ phase: { kind: 'roadBuilding', remaining: 2, resume: 'actions' } }))).toBe(`${name}: Road Building: pick an edge for a free road (2 left)`)
+    expect(phaseText(fixture({ phase: { kind: 'roadBuilding', remaining: 1, resume: 'actions' } }))).toMatch(/\(1 left\)$/)
+  })
+
   it('G4.5d: final scores reveal VP cards and match the engine’s GAME_WON totals', () => {
     expect(finalScores(fixture())).toBeNull()
     const files = import.meta.glob('../../game/__tests__/golden/*.json', { eager: true, import: 'default' }) as Record<string, ReplayFile>

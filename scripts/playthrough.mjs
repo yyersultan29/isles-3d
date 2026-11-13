@@ -78,6 +78,7 @@ while (stats.steps++ < 20000) {
         for (let i = 0; i < 2; i++) { const r = RES.filter((x) => s.bank[x] > 1)[Math.floor(rand() * 3)] ?? 'ore'; const el = await p.$(`button[aria-label^="Take one ${NAME[r]}"]:not([disabled])`); if (el) await el.click() }
         await click('button[aria-label="Play Year of Plenty"]')
       } else if (type === 'PLAY_MONOPOLY') { await click(`button[aria-label^="Monopoly on ${NAME[RES[Math.floor(rand() * 5)]]}"]`); await click('button[aria-label="Play Monopoly"]') }
+      else await click(`[aria-labelledby=dev-title] button[aria-label="Play ${label}"]`) // G7.5: the steps screen confirms
       did(type)
     }
     if (s.kind === 'preRoll') {

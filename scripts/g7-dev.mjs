@@ -1,7 +1,8 @@
 // G7.4 check: development cards, buy vs mine. Buying from Build tells the buyer which card it is and
 // when it plays; "My development cards" groups the cards (Can play / Bought this turn / Already
 // played a card this turn / Not now / Victory points), only "Can play" rows have a Play button, and
-// a victory point reads as a point. Usage: node scripts/g7-dev.mjs width height outDir
+// a victory point reads as a point. G7.5: each card's steps, Back keeps the card, Year of Plenty
+// counts down, Monopoly names the choice, Road Building counts the free roads. Usage: node scripts/g7-dev.mjs width height outDir
 import { chromium } from 'playwright-core'
 import { mkdirSync, writeFileSync } from 'node:fs'
 const [W, H] = [Number(process.argv[2] ?? 1440), Number(process.argv[3] ?? 900)]
@@ -111,6 +112,56 @@ const myCards = 'button[aria-label^="My development cards"]'
     await p.keyboard.press('Escape')
   } else out.played = 'no position'
 }
+// ---- D. (G7.5) Knight's steps: what happens, then Back keeps the card (nothing dispatched)
+const banner = () => p.$eval('[role=status]', (e) => e.textContent.trim()).catch(() => null)
+const stepsView = () => p.evaluate(() => { const d = document.querySelector('[aria-labelledby=dev-title]'); return d ? { steps: [...d.querySelectorAll('[data-card-steps] li')].map((li) => li.innerText.replace(/\s+/g, ' ').trim()), summary: d.querySelector('[data-card-summary]')?.textContent, note: d.querySelector('[data-card-summary] + p')?.textContent } : null })
+{
+  const pos = await begin((g, s, p) => g.legalActions(s, p).some((a) => a.type === 'PLAY_KNIGHT'))
+  if (pos) {
+    const n0 = await n()
+    await tap(myCards); await tap('button[aria-label^="Play Knight"]'); await p.waitForTimeout(150)
+    out.knight = { steps: await stepsView(), focus: await p.evaluate(() => document.activeElement?.getAttribute('aria-label')) }
+    await shot('d-knight-steps')
+    await tap('[aria-labelledby=dev-title] button:text-is("Back")')
+    out.knight.afterBack = { dispatched: (await n()) - n0, stillPlayable: !!(await p.$('[aria-labelledby=dev-title] button[aria-label="Play Knight"]')) }
+    await tap('[aria-labelledby=dev-title] button[aria-label="Play Knight"]'); await tap('[aria-labelledby=dev-title] button[aria-label="Play Knight"]'); await p.waitForTimeout(250)
+    out.knight.afterPlay = { phase: await phase(), banner: await banner() }
+    await p.keyboard.press('Escape')
+  } else out.knight = 'no position'
+}
+
+// ---- E. (G7.5) Year of Plenty counts down; Monopoly names the choice before Play
+{
+  const pos = await begin((g, s, p) => g.legalActions(s, p).some((a) => a.type === 'PLAY_YEAR_OF_PLENTY'))
+  if (pos) {
+    await tap(myCards); await tap('button[aria-label^="Play Year of Plenty"]')
+    const s0 = (await stepsView()).summary
+    await tap('[aria-labelledby=dev-title] button[aria-label^="Take one "]'); const s1 = (await stepsView()).summary
+    await tap('[aria-labelledby=dev-title] button[aria-label^="Take one "]'); const s2 = (await stepsView()).summary
+    out.yop = { summaries: [s0, s1, s2], steps: (await stepsView()).steps, note: (await stepsView()).note }
+    await shot('e-yop'); await p.keyboard.press('Escape')
+  } else out.yop = 'no position'
+  const pos2 = await begin((g, s, p) => g.legalActions(s, p).some((a) => a.type === 'PLAY_MONOPOLY'))
+  if (pos2) {
+    await tap(myCards); await tap('button[aria-label^="Play Monopoly"]')
+    const s0 = (await stepsView()).summary
+    await tap('[aria-labelledby=dev-title] button[aria-label="Monopoly on ore"]')
+    out.monopoly = { summaries: [s0, (await stepsView()).summary] }
+    await shot('e-monopoly'); await p.keyboard.press('Escape')
+  } else out.monopoly = 'no position'
+}
+
+// ---- F. (G7.5) Road Building: the phase line counts the free roads left
+{
+  const pos = await begin((g, s, p) => g.legalActions(s, p).some((a) => a.type === 'PLAY_ROAD_BUILDING'))
+  if (pos) {
+    await tap(myCards); await tap('button[aria-label^="Play Road Building"]'); await tap('[aria-labelledby=dev-title] button[aria-label="Play Road Building"]'); await p.waitForTimeout(250)
+    const b0 = await banner(); await shot('f-road-building')
+    await place(); const b1 = await banner()
+    out.roadBuilding = { banners: [b0, b1], phase: await phase() }
+  } else out.roadBuilding = 'no position'
+}
+
 writeFileSync(`${D}/g7-dev.json`, JSON.stringify(out, null, 1))
 console.log(JSON.stringify(out, null, 1))
 await b.close()

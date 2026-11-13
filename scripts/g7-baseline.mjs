@@ -172,10 +172,11 @@ const playCard = async (type, label, steps) => {
   out.flows[label] = { clicks, actions: (await n()) - n0, phase: await phase(), firstScreen: texts }
 }
 await playCard('PLAY_KNIGHT', 'Knight', async () => {
+  await tap('[aria-labelledby=dev-title] button[aria-label="Play Knight"]') // G7.5: the steps screen confirms
   await place() // robber
   if (await phase() === 'steal') await tap('button[aria-label^="Rob "]')
 })
-await playCard('PLAY_ROAD_BUILDING', 'Road Building', async () => { await place(); if (await phase() === 'roadBuilding') await place() })
+await playCard('PLAY_ROAD_BUILDING', 'Road Building', async () => { await tap('[aria-labelledby=dev-title] button[aria-label="Play Road Building"]'); await place(); if (await phase() === 'roadBuilding') await place() })
 await playCard('PLAY_YEAR_OF_PLENTY', 'Year of Plenty', async () => {
   for (let i = 0; i < 2; i++) { const t = await p.$('[aria-labelledby=dev-title] button[aria-label^="Take one "]:not([disabled])'); if (t) { await t.click(); clicks++; await p.waitForTimeout(100) } }
   await tap('[aria-labelledby=dev-title] button[aria-label="Play Year of Plenty"]')

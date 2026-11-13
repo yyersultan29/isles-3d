@@ -1,0 +1,117 @@
+{
+ "viewport": "390x844",
+ "compact": true,
+ "errors": [],
+ "buy": {
+  "notices": [
+   "Red rolled 7 (4 and 3). Red: build, trade or end your turn",
+   "Red bought a development card.Red, you got a Knight: playable from your next turn."
+  ],
+  "buttonLabel": "My development cards: 1",
+  "buildClearsMain": true,
+  "panel": {
+   "title": "Red: my development cards",
+   "groups": [
+    {
+     "group": "new",
+     "rows": [
+      {
+       "text": "Knight Move the robber and steal a card",
+       "play": false
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "vp": {
+  "title": "White: my development cards",
+  "groups": [
+   {
+    "group": "play",
+    "rows": [
+     {
+      "text": "Knight Move the robber and steal a card Play",
+      "play": true
+     },
+     {
+      "text": "Year of Plenty Take any two resources from the bank Play",
+      "play": true
+     },
+     {
+      "text": "Monopoly Take one resource from every player Play",
+      "play": true
+     }
+    ]
+   },
+   {
+    "group": "vp",
+    "rows": [
+     {
+      "text": "+1 Victory point Hidden from the others, counted at the end",
+      "play": false
+     }
+    ]
+   }
+  ]
+ },
+ "played": {
+  "title": "White: my development cards",
+  "groups": [
+   {
+    "group": "played",
+    "rows": [
+     {
+      "text": "Knight Move the robber and steal a card",
+      "play": false
+     }
+    ]
+   }
+  ]
+ },
+ "knight": {
+  "steps": {
+   "steps": [
+    "1 Play the card",
+    "2 Pick a tile for the robber on the board",
+    "3 Rob one card from a player there, if any"
+   ],
+   "summary": "Next: the robber, on the board",
+   "note": "Back keeps the card. Once played, it can’t be taken back."
+  },
+  "focus": "Play Knight",
+  "afterBack": {
+   "dispatched": 0,
+   "stillPlayable": true
+  },
+  "afterPlay": {
+   "phase": "moveRobber",
+   "banner": "Red rolled 6 (2 and 4). Red: Knight: pick a tile for the robber"
+  }
+ },
+ "yop": {
+  "summaries": [
+   "Pick 2 more",
+   "Pick 1 more (so far: wood)",
+   "You'll take wood + wood"
+  ],
+  "steps": [
+   "1 Pick two resources here (the same twice is fine)",
+   "2 Press Play: they go to your hand"
+  ],
+  "note": "Back keeps the card. Nothing happens until you press Play."
+ },
+ "monopoly": {
+  "summaries": [
+   "Pick a resource",
+   "You'll take every ore the other players have"
+  ]
+ },
+ "roadBuilding": {
+  "banners": [
+   "White: Road Building: pick an edge for a free road (2 left)",
+   "White: Road Building: pick an edge for a free road (1 left)"
+  ],
+  "phase": "roadBuilding"
+ }
+}

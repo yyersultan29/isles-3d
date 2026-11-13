@@ -82,9 +82,10 @@ export function phaseText(s: GameState): string {
       const list = s.order.filter((p) => pending[p]).map((p) => `${SEATS[p].name} ${pending[p]}`).join(', ')
       return `Seven! Discard half: ${list}`
     }
-    case 'moveRobber': return `${who}: move the robber`
+    // G7.5: a card's steps say which card it is, what to pick and how many are left
+    case 'moveRobber': return s.phase.source === 'knight' ? `${who}: Knight: pick a tile for the robber` : `${who}: move the robber`
     case 'steal': return `${who}: choose a player to rob`
-    case 'roadBuilding': return `${who}: place ${s.phase.remaining === 2 ? 'two free roads' : 'one free road'}`
+    case 'roadBuilding': return `${who}: Road Building: pick an edge for a free road (${s.phase.remaining} left)`
     case 'gameOver': return `${SEATS[s.phase.winner].name} wins!`
   }
 }

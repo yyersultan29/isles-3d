@@ -867,7 +867,7 @@ Steps:
   - The Build row "Buy a development card" (cost, need / have) is clearly separate from the "My cards" button and panel.
   - After a purchase the owner sees the card they got and why it can't be played yet ("Bought this turn — playable from your next turn").
   - The list groups the cards: "Can play", "Bought this turn", "Already played a card this turn", and the hidden victory point shown as a point, not as a card to play.
-- [ ] **G7.5 Development cards step by step (UX-4).**
+- [x] **G7.5 Development cards step by step (UX-4).**
   - Knight, Road Building, Year of Plenty and Monopoly become short guided steps. Each step says what to choose (on the board or in the panel), what will happen and how to cancel before it applies.
   - Road Building shows the free roads left, Year of Plenty the cards still to choose, Monopoly the chosen resource before confirming.
   - Engine flow unchanged.
@@ -1014,6 +1014,24 @@ Steps:
   - Online, seed 7: turn 185, 939 actions, 14 Knights and 2 Road Building cards played through the panel, 0 rejections or mismatches, no other hands shown.
 - Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.4/`. Not deployed.
 
+**G7.5 result (2026-11-13):** development cards step by step.
+- **Steps.** Play now opens the card's steps in the panel (`CardSteps` in DevDialog.tsx): a numbered list of what happens and where to choose, a summary, and how to cancel. Back keeps the card.
+  - Knight: "1 Play the card · 2 Pick a tile for the robber on the board · 3 Rob one card from a player there, if any". The summary reads "Next: the robber, on the board", with "Back keeps the card. Once played, it can't be taken back." The confirm "Play Knight" gets focus.
+  - Road Building works the same way: "Pick an edge on the board for each free road (two, or one if only one fits)".
+  - Year of Plenty counts down: "Pick 2 more" → "Pick 1 more (so far: wood)" → "You'll take wood + wood". With one card left in the bank the step says so.
+  - Monopoly reads "Pick a resource" → "You'll take every ore the other players have". Both say "Nothing happens until you press Play."
+- **Board steps** say which card they belong to and what is left (`phaseText`, unit-tested): "Red: Knight: pick a tile for the robber" (a seven still reads "move the robber") and "Road Building: pick an edge for a free road (2 left)" → "(1 left)". The engine flow is unchanged.
+- **Clicks** (desktop and phone): Knight 3 → 4 and Road Building 4 → 5, because of the confirm that makes cancelling possible. Year of Plenty stays at 5 and Monopoly at 4.
+- **`g7-dev.mjs`** (extended), at 1440×900 and 390×844:
+  - Back from Knight's steps dispatches nothing and the card is still playable.
+  - After the confirm the phase is `moveRobber` with the Knight line.
+  - The Year of Plenty and Monopoly summaries and the Road Building "2 left → 1 left" lines are as above.
+- **Checks.** `tsc -b`, 270 tests and the build pass.
+  - `ux-flows` (3/1/4 desktop, 4/1/4 phone), `hand-trade`, `shortcuts`, `g7-hand` and `g6-audit` (axe, fit at 3 sizes) report 0 errors. Hover-only stays at 0 in the own turn, the trade panel and the dev panel.
+  - The hot-seat replays are exact. 1440×900 seed 2024 reaches 194/939, with 14 Knights, 2 Monopoly, 2 Year of Plenty and 1 Road Building through the steps. 390×844 seed 77 reaches 272/1249.
+  - Online, seed 7: 0 rejections or mismatches, 14 Knights and 2 Road Building cards played, no other hands shown.
+- Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.5/`. Not deployed.
+
 
 ### G8 — Phone play (later, after the owner asks)
 
@@ -1076,7 +1094,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
-| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, G7.4 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, G7.5 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -1084,4 +1102,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G7.5: development cards step by step. Knight, Road Building, Year of Plenty and Monopoly as short steps that say what to pick and how to cancel before applying; free roads left, resources still to pick, the Monopoly choice before confirming. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
+**Recommended next action:** G7.6: the phase as a command ("Choose a light spot on the board", "Roll the dice"), and in setup the Build, Trade and Dev tools set back. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
