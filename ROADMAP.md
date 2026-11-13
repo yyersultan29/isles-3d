@@ -586,7 +586,7 @@ Steps:
   - `payOptions(bank, want)`: every way to pay for a wanted card at the player's rates (2:1, 3:1, 4:1), cheapest first.
   - `shortfall(state, kind)`: the cards missing for a build, plus a filled-in trade draft that covers them when the bank can.
   - The panels' readiness checks reuse `proposeCheck`, which mirrors the engine's checks.
-- [ ] **G6.2 A clickable hand.**
+- [x] **G6.2 A clickable hand.**
   - The hand cards become buttons. In the player's `actions` phase, a click adds one card to the trade draft's "give" side and opens the trade panel.
   - A small "−" on a chosen card removes one.
   - Outside your turn the cards stay plain, with a tooltip saying why.
@@ -645,6 +645,25 @@ Steps:
   - Two deliberate bugs were planted: dropping the bank-stock check and not spending used cards. The first failed 2 tests at once. The second at first slipped through, because an over-spending plan only shows up as "not covered". The two-pile fixture was added for it and now fails on it.
 - **Limit.** The plan is greedy, one missing card at a time. A cleverer mix might cover a rare hand it calls not covered; it never claims a cover that the engine refuses.
 
+**G6.2 result (2026-11-13):** the hand fills the trade draft. Desktop and phone.
+- **Hand cards.** In the player's own `actions` phase the five hand cards are buttons, e.g. "Trade one wool (you have 4, 2 chosen)". A click adds one card to the draft's "give" side, opens the trade panel on Players and keeps focus on the hand, so several cards can be picked in a row. A chosen card is lifted, shows ×N and has a red "−" ("Take back one wool"). An empty pile is disabled. Outside the turn the cards stay plain, and the tooltip gives the reason ("Wood: 3 (Roll the dice first)"). Behind the pass-the-device screen nothing changes.
+  - `HandCards` in `HUD.tsx` is shared by both HUDs and replaces their two copies of the hand.
+- **Draft.** It lives in `src/store/ui.ts` (`draftAdd`, `changeDraft`, `clearDraft`, `draftCovered`), beside the panel tab.
+  - The Players composer reads and writes it, so it survives closing the panel or switching tabs.
+  - A resource sits on one side only.
+  - The draft clears at the end of the turn, after a proposal, and when the hand no longer holds it (after a trade or a robbery).
+  - The Bank tab starts with the given kind selected when the draft holds exactly one kind.
+  - The Trade button opens Bank when the draft is empty, as before, and Players when it isn't.
+- **A regression caught and fixed.** At first the tab stayed on Players after an offer, so the hot-seat driver's later bank trade in the same turn found no Bank tab, and the seed 2024 game diverged (turn 157, 752 actions). With the Trade-button rule above it replays exactly again.
+- **Checks:**
+  - 4 new unit tests (255).
+  - `scripts/hand-trade.mjs` at 1440×900 and 390×844: pick 2 wool and 1 wood, take the wood back, close and reopen, Bank preselects wool, add an ore wish ("Give 2 wool, get 1 ore"), end the turn and the draft is empty. axe shows 0 violations on the hand and the panel, and there are 0 console errors.
+  - `ux-flows` is unchanged from G6.0: 6 / 2+2 / 6 on desktop and 8 / 3+3 / 6 on phone. The flows don't use the hand yet; the click savings come in G6.3–G6.5.
+  - Hot-seat seed 2024 replays exactly (turn 194, 939 actions, 195 pass screens, 0 rejections, 0 hand mismatches).
+  - The online UI game (seed 7, turn 156, 851 actions) has 0 rejections, 0 hand mismatches and no live controls out of turn.
+  - The build passes.
+- Screenshots and JSON are in `screenshots/milestones/g6.2/`. The board, camera and the rest of the HUD are unchanged; the phone trade panel still covers the Build button (G6.3/G6.7).
+
 ## 6. Suggested code organization (adapt to actual repo)
 
 ```text
@@ -696,7 +715,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
-| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, G6.1 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
+| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, G6.2 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
 
 ## 9. How to instruct Claude Code
 
@@ -704,4 +723,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G6.2: a clickable hand (cards add to the trade draft and open the trade panel).
+**Recommended next action:** G6.3: one trade panel (give from the hand, want, Bank with the rate or Offer to players; one-click pay options) and the phone overlap with the Build button.

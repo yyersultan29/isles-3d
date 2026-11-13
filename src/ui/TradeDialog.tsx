@@ -11,7 +11,7 @@ import { Avatar } from './icons'
 import { RESOURCES, focusRing, panel } from './HUD'
 import { SEATS, bankMax, proposeCheck, useGameView, type Counts } from './gameView'
 import { useGame, useGameStore } from '../store/GameProvider'
-import { setTradeOpen } from '../store/ui'
+import { changeDraft, clearDraft, getDraft, setTradeOpen, setTradeTab, useTradeDraft, useTradeTab } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 
 export const NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
@@ -20,8 +20,8 @@ const text = (c: Counts) => RESOURCE_ORDER.filter((r) => c[r]).map((r) => `${c[r
 export const gold = () => `h-[38px] shrink-0 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[20px] font-display text-[17px] font-semibold text-[#3a2208] disabled:grayscale-[0.7] disabled:brightness-75 ${focusRing}`
 export const plain = () => `h-[34px] shrink-0 rounded-[9px] bg-white/10 px-[12px] text-[14px] font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white/10 ${focusRing}`
 const tileW = (compact: boolean) => (compact ? 'w-[58px]' : 'w-[70px]')
-/** Move focus into a panel unless the user is switching tabs with the keyboard. */
-const focusInto = (el: HTMLElement | null) => { if (!(document.activeElement as HTMLElement | null)?.matches('[role=tab]')) el?.focus() }
+/** Move focus into a panel unless the user is switching tabs or picking cards from the hand (G6.2). */
+const focusInto = (el: HTMLElement | null) => { if (!(document.activeElement as HTMLElement | null)?.matches('[role=tab], [data-hand-card]')) el?.focus() }
 
 export function useAct() {
   const store = useGameStore()
@@ -79,7 +79,11 @@ function Chips({ c }: { c: Counts }) {
 function BankPanel({ compact }: { compact: boolean }) {
   const { bank } = useGameView()
   const act = useAct()
-  const [give, setGive] = useState<Resource | null>(null)
+  // a single kind picked from the hand (G6.2) starts as the card to give
+  const [give, setGive] = useState<Resource | null>(() => {
+    const g = RESOURCE_ORDER.filter((r) => getDraft().give[r])
+    return g.length === 1 && bank.rows.find((r) => r.res === g[0])!.canGive ? g[0] : null
+  })
   const [get, setGet] = useState<Resource | null>(null)
   const [n, setN] = useState(1)
   const first = useRef<HTMLButtonElement>(null)
@@ -140,26 +144,17 @@ function PlayersPanel({ compact }: { compact: boolean }) {
   const s = useGame((x) => x)
   const { hand, opponents } = useGameView()
   const act = useAct()
-  const [give, setGive] = useState<Counts>({})
-  const [want, setWant] = useState<Counts>({})
+  // the draft lives in the UI store (G6.2): the hand fills it, and it survives closing the panel;
+  // it is cleared at the end of the turn and when the hand no longer holds it (usePlacementAutoReset)
+  const { give, want } = useTradeDraft()
   const [to, setTo] = useState<PlayerId[]>(opponents)
   const first = useRef<HTMLButtonElement>(null)
   useEffect(() => { focusInto(first.current) }, [])
-  // never offer more than the hand holds (it can shrink after a bank trade)
-  useEffect(() => {
-    setGive((g) => {
-      const over = RESOURCE_ORDER.some((r) => (g[r] ?? 0) > hand.counts[r])
-      return over ? Object.fromEntries(RESOURCE_ORDER.map((r) => [r, Math.min(g[r] ?? 0, hand.counts[r])])) : g
-    })
-  }, [hand])
 
-  const add = (side: 'give' | 'want', r: Resource, d: number) => {
-    const [set, other] = side === 'give' ? [setGive, setWant] : [setWant, setGive]
-    set((c) => ({ ...c, [r]: Math.max(0, (c[r] ?? 0) + d) }))
-    if (d > 0) other((c) => ({ ...c, [r]: 0 })) // a resource sits on one side only
-  }
+  // a resource sits on one side only
+  const add = (side: 'give' | 'want', r: Resource, d: number) => changeDraft(side, r, d, side === 'give' ? hand.counts[r] : 19)
   const reason = proposeCheck(s, give, want, to)
-  const propose = () => { if (!reason) act(hand.owner, { type: 'PROPOSE_TRADE', offer: give, request: want, to: to.length === opponents.length ? undefined : to }) }
+  const propose = () => { if (!reason && act(hand.owner, { type: 'PROPOSE_TRADE', offer: give, request: want, to: to.length === opponents.length ? undefined : to })) clearDraft() }
   const firstHeld = RESOURCE_ORDER.find((r) => hand.counts[r] > 0)
 
   return (
@@ -245,7 +240,8 @@ function OfferPanel() {
 
 export function TradeDialog({ compact }: { compact: boolean }) {
   const { bank, offer } = useGameView()
-  const [tab, setTab] = useState<'bank' | 'players'>('bank')
+  const tab = useTradeTab()
+  const setTab = setTradeTab
   const seat = SEATS[offer?.from ?? bank.player]
   const title = offer ? `${seat.name} offers a trade` : `${seat.name}: trade`
   const tabBtn = (id: 'bank' | 'players', label: string) => (

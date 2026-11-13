@@ -1,0 +1,60 @@
+{
+ "errors": [],
+ "phase0": "setup",
+ "plain": [
+  "Wood: 0 (Not now)",
+  "Brick: 0 (Not now)",
+  "Wool: 0 (Not now)",
+  "Grain: 0 (Not now)",
+  "Ore: 0 (Not now)"
+ ],
+ "pos": {
+  "seed": 1,
+  "step": 137,
+  "who": "p3",
+  "res": {
+   "lumber": 3,
+   "brick": 0,
+   "wool": 4,
+   "grain": 0,
+   "ore": 0
+  }
+ },
+ "before": [
+  "Trade one wood (you have 3)",
+  "Trade one brick (you have 0) [disabled]",
+  "Trade one wool (you have 4)",
+  "Trade one grain (you have 0) [disabled]",
+  "Trade one ore (you have 0) [disabled]"
+ ],
+ "focusAfterFirst": "Trade one wool (you have 4, 1 chosen)",
+ "panel": true,
+ "tab": "Players",
+ "composer": [
+  "Give one wood (1 chosen, you have 3)",
+  "Give one less wood",
+  "Give one brick (0 chosen, you have 0)",
+  "Give one wool (2 chosen, you have 4)",
+  "Give one less wool",
+  "Give one grain (0 chosen, you have 0)",
+  "Give one ore (0 chosen, you have 0)"
+ ],
+ "status": "Add cards you want",
+ "afterMinus": [
+  "Trade one wood (you have 3)",
+  "Trade one brick (you have 0) [disabled]",
+  "Trade one wool (you have 4, 2 chosen)",
+  "Trade one grain (you have 0) [disabled]",
+  "Trade one ore (you have 0) [disabled]"
+ ],
+ "reopenTab": "Players",
+ "reopenStatus": "Add cards you want",
+ "bankPreselected": "true",
+ "status2": "Give 2 wool, get 1 ore",
+ "axe": [],
+ "draftAfterEnd": {
+  "give": {},
+  "want": {}
+ },
+ "turnMoved": "p4"
+}

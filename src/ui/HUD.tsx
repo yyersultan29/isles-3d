@@ -12,7 +12,7 @@ import { usePrivacy } from './PassDevice'
 import { TurnClock } from './TurnClock'
 import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
-import { setDevOpen, setPanel, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeOpen } from '../store/ui'
+import { changeDraft, clearDraft, draftCovered, draftEmpty, getDraft, setDevOpen, setPanel, setPlacementMode, setTradeOpen, setTradeTab, useDevOpen, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
 import type { Resource } from '../game'
 import { useGameStore, useGameEvents } from '../store/GameProvider'
 
@@ -276,12 +276,14 @@ export function useHand() {
 
 /** Clears the build choice and closes the trade/dev panels when the turn or phase moves on, and on Escape. Mount once per HUD. */
 export function usePlacementAutoReset() {
-  const { phaseKind, active, turn } = useGameView()
+  const { phaseKind, active, turn, hand } = useGameView()
   useEffect(() => {
     if (phaseKind !== 'actions') { setPlacementMode(null); setTradeOpen(false) }
     if (phaseKind !== 'actions' && phaseKind !== 'preRoll') setDevOpen(false) // knights may be played before the roll
   }, [phaseKind])
-  useEffect(() => { setPlacementMode(null); setPanel(null) }, [active, turn])
+  useEffect(() => { setPlacementMode(null); setPanel(null); clearDraft(); setTradeTab('bank') }, [active, turn])
+  // G6.2: a trade draft the hand can no longer pay (after a trade or a robbery) is dropped
+  useEffect(() => { if (!draftCovered(getDraft(), hand.counts)) clearDraft() }, [hand])
   useEffect(() => {
     const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { setPlacementMode(null); setPanel(null) } }
     window.addEventListener('keydown', f)
@@ -289,31 +291,63 @@ export function usePlacementAutoReset() {
   }, [])
 }
 
-function ResourceCards() {
+/**
+ * The resource hand (desktop tray and compact dock). G6.2: in the player's own `actions` phase each
+ * card is a button that adds one card to the trade draft's "give" side and opens the trade panel; a
+ * small "−" takes one back. Otherwise the cards are plain, and the tooltip says why.
+ */
+export function HandCards({ compact = false }: { compact?: boolean }) {
   const { counts, ownerName } = useHand()
+  const { bank } = useGameView()
+  const covered = usePrivacy().covered
+  const draft = useTradeDraft()
+  const can = bank.open && !covered
+  const size = compact ? 'h-[72px] w-[62px] rounded-[8px] p-[2px] shadow-[0_6px_14px_rgba(0,0,0,0.55)]' : 'h-[96px] w-[88px] rounded-[9px] p-[3px] shadow-[0_10px_22px_rgba(0,0,0,0.6)]'
+  const frame = `relative block ${size} bg-[linear-gradient(180deg,#ffe2a0,#b98a3a_50%,#f2cf84)] transition-transform`
+  return (
+    <ul aria-label={`${ownerName}'s resources`} className={`relative flex ${compact ? 'gap-[6px]' : 'gap-[8px] pb-[12px]'}`}>
+      {RESOURCES.map(({ key, name, Icon, bg }) => {
+        const n = counts[key]
+        const chosen = can ? draft.give[key] ?? 0 : 0
+        const word = name.toLowerCase()
+        const face = (
+          <span className={`relative block h-full w-full overflow-hidden ${compact ? 'rounded-[6px] shadow-[inset_0_0_10px_rgba(0,0,0,0.45)]' : 'rounded-[7px] shadow-[inset_0_0_14px_rgba(0,0,0,0.45)]'} bg-gradient-to-b ${bg}`}>
+            {!compact && <span className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.28),transparent_60%)]" />}
+            <Icon aria-hidden className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 ${compact ? 'top-[56%] w-[54px] drop-shadow-[0_3px_2px_rgba(0,0,0,0.45)]' : 'top-[54%] w-[78px] drop-shadow-[0_4px_3px_rgba(0,0,0,0.45)]'}`} />
+            <span aria-hidden className={`absolute grid place-items-center rounded-[5px] bg-[#1d1a16]/85 font-bold text-white ring-1 ring-[#f2cf84]/60 ${compact ? 'left-[3px] top-[3px] h-[20px] w-[20px] text-[13px]' : 'left-[4px] top-[4px] h-[22px] w-[22px] text-[14px]'}`}>{n}</span>
+            {chosen > 0 && <span aria-hidden className={`absolute bottom-[3px] right-[3px] rounded-[4px] bg-[#f2b544] px-[5px] font-bold text-[#2a1a06] ${compact ? 'text-[12px]' : 'text-[14px]'}`}>×{chosen}</span>}
+            {n === 0 && <span aria-hidden className="absolute inset-0 bg-black/45" />}
+          </span>
+        )
+        if (!can) {
+          const why = covered ? '' : bank.reason ? ` (${bank.reason})` : ''
+          return <li key={key} aria-label={`${name}: ${n}`} title={`${name}: ${n}${why}`} className={`${frame} pointer-events-auto`}>{face}</li>
+        }
+        const label = `Trade one ${word} (you have ${n}${chosen ? `, ${chosen} chosen` : ''})`
+        return (
+          <li key={key} className="relative">
+            <button data-hand-card aria-label={label} title={n ? label : `${name}: none to trade`} disabled={chosen >= n}
+              onClick={() => { changeDraft('give', key, 1, n); setTradeTab('players'); setTradeOpen(true) }}
+              className={`${frame} disabled:cursor-not-allowed ${chosen ? `ring-[3px] ring-[#ffd76a] ${compact ? '-translate-y-[4px]' : '-translate-y-[8px]'}` : 'enabled:hover:-translate-y-[4px]'} ${focusRing}`}>
+              {face}
+            </button>
+            {chosen > 0 && (
+              <button data-hand-card aria-label={`Take back one ${word}`} title={`Take back one ${word}`} onClick={() => changeDraft('give', key, -1)}
+                className={`absolute -right-[6px] grid place-items-center rounded-full bg-[#c8302a] font-bold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,.5)] ${compact ? '-top-[10px] h-[24px] w-[24px] text-[16px]' : '-top-[14px] h-[26px] w-[26px] text-[17px]'} ${focusRing}`}>−</button>
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function ResourceCards() {
   return (
     <div className="absolute bottom-0 left-1/2 -translate-x-[54%]">
       {/* wooden tray */}
       <div className="absolute -bottom-[30px] left-1/2 h-[64px] w-[700px] -translate-x-1/2 rounded-[40px_40px_0_0] bg-[linear-gradient(180deg,#5c3d22,#2c1c10)] shadow-[0_-6px_20px_rgba(0,0,0,0.5),inset_0_2px_0_rgba(255,210,160,0.2)]" />
-      <ul aria-label={`${ownerName}'s resources`} className="relative flex gap-[8px] pb-[12px]">
-        {RESOURCES.map(({ key, name, Icon, bg }, i) => { const n = counts[key]; return (
-          <li
-            key={i}
-            aria-label={`${name}: ${n}`}
-            title={`${name}: ${n}`}
-            className="relative h-[96px] w-[88px] rounded-[9px] p-[3px] bg-[linear-gradient(180deg,#ffe2a0,#b98a3a_50%,#f2cf84)] shadow-[0_10px_22px_rgba(0,0,0,0.6)] transition-transform hover:-translate-y-[4px]"
-          >
-            <div className={`relative h-full w-full overflow-hidden rounded-[7px] bg-gradient-to-b ${bg} shadow-[inset_0_0_14px_rgba(0,0,0,0.45)]`}>
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.28),transparent_60%)]" />
-              <Icon aria-hidden className="absolute left-1/2 top-[54%] w-[78px] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_4px_3px_rgba(0,0,0,0.45)]" />
-              <span aria-hidden className="absolute left-[4px] top-[4px] grid h-[22px] w-[22px] place-items-center rounded-[5px] bg-[#1d1a16]/85 text-[14px] font-bold text-white ring-1 ring-[#f2cf84]/60">
-                {n}
-              </span>
-              {n === 0 && <div aria-hidden className="absolute inset-0 bg-black/45" />}
-            </div>
-          </li>
-        )})}
-      </ul>
+      <HandCards />
     </div>
   )
 }
@@ -399,13 +433,13 @@ const TradeIco = ({ size }: { size: number }) => (
   <svg aria-hidden viewBox="0 0 24 24" style={{ width: size, height: size }} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h14l-4-4" /><path d="M20 16H6l4 4" /></svg>
 )
 
-/** Opens the bank/port trade panel (G4.4d); enabled in the active player's `actions` phase. */
+/** Opens the trade panel (G4.4d): on the Bank tab, or on Players when the hand has filled a draft (G6.2). */
 export function TradeButton({ className = '', icon = 24 }: { className?: string; icon?: number }) {
   const { bank } = useGameView()
   const open = useTradeOpen()
   const label = `Trade with the bank${bank.reason ? ` (${bank.reason})` : ''}`
   return (
-    <IconButton label={label} aria-pressed={open} disabled={!bank.open} onClick={() => setTradeOpen(!open)}
+    <IconButton label={label} aria-pressed={open} disabled={!bank.open} onClick={() => { if (!open) setTradeTab(draftEmpty(getDraft()) ? 'bank' : 'players'); setTradeOpen(!open) }}
       className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
       <TradeIco size={icon} />
     </IconButton>
