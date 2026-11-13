@@ -11,6 +11,7 @@
 // the phone build popover opens over an open trade panel instead of under it.
 // G6.4: a build row short of cards opens the trade with the missing cards filled in; the bank trade
 // then starts the placement. Position conditions also get the trade planner (`tp`).
+// G6.5: the build mode stays on while another of the same build is affordable and legal.
 import { chromium } from 'playwright-core'
 import { mkdirSync, writeFileSync } from 'node:fs'
 const [W, H] = [Number(process.argv[2] ?? 1440), Number(process.argv[3] ?? 900)]
@@ -122,10 +123,18 @@ const begin = async (cond) => { const pos = await position(cond); if (!pos) thro
   const pos = await begin((g, s, p, me) => me.resources.lumber >= 2 && me.resources.brick >= 2 && g.legalActions(s, p).some((a) => a.type === 'BUILD_ROAD') &&
     (() => { const a = g.legalActions(s, p).find((x) => x.type === 'BUILD_ROAD'); const t = g.apply(s, p, a); return t.ok && g.legalActions(t.state, p).some((x) => x.type === 'BUILD_ROAD') })())
   const before = await snap()
+  await p.screenshot({ path: `${D}/2-start.png` }) // build rows with ×N
   await buildRow('Build Road'); await place()
   const first = clicks
-  await buildRow('Build Road'); await place()
+  out.keptRoadMode = !!(await p.$('[data-board-picker]')) // G6.5: still placing roads
+  await place()
   const after = await snap()
+  // the mode is on exactly while another road is legal
+  out.modeMatchesLegal = await p.evaluate(async () => {
+    const g = await import('/src/game/index.ts'); const s = window.__islesStore.getState()
+    return !!document.querySelector('[data-board-picker]') === g.legalActions(s, s.order[s.active]).some((a) => a.type === 'BUILD_ROAD')
+  })
+  await p.screenshot({ path: `${D}/2-after-two-roads.png` })
   out.flows.twoRoads = { clicks, firstRoad: first, secondRoad: clicks - first, panels: [...panels], ok: after.actions === before.actions + 2, position: pos }
 }
 

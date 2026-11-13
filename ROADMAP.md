@@ -604,7 +604,7 @@ Steps:
   - A greyed-out build row shows the shortfall ("−1 brick") and becomes a button when the bank can cover it.
   - A click opens the trade panel with the draft filled in (`shortfall`). When that bank trade completes, the placement mode for the build starts by itself.
   - A trade started from the build menu returns to the build. Otherwise opening a panel still ends the placement, as now.
-- [ ] **G6.5 Building that keeps going.**
+- [x] **G6.5 Building that keeps going.**
   - After a road, settlement or city the placement mode stays on while the player can afford another and has a legal spot.
   - It ends on Esc, on clicking its row again, or when either runs out.
   - Build rows show how many the hand can pay for (×2) and light up when affordable.
@@ -716,6 +716,33 @@ Steps:
   - A first online run stopped at turn 217 because editing the driver mid-run made Vite reload the pages (as in G5.4), not because of the app; it passed on rerun.
 - Screenshots and JSON are in `screenshots/milestones/g6.4/`.
 
+**G6.5 result (2026-11-13):** building keeps going.
+- **The mode stays on.** After a road, settlement or city, the placement mode stays on while the same build is still legal: cards, a piece and a spot left.
+  - `keepsPlacing` in `src/store/placement.ts` decides it by applying the build to the state before the dispatch with the local engine, so it answers at once online too.
+  - It ends on Esc, on clicking its row again, on opening a panel, at the end of the turn, or when the build is no longer legal.
+  - Both the board click (`Placement.tsx`) and the keyboard picker (`BoardPicker.tsx`) use it.
+- **Rows.** An enabled build row has a gold edge and a "×N" badge on its icon: how many the hand pays for, capped by pieces (`affordable`). Its label adds "(can pay for N)".
+- **Picker.** Landing the cursor no longer moves its anchor. Only a placement or an arrow key does, so a mode that stays on lands near the last placement each time instead of drifting.
+  - This also kept the hot-seat replay exact. Without it, the seed 2024 game diverged (turn 163, 794 actions): with the mode on, the landing moved the anchor, and the driver's next build started from a different spot.
+- **Drivers.**
+  - The hot-seat driver presses Esc after each build, as the old one-shot mode did.
+  - The online driver skips choosing a row that is already on.
+  - `ux-flows` places the second road straight away and checks that the mode is on exactly while another road is legal.
+- **Clicks (`ux-flows`, against G6.0):**
+
+  | Flow | Desktop | Phone | Target |
+  |---|---|---|---|
+  | Bank trade, then road | 6 → 3 | 8 → 4 | 3 |
+  | Second road | 2 → **1** | 3 → **1** | 1: **met** |
+  | Player trade | 6 → 4 | 6 → 4 | 4, panel closed: met |
+
+- **Checks:**
+  - 259 tests pass (3 new for `keepsPlacing`) and the build passes.
+  - In `ux-flows` at both sizes the mode stays on after the first road and ends when the hand runs out; 0 console errors.
+  - Hot-seat seed 2024 replays exactly (turn 194, 939 actions, 0 rejections, 0 hand mismatches).
+  - Online UI game (seed 7): turn 149, 752 actions, 4 trade-then-build moves, 0 rejections, 0 hand mismatches, no live controls out of turn. The online driver never happened to build twice in a row there, so the kept mode online is covered by its unit tests and the local flows, not by that game.
+- Screenshots and JSON are in `screenshots/milestones/g6.5/`.
+
 ## 6. Suggested code organization (adapt to actual repo)
 
 ```text
@@ -767,7 +794,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
-| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, G6.4 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
+| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, G6.5 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
 
 ## 9. How to instruct Claude Code
 
@@ -775,4 +802,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G6.5: building that keeps going (the placement stays on while another is affordable and legal; ×N on the build rows).
+**Recommended next action:** G6.6: keyboard shortcuts (R, S, C, D, T, Esc, Enter), listed under Help.

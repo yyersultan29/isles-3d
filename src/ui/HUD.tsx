@@ -15,7 +15,7 @@ import { costText, useGameView, type BuildKind, type SeatView } from './gameView
 import { changeDraft, clearDraft, draftCovered, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
 import type { Resource } from '../game'
 import { useGame, useGameStore, useGameEvents } from '../store/GameProvider'
-import { shortfall, tradesText } from './tradePlan'
+import { affordable, shortfall, tradesText } from './tradePlan'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -408,8 +408,10 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
         const selected = mode === kind
         const plan = plans[kind]
         const tradable = !enabled && !!plan?.covered && plan.trades.length > 0
+        // G6.5: how many the hand pays for, on enabled rows
+        const many = enabled && primary.player ? affordable(s, kind, primary.player) : 0
         const via = tradable && primary.player ? `; trade ${tradesText(s, primary.player, plan!.trades)} first` : ''
-        const label = `${kind === 'dev' ? 'Buy' : 'Build'} ${BUILD_NAME[kind]}: ${costText(cost)}${reason ? ` (${reason}${via})` : ''}`
+        const label = `${kind === 'dev' ? 'Buy' : 'Build'} ${BUILD_NAME[kind]}: ${costText(cost)}${reason ? ` (${reason}${via})` : ''}${many ? ` (can pay for ${many})` : ''}`
         const icons = (Object.entries(cost) as [Resource, number][]).flatMap(([r, n]) => Array.from({ length: n }, (_, k) => [r, k] as const))
         // the last `missing` icons of a kind are the cards the hand lacks
         const lacks = (r: Resource, k: number) => !!plan && k >= (cost[r] ?? 0) - (plan.missing[r] ?? 0)
@@ -422,9 +424,12 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
             disabled={!enabled && !tradable}
             data-trade-for={tradable ? kind : undefined}
             onClick={() => choose(kind, enabled)}
-            className={`group flex h-[46px] w-full items-center gap-[12px] rounded-[8px] border-b border-white/5 px-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : ''} ${focusRing}`}
+            className={`group flex h-[46px] w-full items-center gap-[12px] rounded-[8px] border-b border-white/5 px-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : enabled ? 'shadow-[inset_3px_0_0_#f2b544]' : ''} ${focusRing}`}
           >
-            <span aria-hidden className="w-[28px]">{BUILD_ICON[kind]}</span>
+            <span aria-hidden className="relative w-[28px]">
+              {BUILD_ICON[kind]}
+              {many > 0 && <span className="absolute -right-[7px] -top-[9px] rounded-full bg-[#f2b544] px-[4px] text-[11px] font-bold leading-[15px] text-[#2a1a06] shadow-[0_1px_3px_rgba(0,0,0,.5)]">×{many}</span>}
+            </span>
             <span aria-hidden className="flex flex-1 items-center gap-[2px]">
               {icons.map(([r, k]) => { const I = RES_ICON[r]; return <span key={r + k} className={`block h-[24px] w-[28px] [&>svg]:h-full [&>svg]:w-full ${lacks(r, k) ? 'opacity-30 grayscale' : ''}`}><I /></span> })}
             </span>

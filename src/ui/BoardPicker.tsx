@@ -10,7 +10,7 @@ import { panel } from './HUD'
 import { usingKeyboard } from './modality'
 import { BOARD_MODE } from '../scene/board'
 import { useGame, useGameStore, useSeat } from '../store/GameProvider'
-import { placementTargets } from '../store/placement'
+import { keepsPlacing, placementTargets } from '../store/placement'
 import { setPlacementMode, usePlacementMode } from '../store/ui'
 import { getCursor, nearest, project, setCursor, spotLabel, step, useCursor, type Dir, type Point } from '../store/boardCursor'
 
@@ -45,8 +45,9 @@ export function BoardPicker({ className = '', style }: { className?: string; sty
       if (!project(list[0].action) && tries++ < 10) { raf = requestAnimationFrame(pick); return }
       if (!active.current) return
       const pts = points()
+      // landing doesn't move the anchor: only a placement or an arrow key does, so a build mode that
+      // stays on after a build (G6.5) lands near the last placement each time, without drifting
       const i = nearest(pts, last.current ?? centre())
-      last.current = pts[i]
       setCursor(list[i].at)
     }
     pick()
@@ -110,7 +111,8 @@ export function BoardPicker({ className = '', style }: { className?: string; sty
     if (!t || !targets.player) return
     last.current = project(t.action) ?? last.current
     const r = store.dispatch(targets.player, t.action)
-    if (r.ok && state.phase.kind === 'actions') setPlacementMode(null) // one build per menu choice
+    // G6.5: the build mode stays on while another of the same build is legal
+    if (r.ok && state.phase.kind === 'actions' && !keepsPlacing(state, targets.player, t.action)) setPlacementMode(null)
   }
 
   const onFocus = () => {

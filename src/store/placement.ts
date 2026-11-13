@@ -1,7 +1,7 @@
 // Which board spots are clickable right now (ROADMAP G4.3). Pure: derived from the engine's
 // legalActions, never from scene geometry, so the highlights can't disagree with the rules.
 
-import { legalActions } from '../game'
+import { apply, legalActions } from '../game'
 import type { Action, EdgeId, GameState, PlayerId, TileId, VertexId, Viewer } from '../game'
 import type { PlacementMode } from './ui'
 
@@ -33,4 +33,15 @@ export function placementTargets(s: GameState, mode: PlacementMode, me: Viewer |
     else if (a.type === 'MOVE_ROBBER') out.tiles.push({ at: a.tile, action: a })
   }
   return out.vertices.length || out.edges.length || out.tiles.length ? out : { ...NONE, player }
+}
+
+/**
+ * G6.5: whether the placement mode stays on after `action` (a build in `actions`): the same build is
+ * still legal once it is placed (cards, a piece and a spot left). Decided on the state before the
+ * dispatch with the local engine, so it answers at once online too, before the server's update.
+ */
+export function keepsPlacing(s: GameState, player: PlayerId, action: Action): boolean {
+  if (s.phase.kind !== 'actions') return false
+  const r = apply(s, player, action)
+  return r.ok && r.state.phase.kind === 'actions' && legalActions(r.state, player).some((a) => a.type === action.type)
 }

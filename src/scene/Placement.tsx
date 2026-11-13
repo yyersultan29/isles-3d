@@ -9,7 +9,7 @@ import * as THREE from 'three'
 import { corner, edgeToScene, PLAYER_COLOR_OF, PLAYER_COLORS, tileAt, tileByAxial, vertexToScene } from './board'
 import { animTime, motion } from './motion'
 import { useGame, useGameStore, useSeat } from '../store/GameProvider'
-import { placementTargets } from '../store/placement'
+import { keepsPlacing, placementTargets } from '../store/placement'
 import { setPlacementMode, usePlacementMode } from '../store/ui'
 import { getCursor, setProjector } from '../store/boardCursor'
 import type { Action } from '../game'
@@ -126,9 +126,9 @@ export function Placement() {
       const { spot } = pick(e)
       if (!spot || !targets.player) return
       const r = store.dispatch(targets.player, spot.action)
-      if (r.ok) {
-        if (state.phase.kind === 'actions') setPlacementMode(null) // one build per menu choice
-      } // a rejection shows as a HUD notice (ui/Notices.tsx)
+      // G6.5: the build mode stays on while another of the same build is legal; a rejection shows
+      // as a HUD notice (ui/Notices.tsx)
+      if (r.ok && state.phase.kind === 'actions' && !keepsPlacing(state, targets.player, spot.action)) setPlacementMode(null)
       hover.current = { spot: null, kind: null }
       el.style.cursor = ''
     }
