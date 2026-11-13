@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
 import { RESOURCES, focusRing, panel } from './HUD'
 import { SEATS, proposeCheck, useGameView, type Counts } from './gameView'
-import { bankQuote, payOptions, sameDraft, shortfall, tradesText } from './tradePlan'
+import { bankQuote, noPayReason, payOptions, sameDraft, shortfall, tradesText } from './tradePlan'
 import { useGame, useGameStore } from '../store/GameProvider'
 import { changeDraft, clearDraft, setBuildGoal, setPlacementMode, setTradeMode, setTradeOpen, useBuildGoal, useTradeDraft, useTradeMode, type TradeMode } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
@@ -109,6 +109,7 @@ function ComposePanel({ compact }: { compact: boolean }) {
   const wanted = RESOURCE_ORDER.filter((r) => want[r])
   const giving = RESOURCE_ORDER.some((r) => give[r])
   const pay = !giving && wanted.length === 1 ? payOptions(s, wanted[0], want[wanted[0]]!, me) : []
+  const noPay = !giving && wanted.length === 1 && !pay.length ? noPayReason(s, wanted[0], want[wanted[0]]!, me) : null
   const bankTrade = (a: Action) => { if (act(bank.player, a)) { clearDraft(); setTradeOpen(false) } }
   const BUILD_WORD = { road: 'road', settlement: 'settlement', city: 'city', dev: 'development card' } as const
   const tradeThenBuild = () => {
@@ -127,9 +128,9 @@ function ComposePanel({ compact }: { compact: boolean }) {
     ? <button ref={main} data-main-action onClick={tradeThenBuild} title={forBuild.text} className={`${gold()} !px-[14px]`}
         aria-label={`${forBuild.kind === 'dev' ? 'Trade with the bank for a development card' : `Trade with the bank, then build the ${BUILD_WORD[forBuild.kind]}`}: ${forBuild.text}`}>Trade &amp; build</button>
     : <button data-main-action onClick={() => quote.ok && bankTrade(quote.action)} disabled={!quote.ok}
-        aria-label={quote.ok ? `Trade with the bank: ${quote.text}` : `Trade with the bank (${quote.reason})`} className={`${gold()} !px-[14px]`}>Trade with the bank</button>
+        aria-label={quote.ok ? `Trade with the bank: ${quote.text}` : `Trade with the bank (${noPay ?? quote.reason})`} className={`${gold()} !px-[14px]`}>Trade with the bank</button>
   // G7.3: one result sentence per mode, and the reason a main button is disabled next to it
-  const bankResult = forBuild ? `For a ${BUILD_WORD[forBuild.kind]}: ${forBuild.text}` : quote.ok ? quote.text : pay.length ? 'Pick how to pay, or add cards you give' : quote.reason
+  const bankResult = forBuild ? `For a ${BUILD_WORD[forBuild.kind]}: ${forBuild.text}` : quote.ok ? quote.text : pay.length ? 'Pick how to pay, or add cards you give' : noPay ?? quote.reason
   const names = (ids: PlayerId[]) => ids.length === opponents.length ? 'everyone' : ids.map((x) => SEATS[x].name).join(' and ')
   const playersResult = offerReason ?? `Offer ${text(give)} to ${names(to)} for ${text(want)}`
   const kept = giving || wanted.length > 0
@@ -235,9 +236,10 @@ function OfferPanel() {
             <span className="min-w-[52px] flex-1 text-[15px] font-semibold text-white">{r.name}</span>
             {r.response === 'pending' && !r.canRespond && <span className="pr-[6px] text-[14px] text-[#a9a49b]">Waiting</span>}
             {r.response === 'pending' && r.canRespond && (<>
-              <button ref={r.id === firstEnabled ? first : undefined} disabled={!r.canAccept} title={r.reason ?? undefined}
+              {/* G7.8: why this player can't accept is visible text, not a hover title on a disabled button */}
+              {!r.canAccept && r.reason ? <span data-offer-reason className="text-right text-[13px] leading-tight text-[#e8b4a0]">{r.reason}</span> : <button ref={r.id === firstEnabled ? first : undefined} disabled={!r.canAccept} title={r.reason ?? undefined}
                 aria-label={`${r.name}: accept${r.reason ? ` (${r.reason})` : ''}`} onClick={() => act(r.id, { type: 'RESPOND_TRADE', tradeId: offer.id, accept: true })}
-                className={`${plain()} !bg-[#2f7d3a] hover:!bg-[#3a9447] disabled:!bg-white/10`}>Accept</button>
+                className={`${plain()} !bg-[#2f7d3a] hover:!bg-[#3a9447] disabled:!bg-white/10`}>Accept</button>}
               <button aria-label={`${r.name}: decline`} onClick={() => act(r.id, { type: 'RESPOND_TRADE', tradeId: offer.id, accept: false })} className={plain()}>Decline</button>
             </>)}
             {r.response === 'reject' && <span className="pr-[6px] text-[14px] text-[#a9a49b]">Declined</span>}

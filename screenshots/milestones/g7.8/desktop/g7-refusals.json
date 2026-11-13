@@ -1,0 +1,132 @@
+{
+ "viewport": "1440x900",
+ "compact": false,
+ "errors": [],
+ "R": {
+  "bankNothingToPay": {
+   "main": {
+    "label": "Trade with the bank (Can't pay the bank: you need 3 of one kind)",
+    "disabled": true
+   },
+   "result": "Can't pay the bank: you need 3 of one kind",
+   "reasonVisible": true,
+   "payOptions": 0,
+   "dispatched": 0,
+   "pos": {
+    "seed": 1,
+    "step": 24,
+    "who": "p4",
+    "res": {
+     "lumber": 0,
+     "brick": 2,
+     "wool": 1,
+     "grain": 0,
+     "ore": 0
+    }
+   }
+  },
+  "bankBelowRate": {
+   "main": {
+    "label": "Trade with the bank (The bank takes 4 wood per card (4:1))",
+    "disabled": true
+   },
+   "result": "The bank takes 4 wood per card (4:1)",
+   "reasonVisible": true,
+   "dispatched": 0,
+   "pos": {
+    "seed": 1,
+    "step": 214,
+    "who": "p3",
+    "res": {
+     "lumber": 1,
+     "brick": 0,
+     "wool": 5,
+     "grain": 0,
+     "ore": 0
+    }
+   },
+   "playersResult": "Offer 1 wood to everyone for 1 ore"
+  },
+  "offerRefused": {
+   "offered": [
+    {
+     "text": "Red Needs 1 more ore Decline",
+     "accept": null,
+     "reason": "Needs 1 more ore"
+    },
+    {
+     "text": "Blue Accept Decline",
+     "accept": "Blue: accept",
+     "reason": null
+    },
+    {
+     "text": "White Accept Decline",
+     "accept": "White: accept",
+     "reason": null
+    }
+   ],
+   "cantAcceptHasVisibleReason": true,
+   "declined": {
+    "rows": [
+     {
+      "text": "Red Declined",
+      "accept": null,
+      "reason": null
+     },
+     {
+      "text": "Blue Declined",
+      "accept": null,
+      "reason": null
+     },
+     {
+      "text": "White Declined",
+      "accept": null,
+      "reason": null
+     }
+    ],
+    "step": "Everyone declined. Cancel the offer to change it.",
+    "confirm": 0
+   },
+   "after": {
+    "res": {
+     "lumber": 0,
+     "brick": 4,
+     "wool": 1,
+     "grain": 0,
+     "ore": 0
+    },
+    "panelOpen": true,
+    "offerOpen": false
+   },
+   "handUnchanged": true,
+   "actions": 5,
+   "pos": {
+    "seed": 1,
+    "step": 42,
+    "who": "p4",
+    "res": {
+     "lumber": 0,
+     "brick": 4,
+     "wool": 1,
+     "grain": 0,
+     "ore": 0
+    }
+   }
+  },
+  "cardBoughtThisTurn": {
+   "title": "Red: my development cards",
+   "groups": [
+    {
+     "group": "new",
+     "rows": [
+      {
+       "text": "Knight Move the robber and steal a card",
+       "play": false
+      }
+     ]
+    }
+   ]
+  },
+  "offerHoverOnly": []
+ }
+}

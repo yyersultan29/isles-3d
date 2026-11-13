@@ -1,0 +1,109 @@
+{
+ "viewport": "390x844",
+ "compact": true,
+ "hoverOnly": {
+  "setup": [],
+  "actions": [],
+  "trade-open": [],
+  "dev-panel": []
+ },
+ "flows": {
+  "roll": {
+   "found": true,
+   "phase": "preRoll",
+   "gained": {
+    "grain": 1
+   },
+   "noticeAt05s": [
+    "Red rolled 8 (3 and 5). Red: build, trade or end your turn",
+    "Red +1 grain"
+   ],
+   "handDeltaOnCards": true,
+   "noticeAt45s": [
+    "Red rolled 8 (3 and 5). Red: build, trade or end your turn"
+   ]
+  },
+  "bank4": {
+   "clicks": 3,
+   "options": [
+    "4 → 1 brick4:1"
+   ],
+   "ok": true
+  },
+  "port": {
+   "clicks": 3,
+   "options": [
+    "3 → 1 wood3:1 (port)"
+   ],
+   "ok": true
+  },
+  "port2": {
+   "clicks": 3,
+   "options": [
+    "2 → 1 wood2:1 (port)"
+   ],
+   "ok": true
+  },
+  "buyDev": {
+   "clicks": 3,
+   "ok": true,
+   "noticesAfterBuy": [
+    "Red rolled 7 (4 and 3). Red: build, trade or end your turn",
+    "Blue traded 2 grain for 1 wood with the bank.Red bought a development card.Red, you got a Knight: playable from your next turn."
+   ],
+   "devRows": [
+    "Knight Move the robber and steal a card"
+   ]
+  },
+  "Knight": {
+   "clicks": 4,
+   "actions": 2,
+   "phase": "actions",
+   "firstScreen": [
+    "Red: Knight × 1 Play the card 2 Pick a tile for the robber on the board 3 Rob one card from a player there, if any Next: the robber, on the board Back keeps the card. Once played, it can’t be taken ba",
+    [
+     "Red bought a development card.Red, you got a Knight: playable from your next turn.",
+     "Next: the robber, on the board"
+    ]
+   ]
+  },
+  "Road Building": {
+   "clicks": 5,
+   "actions": 3,
+   "phase": "actions",
+   "firstScreen": [
+    "White: Road Building × 1 Play the card 2 Pick an edge on the board for each free road (two, or one if only one fits) Next: the free roads, on the board Back keeps the card. Once played, it can’t be ta",
+    [
+     "Red played a Knight.",
+     "Next: the free roads, on the board"
+    ]
+   ]
+  },
+  "Year of Plenty": {
+   "clicks": 5,
+   "actions": 1,
+   "phase": "actions",
+   "firstScreen": [
+    "White: Year of Plenty × 1 Pick two resources here (the same twice is fine) 2 Press Play: they go to your hand Take from the bank (bank has) 11 14 15 15 16 Pick 2 more Back keeps the card. Nothing happ",
+    [
+     "White played Road Building.",
+     "Pick 2 more"
+    ]
+   ]
+  },
+  "Monopoly": {
+   "clicks": 4,
+   "actions": 1,
+   "phase": "actions",
+   "firstScreen": [
+    "White: Monopoly × 1 Pick a resource here 2 Press Play: every other player gives you all of theirs Name a resource Pick a resource Back keeps the card. Nothing happens until you press Play. Back Play M",
+    [
+     "White played Year of Plenty: +2 wood.",
+     "Pick a resource"
+    ]
+   ]
+  }
+ },
+ "placeholders": [],
+ "errors": []
+}

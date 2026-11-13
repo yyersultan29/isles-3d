@@ -73,6 +73,20 @@ export function payOptions(s: GameState, want: Resource, count = 1, me: Me = nul
     }))
 }
 
+/** G7.8: why a wanted card has no way to pay the bank, as visible text (null when there is a way) */
+export function noPayReason(s: GameState, want: Resource, count = 1, me: Me = null): string | null {
+  if (payOptions(s, want, count, me).length) return null
+  const t = trader(s, me)
+  if ('reason' in t) return t.reason
+  if (s.bank[want] < count) return `The bank has only ${s.bank[want]} ${NAME[want]}`
+  // the player's own rates: a generic port makes every kind 3, a special port one kind 2
+  const rates = RESOURCE_ORDER.filter((r) => r !== want).map((r) => ({ r, rate: tradeRate(s, t.player, r) }))
+  const low = Math.min(...rates.map((x) => x.rate)), high = Math.max(...rates.map((x) => x.rate))
+  if (low === high) return `Can't pay the bank: you need ${low * count} of one kind`
+  const cheap = rates.filter((x) => x.rate === low).map((x) => NAME[x.r]).join(' or ')
+  return `Can't pay the bank: you need ${low * count} ${cheap} or ${high * count} of another kind`
+}
+
 export interface Shortfall {
   /** cards the build still needs (empty when the hand already pays) */
   missing: Counts

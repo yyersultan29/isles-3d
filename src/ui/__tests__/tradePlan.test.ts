@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { botGame, fixture } from '../../game/__tests__/helpers'
 import { COSTS, RESOURCE_ORDER, apply, legalActions, tradeRate, validate, type GameState, type Resource, type VertexId } from '../../game'
-import { affordable, bankQuote, payOptions, sameDraft, shortfall, tradesText } from '../tradePlan'
+import { affordable, bankQuote, noPayReason, payOptions, sameDraft, shortfall, tradesText } from '../tradePlan'
 import type { BuildKind } from '../gameView'
 
 /** a settlement for p1 away from every port, plus a free edge next to it */
@@ -144,5 +144,27 @@ describe('tradesText and sameDraft (G6.4)', () => {
     expect(sameDraft(f.draft, { give: { wool: 4, lumber: 8 }, want: { ore: 3 } })).toBe(true)
     expect(sameDraft(f.draft, { give: { wool: 4, lumber: 8 }, want: { ore: 2 } })).toBe(false)
     expect(sameDraft(f.draft, { give: { wool: 4, lumber: 8, brick: 0 }, want: { ore: 3 } })).toBe(true)
+  })
+})
+
+describe('noPayReason (G7.8)', () => {
+  it('is null when there is a way to pay, and otherwise says why', () => {
+    const s = fixture({ hands: { p1: { lumber: 4, brick: 2 } }, buildings: [[HOME, 'p1']] })
+    expect(noPayReason(s, 'ore')).toBeNull()
+    s.players.find((p) => p.id === 'p1')!.resources.lumber = 3
+    expect(noPayReason(s, 'ore')).toBe("Can't pay the bank: you need 4 of one kind")
+    expect(noPayReason(s, 'ore', 2)).toBe("Can't pay the bank: you need 8 of one kind")
+    s.bank.ore = 0
+    expect(noPayReason(s, 'ore')).toBe('The bank has only 0 ore')
+  })
+
+  it('uses the player’s port rates', () => {
+    const s = fixture({ hands: { p1: { wool: 1 } } })
+    s.buildings[portOf(s, 'wool')] = { owner: 'p1', type: 'settlement' }
+    expect(noPayReason(s, 'ore')).toBe("Can't pay the bank: you need 2 wool or 4 of another kind")
+    expect(noPayReason(s, 'wool')).toBe("Can't pay the bank: you need 4 of one kind")
+    s.buildings[portOf(s, 'generic')] = { owner: 'p1', type: 'settlement' }
+    expect(noPayReason(s, 'ore')).toBe("Can't pay the bank: you need 2 wool or 3 of another kind")
+    expect(noPayReason(s, 'wool')).toBe("Can't pay the bank: you need 3 of one kind")
   })
 })

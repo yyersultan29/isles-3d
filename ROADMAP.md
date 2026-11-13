@@ -879,7 +879,7 @@ Steps:
   - Home, Game, Stats, Settings, Undo and Chat leave the visible HUD on desktop and phone.
   - Fullscreen is kept and made to work instead (owner, 2026-11-13).
   - The freed space is rebalanced without moving the board framing or the camera, and checked against the reference.
-- [ ] **G7.8 Exit check.**
+- [x] **G7.8 Exit check.**
   - Rerun G7.0's flows and audits on desktop and at 390×844, and compare with the baseline: hover-only information is 0, G6 click counts have not risen, every dev-card type has been played through the UI, and both the successful and the refused trade and card actions have been checked.
   - axe and keyboard-only flows on the changed panels.
   - Hot-seat desktop and phone replays, and the online game.
@@ -1069,6 +1069,35 @@ Steps:
   - Replays are exact with 0 rejections and 0 hand mismatches: desktop seed 2024 194/939, phone seed 77 272/1249, online seed 7 turn 133, 723 actions, no other hands shown.
 - Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.7/`. Not deployed.
 
+**G7.8 result (2026-11-14):** exit check passed; the G7 goals are met, the owner's review is pending.
+- **Against the G7.0 baseline** (`g7-baseline.mjs`, 1440×900 / 390×844):
+
+  | Measure | G7.0 | G7.8 |
+  |---|---|---|
+  | Hover-only reasons: setup / actions / trade open / dev panel, desktop | 11 / 3 / 4 / 4 | 0 / 0 / 0 / 0 |
+  | The same, phone | 11 / 3 / 4 / 0 | 0 / 0 / 0 / 0 |
+  | Placeholders, desktop / phone | 7 / 2 | 0 / 0 |
+  | Bank 4:1, port 3:1, port 2:1 (clicks) | 3, 3, 3 | 3, 3, 3 |
+  | Buy a card, desktop / phone | 2 / 3 | 2 / 3 |
+  | Knight / Road Building | 3 / 4 | 4 / 5 (the confirm step from G7.5, so the card can be cancelled) |
+  | Year of Plenty / Monopoly | 5 / 4 | 5 / 4 |
+
+  The G6 flows (`ux-flows`) have not risen: bank-then-road 3, city with two trades 3, two roads 3, player trade 4 on desktop, and 4 for each on the phone.
+- **Every card type** was played through the UI at both sizes (`g7-baseline`, `g7-dev`), including Back before Play, the countdowns and the free-road count.
+- **Refused actions** (new `scripts/g7-refusals.mjs`, both sizes): each refusal says why in visible text and changes nothing.
+  - Bank, wanting a card with nothing to pay: the result line read "Add cards you give", although nothing could be added. It now names the player's own rates: "Can't pay the bank: you need 3 of one kind", or "you need 2 wool or 4 of another kind" with a special port (`noPayReason`, unit-tested).
+  - Bank, giving fewer than the rate: "The bank takes 4 wood per card (4:1)". The same draft in Players is a valid offer.
+  - **Found and fixed:** in an open offer, a player who couldn't accept had a disabled Accept with the reason only on hover, a state G7.0 didn't audit. The row now shows the reason ("Needs 1 more ore") in place of that button. In the online game the row is only answerable on its own player's screen, so this shows no one else's hand.
+  - Everyone declined: "Everyone declined. Cancel the offer to change it.", with no Confirm button; Cancel offer leaves the hand unchanged.
+  - A card bought this turn sits under "Bought this turn" with no Play, and a second card after one was played moves to "Already played a card this turn" (`g7-dev`).
+- **Checks.** `tsc -b`, 273 tests and the build pass.
+  - `hand-trade`, `shortcuts`, `g7-hand`, `g7-dev` and `g7-refusals` pass at both sizes.
+  - `g6-audit` passes at 1440×900, 390×844 and 844×390: axe 0 on every audited panel, everything fits, the keyboard flows work.
+  - Replays are exact with 0 rejections and 0 hand mismatches: desktop seed 2024 194/939, phone seed 77 272/1249. Online seed 7: turn 219, 1106 actions, no other hands shown, no buttons enabled out of turn. The online length varies with timing.
+- **Deployed** to GitHub Pages on 2026-11-14 with the owner's approval; the game server on Render answers.
+- Not verified: Fullscreen in a real browser (the automated Chrome refuses it).
+- Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.8/`.
+
 ### G8 — Phone play (later, after the owner asks)
 
 From `UX_PRODUCT_SPEC.md` UX-5 and the G6 open item:
@@ -1130,7 +1159,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
-| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, `038247e`, `fca18b0`, G7.7 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G7 — Clear state and next step | Exit check passed, owner review | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, `038247e`, `fca18b0`, `441e7c3`, G7.8 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -1138,4 +1167,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G7.8, the exit check: rerun G7.0's flows and audits at desktop and 390×844 against the baseline, axe and keyboard on the changed panels, and the hot-seat and online replays. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
+**Recommended next action:** the owner reviews G7 on the deployed site (and checks Fullscreen in a real browser). G8 (phone play) starts only when the owner asks.
