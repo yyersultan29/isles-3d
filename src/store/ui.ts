@@ -54,7 +54,27 @@ export function usePanel(): Panel {
   )
 }
 
-export const setTradeOpen = (v: boolean) => setPanel(v ? 'trade' : panel === 'trade' ? null : panel)
+// G7.3: the trade panel's mode over the one shared draft. Opening the panel picks it (a hand card →
+// players, the Trade button, a build row or T → bank); an already open panel keeps its mode.
+export type TradeMode = 'bank' | 'players'
+let tradeMode: TradeMode = 'bank'
+export function setTradeMode(m: TradeMode) {
+  if (m === tradeMode) return
+  tradeMode = m
+  for (const l of [...panelListeners]) l()
+}
+export const getTradeMode = () => tradeMode
+export function useTradeMode(): TradeMode {
+  return useSyncExternalStore(
+    (l) => { panelListeners.add(l); return () => { panelListeners.delete(l) } },
+    () => tradeMode,
+  )
+}
+
+export const setTradeOpen = (v: boolean, mode: TradeMode = 'bank') => {
+  if (v && panel !== 'trade') setTradeMode(mode)
+  setPanel(v ? 'trade' : panel === 'trade' ? null : panel)
+}
 export const getTradeOpen = () => panel === 'trade'
 export const useTradeOpen = () => usePanel() === 'trade'
 export const setDevOpen = (v: boolean) => setPanel(v ? 'dev' : panel === 'dev' ? null : panel)
@@ -126,4 +146,4 @@ export const useBuildGoal = () => useSyncExternalStore(subscribeDraft, () => bui
 
 // dev-only handle for browser checks (like window.__islesStore): scripts must read this instance, not
 // import the module themselves (after a hot update Vite serves the app `ui.ts?t=…`, another instance)
-if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __islesUi: unknown }).__islesUi = { getPlacementMode, getDraft, getPanel, getBuildGoal }
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __islesUi: unknown }).__islesUi = { getPlacementMode, getDraft, getPanel, getBuildGoal, getTradeMode }

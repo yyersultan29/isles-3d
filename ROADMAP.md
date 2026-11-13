@@ -855,7 +855,7 @@ Steps:
   - Zero piles stay readable (name and number, not just dimmed).
   - On the player's first turn with a trade possible, a one-line hint says that tapping a card adds it to a trade. It is shown once per device.
   - Only what privacy allows: in hot-seat, behind the pass screen, nothing.
-- [ ] **G7.3 Trade modes (UX-3).**
+- [x] **G7.3 Trade modes (UX-3).**
   - Bank / ports and Players modes over the shared draft (decision 1).
     - **Bank** shows the rates, the result before confirming ("3 wood → 1 brick (3:1)"), the one-click pay options (labelled with what they do) and "Trade with the bank".
     - **Players** shows "You give / You want", the recipients, one result sentence and "Offer trade".
@@ -970,6 +970,28 @@ Steps:
   - Online, seed 7: turn 121, 635 actions, 0 rejections or mismatches, no other hands shown.
 - Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.2/`. Not deployed.
 
+**G7.3 result (2026-11-13):** trade has two modes over one draft.
+- **Modes.** "Bank / ports" and "Players" are a two-button switch at the top of the panel (`aria-pressed`, `data-trade-mode`). The UI store's `tradeMode` is picked by how the panel opens: a hand card → Players; the Trade button, a build row or T → Bank. An open panel keeps its mode, and the draft is the same in both (`tradeMode.test.ts`).
+- **Bank / ports.**
+  - The tiles show the rate (4:1/3:1/2:1), the count held and the bank's stock.
+  - Pay options read "4 → 1 ore" with "4:1" or "3:1 (port)".
+  - A result line shows the trade, e.g. "3 wool → 1 brick (3:1)", or the exact reason ("The bank takes 4 wool per card (4:1)"), next to "Trade with the bank".
+  - For a build the button reads "Trade & build".
+- **Players.** It shows "You give / You want", the recipients and one sentence, e.g. "Offer 2 wool to everyone for 1 ore", or the reason, next to "Offer trade".
+- **Open offer.** The proposer sees "Offer sent. Waiting for answers." Once someone accepts, it reads "Last step: confirm with a player who accepted. Nothing is traded until you do." That row shows "Accepted" and a separate "Confirm trade" button.
+  - The other statuses read "Waiting" (online) and "Declined". Hot-seat answers stay on the same screen as before.
+- **Draft kept.** With a non-empty draft the panel says "Closing keeps your choice until the end of the turn".
+- **Accessible names now start with the visible text:** "Trade with the bank: …", "Trade with the bank, then build the road: …", "Offer trade: …" and "Confirm trade with Blue". The drivers were updated, and the hot-seat and online offer drivers click "Players" first.
+- **Checks.** `tsc -b`, 268 tests and the build pass.
+  - `ux-flows` clicks are unchanged (3/1/4 desktop, 4/1/4 phone). `g7-baseline` bank 4:1, port 3:1 and port 2:1 each take 3 clicks.
+  - Hover-only with the trade panel open: 1 → 0 at both sizes, since the reason sits by the button.
+  - `hand-trade` checks: a hand card opens Players and the Trade button opens Bank; the draft `{wool 2, ore 1}` is kept across modes; axe shows 0 violations.
+  - `g6-audit`: axe 0 and every panel fits at all 3 sizes. The mode switch is shorter on low screens; at 844×390 the panel was 3 px over.
+  - Keyboard player trade: 12 → 15 keys. T opens Bank, so Shift+Tab and Space pick Players; the rest is as before.
+  - The hot-seat replays are exact: 194/939 desktop (65 offers), 272/1249 phone.
+  - Online, seed 7: 0 rejections or mismatches, 40 offers, 3 trade-then-builds, no other hands shown.
+- Screenshots (JPEG) are in `screenshots/milestones/g7.3/`. Not deployed.
+
 
 ### G8 — Phone play (later, after the owner asks)
 
@@ -1032,7 +1054,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
-| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, G7.2 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, G7.3 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -1040,4 +1062,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G7.3: trade modes, Bank / ports and Players, over the shared draft, with the result before confirming and the reason next to the main button. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
+**Recommended next action:** G7.4: development cards, buy vs mine. "Buy development card" in Build is clearly not "My cards"; after a purchase the owner sees which card it is and why it can't be played yet. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.

@@ -390,7 +390,7 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
         return (
           <li key={key} className="relative">
             <button data-hand-card aria-label={label} title={n ? label : `${name}: none to trade`} disabled={chosen >= n}
-              onClick={() => { changeDraft('give', key, 1, n); setTradeOpen(true) }}
+              onClick={() => { changeDraft('give', key, 1, n); setTradeOpen(true, 'players') }}
               className={`${frame} disabled:cursor-not-allowed ${chosen ? `ring-[3px] ring-[#ffd76a] ${compact ? '-translate-y-[4px]' : '-translate-y-[8px]'}` : 'enabled:hover:-translate-y-[4px]'} ${focusRing}`}>
               {face}
             </button>

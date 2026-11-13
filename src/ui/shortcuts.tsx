@@ -15,7 +15,7 @@ export type Shortcut = BuildKind | 'trade' | 'confirm'
 
 export const SHORTCUT_KEYS: [string, string][] = [
   ['R', 'Build a road'], ['S', 'Build a settlement'], ['C', 'Build a city'], ['D', 'Buy a development card'],
-  ['T', 'Open or close trade'], ['Enter', 'Trade: bank trade, else offer (Space adds a card)'], ['Esc', 'Cancel a build, close a panel'],
+  ['T', 'Open or close trade (bank / ports)'], ['Enter', 'Trade: the main button of the mode shown (Space adds a card)'], ['Esc', 'Cancel a build, close a panel'],
 ]
 const LETTERS: Record<string, Shortcut> = { r: 'road', s: 'settlement', c: 'city', d: 'dev', t: 'trade' }
 

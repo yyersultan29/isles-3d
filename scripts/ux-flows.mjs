@@ -98,7 +98,7 @@ const begin = async (cond) => { const pos = await position(cond); if (!pos) thro
   await p.screenshot({ path: `${D}/1-start.png` })
   await shortRow('Build Road') // opens the trade with 4 wood → 1 brick filled in
   await p.screenshot({ path: `${D}/1-trade-for-road.png` })
-  await tap('button[aria-label^="Bank trade, then build the road"]') // the trade starts the road placement
+  await tap('button[aria-label^="Trade with the bank, then build the road"]') // the trade starts the road placement
   out.placingAfterTrade = !!(await p.$('[data-board-picker]'))
   await place()
   const after = await snap()
@@ -112,7 +112,7 @@ const begin = async (cond) => { const pos = await position(cond); if (!pos) thro
   await shortRow('Build City')
   await p.screenshot({ path: `${D}/1b-trade-for-city.png` })
   out.cityPlanText = await p.$eval('#trade-body [aria-live]', (e) => e.textContent)
-  await tap('button[aria-label^="Bank trade, then build the city"]')
+  await tap('button[aria-label^="Trade with the bank, then build the city"]')
   await place()
   const after = await snap()
   out.flows.cityTwoTrades = { clicks, panels: [...panels], ok: after.actions >= before.actions + 3 && !after.trade, position: pos }
@@ -145,7 +145,7 @@ const begin = async (cond) => { const pos = await position(cond); if (!pos) thro
   await tap('button[aria-label^="Trade one wool"]') // the hand card opens the panel with the wool given
   await tap('button[aria-label^="Want one ore"]')
   await p.screenshot({ path: `${D}/3-compose.png` })
-  await tap('button[aria-label="Offer to players"]')
+  await tap('button[aria-label^="Offer trade"]')
   await p.screenshot({ path: `${D}/3-offer.png` })
   // hot-seat: the others answer on this screen (counted apart); the first who can accepts
   for (let i = 0; i < 3; i++) {
@@ -153,7 +153,9 @@ const begin = async (cond) => { const pos = await position(cond); if (!pos) thro
     if (acc) { await acc.click(); others++; await p.waitForTimeout(120); break }
     const dec = await p.$('button[aria-label$=": decline"]'); if (dec) { await dec.click(); others++; await p.waitForTimeout(120) }
   }
-  await tap('[aria-labelledby=trade-title] button[aria-label^="Trade with "]')
+  await p.screenshot({ path: `${D}/3-accepted.png` })
+  out.offerStep = await p.$eval('[data-offer-step]', (e) => e.textContent).catch(() => null)
+  await tap('[aria-labelledby=trade-title] button[aria-label^="Confirm trade with "]')
   const after = await snap()
   const stillOpen = !!(await p.$('[aria-labelledby=trade-title]'))
   out.flows.playerTrade = { clicks, others, panelStillOpenAfter: stillOpen, panels: [...panels], ok: after.res.ore === before.res.ore + 1 && after.res.wool === before.res.wool - 1, position: pos }

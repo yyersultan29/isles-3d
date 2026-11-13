@@ -86,7 +86,7 @@ await p.click('button[data-trade-button]'); await p.waitForTimeout(200)
 await p.click('button[aria-label^="Want one ore"]'); await p.waitForTimeout(150)
 await audit('pay-options', '[aria-labelledby=trade-title]')
 await p.click('button[aria-label="Want one less ore"]'); await p.click('button[aria-label^="Give one wool"]'); await p.click('button[aria-label^="Want one ore"]'); await p.waitForTimeout(100)
-await p.click('button[aria-label="Offer to players"]'); await p.waitForTimeout(250)
+await p.click('[data-trade-mode=players]'); await p.click('button[aria-label^="Offer trade"]'); await p.waitForTimeout(250)
 await audit('open-offer', '[aria-labelledby=trade-title]')
 await p.click('button[aria-label="Cancel offer"]'); await p.waitForTimeout(150)
 await p.keyboard.press('Escape'); await p.waitForTimeout(150)
@@ -123,11 +123,12 @@ const placeByKeys = async () => { await p.waitForSelector('[data-board-picker]',
   await placeByKeys()
   out.keyboard.twoRoads = { keys, firstRoad: first, secondRoad: keys - first, ok: (await n()) === n0 + 2 }
 }
-// K3: offer 1 wool for 1 ore by keys: T, Tab to the wool tile, Space, Tab to the ore wish, Space, Enter (offer); the other player answers; Tab to "Trade with", Enter
+// K3: offer 1 wool for 1 ore by keys: T (opens Bank / ports, focus on the first card), Shift+Tab to "Players", Space, Tab to the wool tile, Space, Tab to the ore wish, Space, Enter (offer); the other player answers; Tab to "Confirm trade with", Enter
 {
   await begin((g, s, p, me) => me.resources.wool >= 1 && me.resources.ore === 0 && s.players.some((o) => o.id !== p && o.resources.ore >= 1))
   keys = 0; const before = await state()
-  await press('t')
+  await press('t'); await press('Shift+Tab')
+  const onPlayers = await p.evaluate(() => document.activeElement?.getAttribute('data-trade-mode')); await press('Space')
   const gotGive = await tabTo('Give one wool'); await press('Space')
   const gotWant = await tabTo('Want one ore'); await press('Space')
   await press('Enter') // on a card: the panel's main action, the offer here
@@ -139,10 +140,10 @@ const placeByKeys = async () => { await p.waitForSelector('[data-board-picker]',
     if (acc) { await acc.press('Enter'); others++; await p.waitForTimeout(150); break }
     const dec = await p.$('button[aria-label$=": decline"]'); if (dec) { await dec.press('Enter'); others++; await p.waitForTimeout(150) }
   }
-  const gotConfirm = await tabTo('Trade with ')
+  const gotConfirm = await tabTo('Confirm trade with ')
   await press('Enter'); await p.waitForTimeout(200)
   const after = await state()
-  out.keyboard.playerTrade = { keys, others, ok: after.res.ore === before.res.ore + 1 && after.res.wool === before.res.wool - 1, panelClosed: !(await p.$('[aria-labelledby=trade-title]')), reached: { gotGive, gotWant, offered, gotConfirm } }
+  out.keyboard.playerTrade = { keys, others, ok: after.res.ore === before.res.ore + 1 && after.res.wool === before.res.wool - 1, panelClosed: !(await p.$('[aria-labelledby=trade-title]')), reached: { onPlayers, gotGive, gotWant, offered, gotConfirm } }
 }
 
 writeFileSync(`${D}/g6-audit.json`, JSON.stringify(out, null, 1))

@@ -112,7 +112,7 @@ while (stats.steps++ < 20000) {
             const acc = await q.$(`button[aria-label^="${name}: accept"]:not([disabled])`)
             if (acc) { await acc.click(); did('accept') } else { await click(q, `button[aria-label="${name}: decline"]`); did('decline') }
           } else {
-            const tw = await p.$('[aria-labelledby=trade-title] button[aria-label^="Trade with "]:not([disabled])')
+            const tw = await p.$('[aria-labelledby=trade-title] button[aria-label^="Confirm trade with "]:not([disabled])')
             if (tw) { await tw.click(); did('p2pTrade') } else { await click(p, 'button[aria-label="Cancel offer"]'); did('cancelOffer') }
           }
         } else if (await exists(p, '[aria-labelledby=trade-title]')) { await click(p, 'button[aria-label="Close trade"]'); continue }
@@ -128,15 +128,15 @@ while (stats.steps++ < 20000) {
           else if (L.includes('PROPOSE_TRADE') && turnMemo.p2p < 1 && rand() < 0.35) {
             turnMemo.p2p++
             const give = RES.filter((r) => s.res[r] > 0).sort((a, b) => s.res[b] - s.res[a])[0]; const want = RES.filter((r) => r !== give)[Math.floor(rand() * 4)]
-            await click(p, 'button[data-trade-button]')
-            await click(p, `button[aria-label^="Give one ${NAME[give]}"]`); await click(p, `button[aria-label^="Want one ${NAME[want]}"]`); await click(p, 'button[aria-label="Offer to players"]'); did('propose')
+            await click(p, 'button[data-trade-button]'); await click(p, '[data-trade-mode=players]')
+            await click(p, `button[aria-label^="Give one ${NAME[give]}"]`); await click(p, `button[aria-label^="Want one ${NAME[want]}"]`); await click(p, 'button[aria-label^="Offer trade"]'); did('propose')
           } else if (L.includes('BANK_TRADE') && turnMemo.bank < 1 && await exists(p, 'button[data-trade-for="city"], button[data-trade-for="settlement"]')) {
             // G6.4: a build row short of cards opens the trade with them filled in; the bank trade
             // (one or more trades, sent back to back) starts the placement
             turnMemo.bank++
             if (await exists(p, '[data-build-toggle]')) { await p.click('[data-build-toggle]'); await p.waitForTimeout(50) }
             await click(p, 'button[data-trade-for="city"], button[data-trade-for="settlement"]')
-            await click(p, 'button[aria-label^="Bank trade, then build the"]'); await boardPick(p); did('tradeThenBuild')
+            await click(p, 'button[aria-label^="Trade with the bank, then build the"]'); await boardPick(p); did('tradeThenBuild')
           } else if (L.includes('BANK_TRADE') && turnMemo.bank < 1) {
             turnMemo.bank++
             const give = RES.filter((r) => s.res[r] >= 2).sort((a, b) => s.res[b] - s.res[a])[0]

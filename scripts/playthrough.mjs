@@ -91,7 +91,7 @@ while (stats.steps++ < 20000) {
         if (acc.length) { await acc[0].click(); did('accept'); continue }
         const dec = await p.$$('button[aria-label$=": decline"]')
         if (dec.length) { await dec[0].click(); did('decline'); continue }
-        const tw = await p.$('[aria-labelledby=trade-title] button[aria-label^="Trade with "]:not([disabled])')
+        const tw = await p.$('[aria-labelledby=trade-title] button[aria-label^="Confirm trade with "]:not([disabled])')
         if (tw) { await tw.click(); did('p2pTrade'); continue }
         await click('button[aria-label="Cancel offer"]'); did('cancelOffer'); continue
       }
@@ -107,8 +107,8 @@ while (stats.steps++ < 20000) {
       if (L.includes('PROPOSE_TRADE') && turnMemo.p2p < 1 && rand() < 0.25) {
         turnMemo.p2p++
         const give = RES.filter((r) => s.res[r] > 0).sort((a, b) => s.res[b] - s.res[a])[0]; const want = RES.filter((r) => r !== give)[Math.floor(rand() * 4)]
-        await click('button[data-trade-button]')
-        await click(`button[aria-label^="Give one ${NAME[give]}"]`); await click(`button[aria-label^="Want one ${NAME[want]}"]`); await click('button[aria-label="Offer to players"]'); did('propose'); continue
+        await click('button[data-trade-button]'); await click('[data-trade-mode=players]')
+        await click(`button[aria-label^="Give one ${NAME[give]}"]`); await click(`button[aria-label^="Want one ${NAME[want]}"]`); await click('button[aria-label^="Offer trade"]'); did('propose'); continue
       }
       if (L.includes('BANK_TRADE') && turnMemo.bank < 2) {
         turnMemo.bank++
