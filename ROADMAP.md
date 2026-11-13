@@ -541,7 +541,11 @@ Steps (each verified and reviewed before the next):
   - 20 refusals (0.5%): bots acting on a view that was already stale while updates were in flight, not server faults.
   - Warm HTTPS requests from this machine take about 120 ms, so roughly half the round trip is network, the rest the 0.1-CPU free instance.
   - **The §23 target (p95 < 200 ms) is not met on the free plan.** Moves feel slightly delayed but the game plays.
-- **Open.** The service's DNS name points at `gcp-us-west1` although `render.yaml` asks for Frankfurt; the owner is checking the region in the dashboard. A region can't be changed in place: if it is Oregon, recreating the service in Frankfurt should cut the network part. Rooms end when the free service sleeps or redeploys.
+- **Region.** The first service had been created in Oregon, so the owner recreated it in Frankfurt under the same address. (The DNS name shows `gcp-us-west1` either way and says nothing about the region.) Same test in Frankfurt: p50 188 ms, p95 489 ms, p99 860 ms, 8 refusals, 0 errors. That is about the same as Oregon, so distance was not the cost.
+  - With one room alone: p50 177 ms, p95 193 ms, max 392 ms. The §23 target is met at low load.
+  - The base of about 175 ms is the network through the host's proxy (about 120 ms for warm HTTPS) plus the small instance. Five busy rooms push p95 to about 0.5 s, contention on the 0.1-CPU free instance.
+  - If that ever matters: smaller updates (each move now sends every socket its full view), or a paid instance.
+- Rooms end when the free service sleeps or redeploys.
 
 ---
 
@@ -603,4 +607,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** confirm the Render region (recreate in Frankfurt if it is Oregon), play a real game with friends on the live site, then choose the next milestone.
+**Recommended next action:** play a real game with friends on the live site, review G5, then choose the next milestone.

@@ -1,0 +1,19 @@
+{
+ "target": "https://isles-3d-server.onrender.com",
+ "rooms": 5,
+ "sockets": 25,
+ "thinkMs": 300,
+ "seconds": 483,
+ "gamesFinished": 4,
+ "moves": 3664,
+ "movesPerSecond": 8,
+ "roundTripMs": {
+  "p50": 188,
+  "p95": 489,
+  "p99": 860,
+  "max": 1814
+ },
+ "rejected": 8,
+ "rateLimited": 0,
+ "otherErrors": 0
+}
