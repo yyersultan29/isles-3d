@@ -471,9 +471,9 @@ const TradeIco = ({ size }: { size: number }) => (
 export function TradeButton({ className = '', icon = 24 }: { className?: string; icon?: number }) {
   const { bank } = useGameView()
   const open = useTradeOpen()
-  const label = `Trade with the bank${bank.reason ? ` (${bank.reason})` : ''}`
+  const label = `Trade${bank.reason ? ` (${bank.reason})` : ''}`
   return (
-    <IconButton label={label} aria-pressed={open} aria-keyshortcuts="T" disabled={!bank.open} onClick={() => setTradeOpen(!open)}
+    <IconButton label={label} data-trade-button aria-pressed={open} aria-keyshortcuts="T" disabled={!bank.open} onClick={() => setTradeOpen(!open)}
       className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
       <TradeIco size={icon} />
     </IconButton>

@@ -1,0 +1,83 @@
+{
+ "viewport": "1440x900",
+ "compact": false,
+ "panels": {
+  "build-rows": {
+   "axe": [],
+   "fits": true,
+   "box": [
+    1204,
+    643,
+    1426,
+    862
+   ]
+  },
+  "trade-for-build": {
+   "axe": [],
+   "fits": true,
+   "box": [
+    495,
+    474,
+    912,
+    781
+   ]
+  },
+  "pay-options": {
+   "axe": [],
+   "fits": true,
+   "box": [
+    512,
+    435,
+    897,
+    781
+   ]
+  },
+  "open-offer": {
+   "axe": [],
+   "fits": true,
+   "box": [
+    572,
+    522,
+    846,
+    781
+   ]
+  },
+  "help": {
+   "axe": [],
+   "fits": true,
+   "box": [
+    1190,
+    54,
+    1424,
+    360
+   ]
+  }
+ },
+ "keyboard": {
+  "bankThenRoad": {
+   "keys": 4,
+   "ok": true,
+   "bankFocus": "Bank trade, then build the road: 4 wool → 1 brick",
+   "pickerFocused": true
+  },
+  "twoRoads": {
+   "keys": 5,
+   "firstRoad": 3,
+   "secondRoad": 2,
+   "ok": true
+  },
+  "playerTrade": {
+   "keys": 12,
+   "others": 1,
+   "ok": true,
+   "panelClosed": true,
+   "reached": {
+    "gotGive": true,
+    "gotWant": true,
+    "offered": true,
+    "gotConfirm": true
+   }
+  }
+ },
+ "errors": []
+}

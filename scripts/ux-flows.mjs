@@ -87,7 +87,7 @@ const buildRow = async (prefix) => {
 }
 /** the build row's shortfall button (G6.4): on a phone the build popover opens first */
 const shortRow = async (prefix) => { if (compact && !(await p.$('#compact-build'))) await tap('[data-build-toggle]'); await tap(`button[data-trade-for][aria-label^="${prefix}"]`) }
-const openTrade = () => tap('button[aria-label^="Trade with the bank"]')
+const openTrade = () => tap('button[data-trade-button]')
 const begin = async (cond) => { const pos = await position(cond); if (!pos) throw new Error('no position'); await p.waitForTimeout(600); await unpass(); clicks = 0; others = 0; panels.clear(); return pos }
 
 // ---- 1. trade 4 wood for a brick at the bank, then build a road

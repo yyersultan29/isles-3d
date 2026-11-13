@@ -75,7 +75,7 @@ await p.click('button[aria-label="Take back one wood"]'); await p.waitForTimeout
 out.afterMinus = await labels()
 // survives closing and switching panels
 await p.click('button[aria-label="Close trade"]'); await p.waitForTimeout(150)
-await p.click('button[aria-label^="Trade with the bank"]'); await p.waitForTimeout(150)
+await p.click('button[data-trade-button]'); await p.waitForTimeout(150)
 out.reopenStatus = await p.$eval('#trade-body [aria-live]', (e) => e.textContent)
 await p.click('button[aria-label^="Want one ore"]'); await p.waitForTimeout(150)
 out.status2 = await p.$eval('#trade-body [aria-live]', (e) => e.textContent)

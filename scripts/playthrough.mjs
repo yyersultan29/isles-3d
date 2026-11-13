@@ -107,14 +107,14 @@ while (stats.steps++ < 20000) {
       if (L.includes('PROPOSE_TRADE') && turnMemo.p2p < 1 && rand() < 0.25) {
         turnMemo.p2p++
         const give = RES.filter((r) => s.res[r] > 0).sort((a, b) => s.res[b] - s.res[a])[0]; const want = RES.filter((r) => r !== give)[Math.floor(rand() * 4)]
-        await click('button[aria-label^="Trade with the bank"]')
+        await click('button[data-trade-button]')
         await click(`button[aria-label^="Give one ${NAME[give]}"]`); await click(`button[aria-label^="Want one ${NAME[want]}"]`); await click('button[aria-label="Offer to players"]'); did('propose'); continue
       }
       if (L.includes('BANK_TRADE') && turnMemo.bank < 2) {
         turnMemo.bank++
         const give = RES.filter((r) => s.res[r] >= 2).sort((a, b) => s.res[b] - s.res[a])[0]
         const need = ['ore', 'grain', 'brick', 'lumber', 'wool'].filter((r) => r !== give && s.res[r] < 2 && s.bank[r] > 0)
-        const el = give && await p.$('button[aria-label^="Trade with the bank"]:not([disabled])')
+        const el = give && await p.$('button[data-trade-button]:not([disabled])')
         if (el && need.length) {
           await el.click(); await p.waitForTimeout(60)
           await click(`button[aria-label^="Want one ${NAME[need[0]]}"]`)

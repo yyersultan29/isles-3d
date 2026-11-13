@@ -772,6 +772,38 @@ Steps:
   - 0 console errors.
 - Screenshots and JSON are in `screenshots/milestones/g6.6/`.
 
+**G6.7 result (2026-11-13): exit check. Not ticked yet; open items below.**
+- **Trade button.** It is labelled "Trade" (it opens bank and player trading). The drivers find it by `data-trade-button`, not by its label.
+- **Audit (`scripts/g6-audit.mjs`)** at 1440×900, 390×844 and 844×390 (landscape phone):
+  - axe shows 0 violations on the build rows (×N and trade-for-build), the trade panel for a build, pay options, an open offer and Help.
+  - Every panel lies fully on screen. Help overflowed the landscape screen by 13 px and now has a height cap and scrolls.
+- **Keyboard-only flows** at all three sizes: Tab, Space, Enter, arrows and shortcuts, with no mouse and no scripted focus.
+  - Bank trade, then road: 4 keys (R, Enter, arrow, Enter).
+  - Two roads: 3 + 2 keys.
+  - Player trade: 12 keys, Tabs included; the panel closes afterwards.
+- **`ux-flows` against the G6.0 baseline:**
+
+  | Flow | Desktop | Phone | Target | |
+  |---|---|---|---|---|
+  | Bank trade, then road | 6 → 3 | 8 → 4 | 3 | desktop met; **phone one over** |
+  | Second road | 2 → 1 | 3 → 1 | 1 | met |
+  | Player trade | 6 → 4, panel stays → closes | 6 → 4 | 4, panel closed | met |
+  | City paid with two bank trades | 3 | 4 | — | new |
+
+  The phone's extra tap opens the build popover. Removing it needs a change to the phone dock (e.g. a trade-for-build button outside the popover), which is a HUD layout decision for the owner.
+- **Regressions:**
+  - 262 tests pass and the build passes.
+  - Hot-seat desktop seed 2024: turn 194, 939 actions, 195 pass screens, 0 rejections, 0 hand mismatches.
+  - Hot-seat phone 390×844 seed 77: turn 272, 1,249 actions, 279 pass screens. Exactly the G4 exit game, 0 rejections, 0 hand mismatches.
+  - Online seed 7: turn 115, 619 actions, 3 trade-then-build moves, 0 rejections, 0 hand mismatches, no live controls out of turn.
+  - `hand-trade.mjs` and `shortcuts.mjs` at both sizes, and the phone build popover over the trade panel, all pass. 0 console errors throughout.
+- **Open before G6 is done:**
+  1. The phone target for bank-then-road (4, not 3). The owner's decision (2026-11-13): phones are not a priority for now, so the dock stays; revisit later.
+  2. Deploy the site (`npm run deploy` force-pushes gh-pages), only with the owner's approval. The server needs no redeploy: G6 changed only the client.
+  3. The owner reviews the new trade and build flow by playing.
+  4. Not done from the step text: the hand stays in the dock below the actions and the trade panel stays a panel above the dock; neither was moved into a new bottom-sheet layout, which would be a HUD redesign.
+- Screenshots and JSON are in `screenshots/milestones/g6.7/`.
+
 ## 6. Suggested code organization (adapt to actual repo)
 
 ```text
@@ -823,7 +855,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
-| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, G6.6 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
+| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
 
 ## 9. How to instruct Claude Code
 
@@ -831,4 +863,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G6.7: phone, accessibility and exit check (compact flows, axe on the new panels, keyboard-only flows, `ux-flows` against the baseline, regressions; deploy only with the owner's approval).
+**Recommended next action:** the owner decides the phone dock question and approves the deploy, then plays the new trade and build flow; G6 is marked done after that review.
