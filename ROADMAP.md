@@ -581,7 +581,7 @@ The "now" numbers are the G6.0 measurement. The first estimate of 7 for the bank
 Steps:
 
 - [x] **G6.0 Baseline.** A script (`scripts/ux-flows.mjs`) plays the three flows above through the UI on the standard-fixed board and records clicks and panels. Time is not recorded: a script's timing says nothing about a person's. Desktop and phone screenshots of the build menu and both trade tabs give the before picture.
-- [ ] **G6.1 Trade and build logic, no UI** (pure functions in `gameView.ts` with unit tests):
+- [x] **G6.1 Trade and build logic, no UI** (pure functions in `src/ui/tradePlan.ts`, beside `gameView.ts`, with unit tests):
   - `bankQuote(bank, give, want)`: whether a give/want pair is one legal bank trade, at which rate and count. The engine's `BANK_TRADE` is one resource for one resource; mixed bank trades are left out.
   - `payOptions(bank, want)`: every way to pay for a wanted card at the player's rates (2:1, 3:1, 4:1), cheapest first.
   - `shortfall(state, kind)`: the cards missing for a build, plus a filled-in trade draft that covers them when the bank can.
@@ -630,6 +630,20 @@ Steps:
 - **Phone (390×844):** 8, 3 + 3, and 6.
 - **Phone bug found.** While the trade panel is open, the Build button can't be tapped: the panel's wrapper intercepts the tap. The trade panel has to be closed first, and the build popover costs one more tap every time. G6.3/G6.7 must fix it.
 - 0 console errors. The before screenshots (both trade tabs, an open offer, the phone overlap) and the JSON results are in `screenshots/milestones/g6.0/`.
+
+**G6.1 result (2026-11-13):** `src/ui/tradePlan.ts`, pure and engine-checked. No UI changes yet.
+- **`bankQuote(state, give, want, me)`.** Ok exactly when the draft is one kind at the player's rate for one other kind, e.g. "4 wood → 1 brick (4:1)". Otherwise it names what to change: rate, mixed kinds, not enough cards, bank empty, not your turn, roll first.
+- **`payOptions(state, want, count, me)`.** Every way to pay the bank, ordered by rate, then the biggest pile, then the usual order. Port rates are labelled "(port)".
+- **`shortfall(state, kind, me)`.** Returns the missing cards and a greedy list of bank trades that pays from spare cards only (the build's own cards are never spent), plus the same as one give/want draft. `covered` is decided by applying the trades and asking the engine whether the build is then legal: there must be a spot, a piece, a card in the deck.
+- **`affordable(state, kind, player)`.** How many the hand pays for, capped by pieces left (or by the deck).
+- **Tests:** 9 new (242 → 251).
+  - Fixtures: rates and ports, refusals, the road keeping its own wood, a city paid from two piles, no settlement to upgrade.
+  - A check over three whole bot games (more than 500 action positions), against the engine at every position:
+    - each exact single-kind draft is ok exactly when `validate` accepts the trade;
+    - pay options are exactly the engine's legal bank trades for that card;
+    - each covered plan applies trade by trade and leaves the build legal without spending its own cards.
+  - Two deliberate bugs were planted: dropping the bank-stock check and not spending used cards. The first failed 2 tests at once. The second at first slipped through, because an over-spending plan only shows up as "not covered". The two-pile fixture was added for it and now fails on it.
+- **Limit.** The plan is greedy, one missing card at a time. A cleverer mix might cover a rare hand it calls not covered; it never claims a cover that the engine refuses.
 
 ## 6. Suggested code organization (adapt to actual repo)
 
@@ -682,7 +696,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
-| G6 — Fast trade and build | In progress | `981cdb6`, G6.0 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
+| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, G6.1 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
 
 ## 9. How to instruct Claude Code
 
@@ -690,4 +704,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G6.1: trade and build logic as pure functions with unit tests (no UI yet).
+**Recommended next action:** G6.2: a clickable hand (cards add to the trade draft and open the trade panel).
