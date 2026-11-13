@@ -317,9 +317,9 @@ Steps (each verified and reviewed before the next):
 - [x] G5.6 Hardening: rate limits, logging, error handling, accessibility QA.
   - [x] G5.6a Server: rate and connection limits, room cleanup, Origin allowlist, structured logs, contained failures.
   - [x] G5.6b Client: clear messages for refused or full rooms and dropped frames; accessibility QA of the online screens.
-- [ ] G5.7 Hosting decision, deployment and a load test.
+- [x] G5.7 Hosting decision, deployment and a load test.
   - [x] G5.7a Ready for Render Free: blueprint, proxy-aware limits, keep-alive, wake-up wait, build-time server address, load-test tool.
-  - [ ] G5.7b Live: the Render service, the site deployed against it, and a load test on the real host.
+  - [x] G5.7b Live: the Render service, the site deployed against it, and a load test on the real host.
 
 **G5.1 result (2026-11-12):** `src/net/protocol.ts`, `src/server/room.ts` and 8 tests in `src/server/__tests__/room.test.ts`, 183 tests in total.
 - Covered: envelope rejection, seats, tokens and rejoin, the lobby broadcast, the start rules, and wrong-seat and malformed intents (rejected to the sender only, state unchanged). Also covered: spectators cannot act, and a retried `clientSeq` is applied once.
@@ -525,6 +525,24 @@ Steps (each verified and reviewed before the next):
   - Screenshots are in `screenshots/milestones/g5.7/`.
 - **Needs the owner (G5.7b).** Create the Render service from the blueprint; my side can't create accounts. Then deploy the site against its address and run the load test on the real host, within its per-address limits.
 
+**G5.7b result (2026-11-13):** online play is live, for free.
+- **Server.** The first Render build failed: `npm ci` for the whole project died in npm ("Exit handler never called!"), most likely out of memory on the free build machine.
+  - `scripts/build-server.sh` now installs only esbuild and ws and bundles the server into `server-dist/main.mjs`, started with plain `node`.
+  - In a clean clone it builds in 1.6 s using 137 MB.
+  - A test keeps its pinned versions equal to the project's.
+  - Render built it, and `https://isles-3d-server.onrender.com/health` answers in about 0.2 s. A foreign Origin gets 403.
+- **Site.** `GAME_SERVER=isles-3d-server.onrender.com npm run deploy`. On `https://yyersultan29.github.io/isles-3d/?online` a room was created in 4.7 s.
+  - The invite link has no `&server=`. Four tabs joined, the host picked Fast, and the game started in every tab.
+  - The banner counted down ("· 0:28"), each tab named its seat, and there were 0 console errors.
+- **Load test on the live server** (`scripts/load-test.mts`, 5 rooms, 25 sockets, a 300 ms pause per move, 8 minutes):
+  - 3,723 moves; 4 games finished, and the fifth was still running at the cutoff because of the bots' pace.
+  - 0 rate-limit notices and 0 server errors.
+  - Round trip: p50 197 ms, p95 475 ms, p99 837 ms, max 1.9 s.
+  - 20 refusals (0.5%): bots acting on a view that was already stale while updates were in flight, not server faults.
+  - Warm HTTPS requests from this machine take about 120 ms, so roughly half the round trip is network, the rest the 0.1-CPU free instance.
+  - **The §23 target (p95 < 200 ms) is not met on the free plan.** Moves feel slightly delayed but the game plays.
+- **Open.** The service's DNS name points at `gcp-us-west1` although `render.yaml` asks for Frankfurt; the owner is checking the region in the dashboard. A region can't be changed in place: if it is Oregon, recreating the service in Frankfurt should cut the network part. Rooms end when the free service sleeps or redeploys.
+
 ---
 
 ## 6. Suggested code organization (adapt to actual repo)
@@ -577,7 +595,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
-| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, G5.7a | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7a ready for Render Free; `GAME_DESIGN.md` v1.2 |
+| G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 
 ## 9. How to instruct Claude Code
 
@@ -585,4 +603,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G5.7b: create the Render service from `render.yaml`, deploy the site with `GAME_SERVER=<address> npm run deploy`, and load-test the live server.
+**Recommended next action:** confirm the Render region (recreate in Frankfurt if it is Oregon), play a real game with friends on the live site, then choose the next milestone.
