@@ -600,7 +600,7 @@ Steps:
   - With "want" chosen and "give" empty, the panel shows the `payOptions` as one-click trades, e.g. "3 wool (port)" or "4 wood".
   - The open-offer view (accept, decline, confirm with a player) stays, and the panel closes after a completed trade.
   - The drivers `playthrough.mjs` and `online-playthrough.mjs` move to the new panel.
-- [ ] **G6.4 Missing cards → trade → build.**
+- [x] **G6.4 Missing cards → trade → build.**
   - A greyed-out build row shows the shortfall ("−1 brick") and becomes a button when the bank can cover it.
   - A click opens the trade panel with the draft filled in (`shortfall`). When that bank trade completes, the placement mode for the build starts by itself.
   - A trade started from the build menu returns to the build. Otherwise opening a panel still ends the placement, as now.
@@ -689,6 +689,33 @@ Steps:
 - **Known.** The Trade button is still labelled "Trade with the bank" (the drivers find it by that). It can be renamed to "Trade" with them in G6.6/G6.7.
 - Screenshots and JSON are in `screenshots/milestones/g6.3/`.
 
+**G6.4 result (2026-11-13):** a build row short of cards leads straight to the trade and back to the build.
+- **Rows.** A greyed-out row greys out the cost icons the hand lacks.
+  - When `shortfall` says bank trades cover them and the build is legal afterwards, the row stays a button and its arrow becomes a gold trade icon.
+  - Its label adds the plan, e.g. "Build Road: 1 wood, 1 brick (Need 1 more brick; trade 4 wood → 1 brick first)".
+- **Panel.** A click opens the trade panel with the plan as the draft. The status says "For a road: 4 wood → 1 brick", and a two-kind plan reads "For a city: 4 wool → 1 grain, 4 ore → 1 grain".
+  - **Bank** makes the plan's trades and then starts the placement. While the panel is open, the build goal is kept in the UI store (`setBuildGoal`).
+  - Editing the draft turns the panel back into a plain trade. Closing it, or the end of the turn, drops the goal.
+- **Development card.** After the trade the card is one click in the build menu; it is not bought automatically. Online the buy would be checked against the state from before the trade arrives, and refused.
+- **Online.** Each trade is checked against the state from before the first one, which is safe: the plan pays every trade from spare cards, so each is valid on its own, and the server applies them in order. The placement mode starts at once, and its spots appear when the update arrives.
+- A fully chosen give tile ("×4 of 4") no longer looks dimmed.
+- **Clicks (`ux-flows`, against G6.0):**
+
+  | Flow | Desktop | Phone | Target |
+  |---|---|---|---|
+  | Bank trade, then road | 6 → 3 | 8 → 4 | 3: **met on desktop**; the phone pays one tap to open the build popover (G6.7) |
+  | City paid with two bank trades | 3 | 4 | (new) |
+  | Second road | 2 | 3 | 1 (G6.5) |
+  | Player trade | 4, panel closes | 4, panel closes | met (G6.3) |
+
+- **Checks:**
+  - 256 tests pass (`tradesText`, `sameDraft`) and the build passes.
+  - `ux-flows` at both sizes: the placement starts right after the trade; 0 console errors.
+  - Hot-seat seed 2024 replays exactly (turn 194, 939 actions, 0 rejections). The hot-seat driver is unchanged.
+  - The online driver now sometimes takes a short settlement or city row instead of a plain bank trade. Full online game (seed 7): turn 205, 993 actions, 5 trade-then-build moves through the real server, 0 rejections, 0 hand mismatches, no live controls out of turn. The run doesn't record how many of those 5 plans had two trades. The two-trade case is checked locally (`ux-flows`, unit tests).
+  - A first online run stopped at turn 217 because editing the driver mid-run made Vite reload the pages (as in G5.4), not because of the app; it passed on rerun.
+- Screenshots and JSON are in `screenshots/milestones/g6.4/`.
+
 ## 6. Suggested code organization (adapt to actual repo)
 
 ```text
@@ -740,7 +767,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
-| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, G6.3 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
+| G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, G6.4 | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
 
 ## 9. How to instruct Claude Code
 
@@ -748,4 +775,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G6.4: missing cards → trade → build (a greyed-out build row shows the shortfall and opens the filled-in trade; the placement starts after the trade).
+**Recommended next action:** G6.5: building that keeps going (the placement stays on while another is affordable and legal; ×N on the build rows).

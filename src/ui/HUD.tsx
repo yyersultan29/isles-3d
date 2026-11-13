@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import gsap from 'gsap'
 import { Avatar, Brick, HexLogo, Logs, Ore, SheepIcon, WheatIcon } from './icons'
 import { BRAND_NAME } from '../brand'
@@ -12,9 +12,10 @@ import { usePrivacy } from './PassDevice'
 import { TurnClock } from './TurnClock'
 import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
-import { changeDraft, clearDraft, draftCovered, getDraft, setDevOpen, setPanel, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
+import { changeDraft, clearDraft, draftCovered, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
 import type { Resource } from '../game'
-import { useGameStore, useGameEvents } from '../store/GameProvider'
+import { useGame, useGameStore, useGameEvents } from '../store/GameProvider'
+import { shortfall, tradesText } from './tradePlan'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -381,13 +382,22 @@ const BUILD_NAME: Record<BuildKind, string> = { road: 'Road', settlement: 'Settl
  * Rows of the build menu (cost icons + arrow); shared by the desktop panel and the compact popover.
  * Road/settlement/city choose a placement on the board; the dev card is bought at once. A row is
  * enabled exactly when the engine allows that build; otherwise its tooltip says why.
+ * G6.4: a row short of cards greys out the missing ones; when bank trades can cover them (and the
+ * build is legal afterwards) it stays a button that opens the trade panel with those trades filled
+ * in, and the trade then starts the placement.
  */
 export function BuildRows({ onChosen }: { onChosen?: () => void }) {
-  const { build, primary } = useGameView()
+  const { build, primary, me } = useGameView()
+  const s = useGame((x) => x)
   const store = useGameStore()
   const mode = usePlacementMode()
-  const choose = (kind: BuildKind) => {
-    if (kind === 'dev') {
+  const hidden = usePrivacy().covered
+  const plans = useMemo(() => Object.fromEntries(build.map((b) => [b.kind, b.enabled || hidden ? null : shortfall(s, b.kind, me)])), [s, me, build, hidden])
+  const choose = (kind: BuildKind, enabled: boolean) => {
+    const plan = plans[kind]
+    if (!enabled) {
+      if (plan?.covered) { setDraft(plan.draft); setTradeOpen(true); setBuildGoal(kind) }
+    } else if (kind === 'dev') {
       if (primary.player) store.dispatch(primary.player, { type: 'BUY_DEV' })
     } else setPlacementMode(mode === kind ? null : kind)
     onChosen?.()
@@ -396,23 +406,31 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
     <>
       {build.map(({ kind, enabled, reason, cost }) => {
         const selected = mode === kind
-        const label = `${kind === 'dev' ? 'Buy' : 'Build'} ${BUILD_NAME[kind]}: ${costText(cost)}${reason ? ` (${reason})` : ''}`
+        const plan = plans[kind]
+        const tradable = !enabled && !!plan?.covered && plan.trades.length > 0
+        const via = tradable && primary.player ? `; trade ${tradesText(s, primary.player, plan!.trades)} first` : ''
+        const label = `${kind === 'dev' ? 'Buy' : 'Build'} ${BUILD_NAME[kind]}: ${costText(cost)}${reason ? ` (${reason}${via})` : ''}`
         const icons = (Object.entries(cost) as [Resource, number][]).flatMap(([r, n]) => Array.from({ length: n }, (_, k) => [r, k] as const))
+        // the last `missing` icons of a kind are the cards the hand lacks
+        const lacks = (r: Resource, k: number) => !!plan && k >= (cost[r] ?? 0) - (plan.missing[r] ?? 0)
         return (
           <button
             key={kind}
             aria-label={label}
             aria-pressed={kind === 'dev' ? undefined : selected}
             title={label}
-            disabled={!enabled}
-            onClick={() => choose(kind)}
+            disabled={!enabled && !tradable}
+            data-trade-for={tradable ? kind : undefined}
+            onClick={() => choose(kind, enabled)}
             className={`group flex h-[46px] w-full items-center gap-[12px] rounded-[8px] border-b border-white/5 px-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : ''} ${focusRing}`}
           >
             <span aria-hidden className="w-[28px]">{BUILD_ICON[kind]}</span>
             <span aria-hidden className="flex flex-1 items-center gap-[2px]">
-              {icons.map(([r, k]) => { const I = RES_ICON[r]; return <span key={r + k} className="block h-[24px] w-[28px] [&>svg]:h-full [&>svg]:w-full"><I /></span> })}
+              {icons.map(([r, k]) => { const I = RES_ICON[r]; return <span key={r + k} className={`block h-[24px] w-[28px] [&>svg]:h-full [&>svg]:w-full ${lacks(r, k) ? 'opacity-30 grayscale' : ''}`}><I /></span> })}
             </span>
-            <span aria-hidden className="text-[#ece8e0] transition-transform group-hover:translate-x-[2px]"><Arrow /></span>
+            {tradable
+              ? <span aria-hidden className="grid h-[26px] w-[26px] place-items-center rounded-full bg-[#f2b544]/20 text-[#f2b544] ring-1 ring-[#f2b544]/60"><TradeIco size={16} /></span>
+              : <span aria-hidden className="text-[#ece8e0] transition-transform group-hover:translate-x-[2px]"><Arrow /></span>}
           </button>
         )
       })}

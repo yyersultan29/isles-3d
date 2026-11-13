@@ -146,3 +146,13 @@ export function affordable(s: GameState, kind: BuildKind, p: PlayerId): number {
   const pieces = kind === 'road' ? pl.pieces.roads : kind === 'settlement' ? pl.pieces.settlements : kind === 'city' ? pl.pieces.cities : s.deck.length
   return Math.max(0, Math.min(byCards, pieces))
 }
+
+/** "4 wood → 1 brick" for each trade of a plan, at the player's rates. */
+export function tradesText(s: GameState, p: PlayerId, trades: BankTrade[]): string {
+  return trades.map((t) => `${t.count * tradeRate(s, p, t.give)} ${NAME[t.give]} → ${t.count} ${NAME[t.get]}`).join(', ')
+}
+
+/** Whether two drafts hold the same cards on each side. */
+export function sameDraft(a: { give: Counts; want: Counts }, b: { give: Counts; want: Counts }): boolean {
+  return RESOURCE_ORDER.every((r) => (a.give[r] ?? 0) === (b.give[r] ?? 0) && (a.want[r] ?? 0) === (b.want[r] ?? 0))
+}

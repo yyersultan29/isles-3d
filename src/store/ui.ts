@@ -40,6 +40,7 @@ const panelListeners = new Set<() => void>()
 export function setPanel(v: Panel) {
   if (v === panel) return
   panel = v
+  if (v !== 'trade') setBuildGoal(null) // a trade for a build ends with its panel
   if (v) setPlacementMode(null) // a board choice and a panel never compete
   for (const l of [...panelListeners]) l()
 }
@@ -113,5 +114,12 @@ export const clearDraft = () => setDraft(EMPTY)
 export const getDraft = () => draft
 export const changeDraft = (side: 'give' | 'want', r: Resource, n: number, max?: number) => setDraft(draftAdd(draft, side, r, n, max))
 
+// G6.4: the build a trade was started for (from a build row): when the draft is still that build's
+// plan, the bank trade starts the placement (or leaves the card ready to buy) afterwards
+let buildGoal: 'road' | 'settlement' | 'city' | 'dev' | null = null
+export function setBuildGoal(k: typeof buildGoal) { if (k !== buildGoal) { buildGoal = k; emitDraft() } }
+export const getBuildGoal = () => buildGoal
+
 const subscribeDraft = (l: () => void) => { draftListeners.add(l); return () => { draftListeners.delete(l) } }
 export const useTradeDraft = (): TradeDraft => useSyncExternalStore(subscribeDraft, () => draft)
+export const useBuildGoal = () => useSyncExternalStore(subscribeDraft, () => buildGoal)

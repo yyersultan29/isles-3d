@@ -128,6 +128,13 @@ while (stats.steps++ < 20000) {
             const give = RES.filter((r) => s.res[r] > 0).sort((a, b) => s.res[b] - s.res[a])[0]; const want = RES.filter((r) => r !== give)[Math.floor(rand() * 4)]
             await click(p, 'button[aria-label^="Trade with the bank"]')
             await click(p, `button[aria-label^="Give one ${NAME[give]}"]`); await click(p, `button[aria-label^="Want one ${NAME[want]}"]`); await click(p, 'button[aria-label="Offer to players"]'); did('propose')
+          } else if (L.includes('BANK_TRADE') && turnMemo.bank < 1 && await exists(p, 'button[data-trade-for="city"], button[data-trade-for="settlement"]')) {
+            // G6.4: a build row short of cards opens the trade with them filled in; the bank trade
+            // (one or more trades, sent back to back) starts the placement
+            turnMemo.bank++
+            if (await exists(p, '[data-build-toggle]')) { await p.click('[data-build-toggle]'); await p.waitForTimeout(50) }
+            await click(p, 'button[data-trade-for="city"], button[data-trade-for="settlement"]')
+            await click(p, 'button[aria-label^="Bank trade, then build the"]'); await boardPick(p); did('tradeThenBuild')
           } else if (L.includes('BANK_TRADE') && turnMemo.bank < 1) {
             turnMemo.bank++
             const give = RES.filter((r) => s.res[r] >= 2).sort((a, b) => s.res[b] - s.res[a])[0]

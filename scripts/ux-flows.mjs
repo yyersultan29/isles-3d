@@ -9,6 +9,8 @@
 // intended. The flows are written against the current UI; G6 steps update them alongside the UI.
 // G6.3: one trade panel (want a card, pay the bank in one click; offers start from the hand), and
 // the phone build popover opens over an open trade panel instead of under it.
+// G6.4: a build row short of cards opens the trade with the missing cards filled in; the bank trade
+// then starts the placement. Position conditions also get the trade planner (`tp`).
 import { chromium } from 'playwright-core'
 import { mkdirSync, writeFileSync } from 'node:fs'
 const [W, H] = [Number(process.argv[2] ?? 1440), Number(process.argv[3] ?? 900)]
@@ -27,7 +29,8 @@ const out = { viewport: `${W}x${H}`, flows: {}, errors }
 async function position(cond) {
   return p.evaluate(async (condSrc) => {
     const g = await import('/src/game/index.ts')
-    const cond = new Function('g', 's', 'p', 'me', `return (${condSrc})(g, s, p, me)`)
+    const tp = await import('/src/ui/tradePlan.ts')
+    const cond = new Function('g', 's', 'p', 'me', 'tp', `return (${condSrc})(g, s, p, me, tp)`)
     const store = window.__islesStore
     const settings = store.getState().settings
     for (let seed = 1; seed < 400; seed++) {
@@ -38,7 +41,7 @@ async function position(cond) {
       for (let step = 0; step < 3000 && s.phase.kind !== 'gameOver'; step++) {
         const who = s.phase.kind === 'discard' ? s.order.find((x) => s.phase.pending[x]) : s.order[s.active]
         const me = s.players.find((x) => x.id === who)
-        if (s.phase.kind === 'actions' && cond(g, s, who, me)) {
+        if (s.phase.kind === 'actions' && cond(g, s, who, me, tp)) {
           store.load({ schemaVersion: 1, engineVersion: g.ENGINE_VERSION, settings: s.settings, actions: log })
           return { seed, step, who, res: me.resources }
         }
@@ -81,6 +84,8 @@ const buildRow = async (prefix) => {
   if (compact && !(await p.$('#compact-build'))) await tap('[data-build-toggle]')
   await tap(`button[aria-label^="${prefix}"]`)
 }
+/** the build row's shortfall button (G6.4): on a phone the build popover opens first */
+const shortRow = async (prefix) => { if (compact && !(await p.$('#compact-build'))) await tap('[data-build-toggle]'); await tap(`button[data-trade-for][aria-label^="${prefix}"]`) }
 const openTrade = () => tap('button[aria-label^="Trade with the bank"]')
 const begin = async (cond) => { const pos = await position(cond); if (!pos) throw new Error('no position'); await p.waitForTimeout(600); await unpass(); clicks = 0; others = 0; panels.clear(); return pos }
 
@@ -90,15 +95,26 @@ const begin = async (cond) => { const pos = await position(cond); if (!pos) thro
     (() => { const t = g.apply(s, p, { type: 'BANK_TRADE', give: 'lumber', get: 'brick', count: 1 }); return t.ok && g.legalActions(t.state, p).some((a) => a.type === 'BUILD_ROAD') })())
   const before = await snap()
   await p.screenshot({ path: `${D}/1-start.png` })
-  await openTrade()
-  await p.screenshot({ path: `${D}/1-trade-open.png` })
-  await tap('button[aria-label^="Want one brick"]')
-  await p.screenshot({ path: `${D}/1-pay-options.png` })
-  await tap('[aria-label="Pay the bank"] button[aria-label^="Pay 4 wood for"]') // the trade closes the panel
-  await buildRow('Build Road')
+  await shortRow('Build Road') // opens the trade with 4 wood → 1 brick filled in
+  await p.screenshot({ path: `${D}/1-trade-for-road.png` })
+  await tap('button[aria-label^="Bank trade, then build the road"]') // the trade starts the road placement
+  out.placingAfterTrade = !!(await p.$('[data-board-picker]'))
   await place()
   const after = await snap()
   out.flows.bankThenRoad = { clicks, others, panels: [...panels], ok: after.res.lumber === before.res.lumber - 5 && after.res.brick === 0 && after.actions === before.actions + 2, position: pos }
+}
+
+// ---- 1b. a city paid with two bank trades from the build row (G6.4)
+{
+  const pos = await begin((g, s, p, me, tp) => { const f = tp.shortfall(s, 'city'); return f.covered && f.trades.length >= 2 })
+  const before = await snap()
+  await shortRow('Build City')
+  await p.screenshot({ path: `${D}/1b-trade-for-city.png` })
+  out.cityPlanText = await p.$eval('#trade-body [aria-live]', (e) => e.textContent)
+  await tap('button[aria-label^="Bank trade, then build the city"]')
+  await place()
+  const after = await snap()
+  out.flows.cityTwoTrades = { clicks, panels: [...panels], ok: after.actions >= before.actions + 3 && !after.trade, position: pos }
 }
 
 // ---- 2. two roads in a row

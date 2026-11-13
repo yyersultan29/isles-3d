@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { botGame, fixture } from '../../game/__tests__/helpers'
 import { COSTS, RESOURCE_ORDER, apply, legalActions, tradeRate, validate, type GameState, type Resource, type VertexId } from '../../game'
-import { affordable, bankQuote, payOptions, shortfall } from '../tradePlan'
+import { affordable, bankQuote, payOptions, sameDraft, shortfall, tradesText } from '../tradePlan'
 import type { BuildKind } from '../gameView'
 
 /** a settlement for p1 away from every port, plus a free edge next to it */
@@ -133,5 +133,16 @@ describe('agreement with the engine over whole bot games', () => {
       })
     }
     expect(checked).toBeGreaterThan(500)
+  })
+})
+
+describe('tradesText and sameDraft (G6.4)', () => {
+  it('describes a plan at the player’s rates and compares drafts side by side', () => {
+    const s = fixture({ buildings: [[HOME, 'p1']], hands: { p1: { grain: 2, lumber: 8, wool: 4 } } })
+    const f = shortfall(s, 'city')
+    expect(tradesText(s, 'p1', f.trades)).toBe('8 wood → 2 ore, 4 wool → 1 ore')
+    expect(sameDraft(f.draft, { give: { wool: 4, lumber: 8 }, want: { ore: 3 } })).toBe(true)
+    expect(sameDraft(f.draft, { give: { wool: 4, lumber: 8 }, want: { ore: 2 } })).toBe(false)
+    expect(sameDraft(f.draft, { give: { wool: 4, lumber: 8, brick: 0 }, want: { ore: 3 } })).toBe(true)
   })
 })

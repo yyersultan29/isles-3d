@@ -13,9 +13,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
 import { RESOURCES, focusRing, panel } from './HUD'
 import { SEATS, proposeCheck, useGameView, type Counts } from './gameView'
-import { bankQuote, payOptions } from './tradePlan'
+import { bankQuote, payOptions, sameDraft, shortfall, tradesText } from './tradePlan'
 import { useGame, useGameStore } from '../store/GameProvider'
-import { changeDraft, clearDraft, setTradeOpen, useTradeDraft } from '../store/ui'
+import { changeDraft, clearDraft, setBuildGoal, setPlacementMode, setTradeOpen, useBuildGoal, useTradeDraft } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 
 export const NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
@@ -41,7 +41,7 @@ export function Tile({ res, top, corner, selected, disabled, label, onClick, com
   const r = RESOURCES.find((x) => x.key === res)!
   return (
     <button ref={btnRef} aria-label={label} title={label} aria-pressed={selected} disabled={disabled} onClick={onClick}
-      className={`relative h-[60px] [@media(max-height:560px)]:h-[46px] ${tileW(compact)} overflow-hidden rounded-[8px] bg-gradient-to-b ${r.bg} transition-[transform,opacity] disabled:cursor-not-allowed disabled:opacity-35 ${selected ? 'ring-[3px] ring-[#ffd76a] -translate-y-[2px]' : 'ring-1 ring-[#f2cf84]/50 hover:-translate-y-[1px]'} ${focusRing}`}>
+      className={`relative h-[60px] [@media(max-height:560px)]:h-[46px] ${tileW(compact)} overflow-hidden rounded-[8px] bg-gradient-to-b ${r.bg} transition-[transform,opacity] disabled:cursor-not-allowed ${selected ? '' : 'disabled:opacity-35'} ${selected ? 'ring-[3px] ring-[#ffd76a] -translate-y-[2px]' : 'ring-1 ring-[#f2cf84]/50 hover:-translate-y-[1px]'} ${focusRing}`}>
       <r.Icon aria-hidden className="absolute left-1/2 top-[55%] w-[70%] -translate-x-1/2 [@media(max-height:560px)]:w-[52%] -translate-y-1/2" />
       {top && <span aria-hidden className="absolute left-[3px] top-[3px] rounded-[4px] bg-[#1d1a16]/85 px-[4px] text-[12px] font-bold text-white">{top}</span>}
       {corner && <span aria-hidden className="absolute bottom-[3px] right-[3px] rounded-[4px] bg-[#1d1a16]/85 px-[4px] text-[11px] font-semibold text-[#f2cf84]">{corner}</span>}
@@ -86,7 +86,13 @@ function ComposePanel({ compact }: { compact: boolean }) {
   const act = useAct()
   // the draft lives in the UI store (G6.2): the hand fills it, and it survives closing the panel;
   // it is cleared at the end of the turn and when the hand no longer holds it (usePlacementAutoReset)
-  const { give, want } = useTradeDraft()
+  const draft = useTradeDraft()
+  const { give, want } = draft
+  // G6.4: opened from a build row, and the draft is still that build's plan: the Bank button makes
+  // the plan's trades (one or more) and then starts the placement
+  const goal = useBuildGoal()
+  const plan = goal ? shortfall(s, goal, me) : null
+  const forBuild = goal && plan?.covered && plan.trades.length && sameDraft(plan.draft, draft) ? { kind: goal, trades: plan.trades, text: tradesText(s, bank.player, plan.trades) } : null
   const [to, setTo] = useState<PlayerId[]>(opponents)
   const first = useRef<HTMLButtonElement>(null)
   useEffect(() => { focusInto(first.current) }, [])
@@ -99,12 +105,22 @@ function ComposePanel({ compact }: { compact: boolean }) {
   const giving = RESOURCE_ORDER.some((r) => give[r])
   const pay = !giving && wanted.length === 1 ? payOptions(s, wanted[0], want[wanted[0]]!, me) : []
   const bankTrade = (a: Action) => { if (act(bank.player, a)) { clearDraft(); setTradeOpen(false) } }
+  const BUILD_WORD = { road: 'road', settlement: 'settlement', city: 'city', dev: 'development card' } as const
+  const tradeThenBuild = () => {
+    if (!forBuild) return
+    // online each trade is checked against the state before the first one; the plan pays every
+    // trade from spare cards, so each is valid on its own and the server applies them in order
+    for (const t of forBuild.trades) if (!act(bank.player, t)) return
+    clearDraft()
+    if (forBuild.kind === 'dev') { setTradeOpen(false); return } // the card is then one click in the build menu
+    setBuildGoal(null); setPlacementMode(forBuild.kind) // also closes the panel
+  }
   const offer = () => { if (!offerReason && act(hand.owner, { type: 'PROPOSE_TRADE', offer: give, request: want, to: to.length === opponents.length ? undefined : to })) clearDraft() }
   const firstHeld = RESOURCE_ORDER.find((r) => hand.counts[r] > 0)
 
-  const status = quote.ok ? quote.text : !offerReason ? `Offer ${text(give)} for ${text(want)}` : pay.length ? `Pay the bank, or add cards you give` : offerReason
+  const status = forBuild ? `For a ${BUILD_WORD[forBuild.kind]}: ${forBuild.text}` : quote.ok ? quote.text : !offerReason ? `Offer ${text(give)} for ${text(want)}` : pay.length ? `Pay the bank, or add cards you give` : offerReason
   // why the bank can't take this draft, when players could
-  const bankNote = !quote.ok && giving && wanted.length && !offerReason ? `Bank: ${quote.reason}` : ''
+  const bankNote = !forBuild && !quote.ok && giving && wanted.length && !offerReason ? `Bank: ${quote.reason}` : ''
 
   return (
     <>
@@ -150,8 +166,11 @@ function ComposePanel({ compact }: { compact: boolean }) {
           {status}{bankNote && <span className="block text-[12px] font-normal text-[#a9a49b]">{bankNote}</span>}
         </p>
         <div className="flex shrink-0 gap-[6px]">
-          <button onClick={() => quote.ok && bankTrade(quote.action)} disabled={!quote.ok} title={quote.ok ? quote.text : quote.reason}
-            aria-label={quote.ok ? `Bank trade: ${quote.text}` : `Bank trade unavailable: ${quote.reason}`} className={`${gold()} !px-[14px]`}>Bank</button>
+          {forBuild
+            ? <button onClick={tradeThenBuild} title={forBuild.text} className={`${gold()} !px-[14px]`}
+                aria-label={`${forBuild.kind === 'dev' ? 'Bank trade for a development card' : `Bank trade, then build the ${BUILD_WORD[forBuild.kind]}`}: ${forBuild.text}`}>Bank</button>
+            : <button onClick={() => quote.ok && bankTrade(quote.action)} disabled={!quote.ok} title={quote.ok ? quote.text : quote.reason}
+                aria-label={quote.ok ? `Bank trade: ${quote.text}` : `Bank trade unavailable: ${quote.reason}`} className={`${gold()} !px-[14px]`}>Bank</button>}
           <button onClick={offer} disabled={!!offerReason} title={offerReason ?? undefined}
             aria-label={offerReason ? `Offer to players (${offerReason})` : 'Offer to players'} className={`${gold()} !px-[14px]`}>Offer</button>
         </div>
