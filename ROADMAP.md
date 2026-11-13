@@ -799,10 +799,100 @@ Steps:
   - `hand-trade.mjs` and `shortcuts.mjs` at both sizes, and the phone build popover over the trade panel, all pass. 0 console errors throughout.
 - **Open before G6 is done:**
   1. The phone target for bank-then-road (4, not 3). The owner's decision (2026-11-13): phones are not a priority for now, so the dock stays; revisit later.
-  2. Deploy the site (`npm run deploy` force-pushes gh-pages), only with the owner's approval. The server needs no redeploy: G6 changed only the client.
+  2. ~~Deploy the site~~ **Done (2026-11-13, approved by the owner):** `1f7301f` deployed with `GAME_SERVER=isles-3d-server.onrender.com npm run deploy`. The live bundle has the new UI and the server address. A live smoke check shows the Trade button, Help with 7 keys, the R/S/C/D/T rows and 0 console errors (`screenshots/milestones/g6.7/live-help.png`). The server was not redeployed: G6 changed only the client.
   3. The owner reviews the new trade and build flow by playing.
   4. Not done from the step text: the hand stays in the dock below the actions and the trade panel stays a panel above the dock; neither was moved into a new bottom-sheet layout, which would be a HUD redesign.
 - Screenshots and JSON are in `screenshots/milestones/g6.7/`.
+
+### G7 — Clear state and next step (UX)
+
+**Why (2026-11-13):** `UX_PRODUCT_SPEC.md`, written by the owner, asks for the state and the next step to be visible before a click and the result right after it, with nothing hidden behind hover. The game's mechanics already work: this is UX only, and the engine, rules, protocol, saves and balance don't change.
+
+**Owner's decisions (2026-11-13), adapting the spec to G6:**
+1. **Trade modes.** Trade gets visible **Bank / ports** and **Players** modes over the one shared draft, not separate tabs that lose the draft. The mode is picked by how the panel was opened (a hand card → Players, a build row or the Trade button → Bank) and switched with one click. Each mode shows only its own parts and one main button: "Trade with the bank" or "Offer trade". G6 click counts must not rise.
+2. **Placement confirm.** A confirm step after choosing a spot (UX-2, UX-5) is for touch screens only, so desktop keeps one click per build. It belongs with the phone work below.
+3. **Phone.** Phones are not a priority for now (owner, 2026-11-13). The phone-only parts of the spec go to a later milestone (G8, below): 360×740, larger touch targets, the touch confirm, and the phone's bank-then-road target from G6. G7 must still work and fit at 390×844, checked by the existing scripts.
+4. **Placeholders.** The non-working Home, Game, Stats, Settings, Undo and Chat controls are removed from the visible HUD (UX-5). The layout keeps its balance, and the art direction is checked against the reference.
+
+**Already done in G6 and only to be kept:**
+- the clickable hand with ×N chosen cards;
+- missing cards → trade → build, with the build kept as the goal and the plan rechecked by the engine;
+- give/want zones, rate and result text, reasons under the buttons;
+- offer statuses, and a confirm that differs from proposing;
+- dev-card reasons as text.
+
+**Measured goal.** G7.0 records the baseline, and each step reruns it.
+
+| Measure | How it is checked | Target |
+|---|---|---|
+| Information only on hover | A script lists every disabled HUD control whose reason or cost is only in `title` or `aria-label`, not in visible text, at 1440×900 and 390×844 | 0 |
+| Hand change after a roll or trade | Visible on the hand cards themselves, not only in a toast | shown for ≥ 2 s on every change |
+| G6 flows | `ux-flows.mjs` | no more clicks than G6.7 (desktop 3 / 1 / 4, phone 4 / 1 / 4) |
+| Dev cards | A new script plays each type through the UI: buy, Knight, Road Building, Year of Plenty, Monopoly; refused cases too | every step names what to choose and how to cancel; clicks recorded |
+| Visible but dead controls | Count of clickable placeholders | 0 |
+
+**Rules for every step:** the same as G6.
+- Engine and rules unchanged; actions go through `dispatch` and `legalActions`; reasons come from `gameView` and `tradePlan`, never a second rule set.
+- Tests, build, and screenshots at 1440×900 and 390×844.
+- Hot-seat seed 2024 replays exactly, the phone seed 77 game too, and the online game passes.
+- Drivers move with the UI. Browser checks read UI state through `window.__islesUi`, never by importing modules.
+- Each step is reviewed and committed on its own.
+
+Steps:
+
+- [ ] **G7.0 Baseline and friction table.**
+  - Play the current flows through the UI on desktop and phone: resources after a roll, a bank and a port trade, a player offer, buying a card, and each card type, plus the refused cases. Record screenshots and clicks.
+  - Add the hover-only audit script.
+  - Write a compact table "screen / state → what the player wants → what's in the way → change", mapped to UX-1…UX-5. No code changes.
+- [ ] **G7.1 Build rows say what's missing (UX-2).**
+  - Each row shows its cost as "need / have" per resource, and the missing ones are marked by more than colour (a number and a mark).
+  - A disabled row says why in visible text ("Need 1 more brick", "No legal spot", "Roll the dice first").
+  - A row the bank can cover keeps the G6.4 button, labelled "Trade & build", with the trades in short form.
+  - The "Buy development card" row reads as a purchase.
+  - Desktop panel and phone popover.
+- [ ] **G7.2 The hand shows changes (UX-1).**
+  - After a roll, a trade, a build, a discard or a robbery, each changed card shows "+2" or "−1" on the card for about 2.5 s. A turn with nothing gained says so briefly ("No resources this roll").
+  - Zero piles stay readable (name and number, not just dimmed).
+  - On the player's first turn with a trade possible, a one-line hint says that tapping a card adds it to a trade. It is shown once per device.
+  - Only what privacy allows: in hot-seat, behind the pass screen, nothing.
+- [ ] **G7.3 Trade modes (UX-3).**
+  - Bank / ports and Players modes over the shared draft (decision 1).
+    - **Bank** shows the rates, the result before confirming ("3 wood → 1 brick (3:1)"), the one-click pay options (labelled with what they do) and "Trade with the bank".
+    - **Players** shows "You give / You want", the recipients, one result sentence and "Offer trade".
+  - The reason for a disabled main button sits next to it.
+  - After an offer, each recipient's status reads "Waiting", "Accepted" or "Declined". Confirming with an accepted player is clearly a separate final step.
+  - Closing the panel says that the draft is kept ("Your draft is kept until the end of the turn").
+  - Hot-seat privacy is unchanged.
+- [ ] **G7.4 Development cards: buy vs mine (UX-4).**
+  - The Build row "Buy a development card" (cost, need / have) is clearly separate from the "My cards" button and panel.
+  - After a purchase the owner sees the card they got and why it can't be played yet ("Bought this turn — playable from your next turn").
+  - The list groups the cards: "Can play", "Bought this turn", "Already played a card this turn", and the hidden victory point shown as a point, not as a card to play.
+- [ ] **G7.5 Development cards step by step (UX-4).**
+  - Knight, Road Building, Year of Plenty and Monopoly become short guided steps. Each step says what to choose (on the board or in the panel), what will happen and how to cancel before it applies.
+  - Road Building shows the free roads left, Year of Plenty the cards still to choose, Monopoly the chosen resource before confirming.
+  - Engine flow unchanged.
+- [ ] **G7.6 Phase as a command (UX-5, not phone-specific).**
+  - The phase line becomes a short instruction ("Choose a light spot on the board", "Place a road next to your settlement", "Roll the dice"), and the dice-side button never shows a bare "Place".
+  - In setup, Build, Trade and Dev Cards are visibly set back. In a normal turn the main action and its tools come first.
+  - Keyboard focus stays visible.
+- [ ] **G7.7 Remove placeholders (UX-5, decision 4).**
+  - Home, Game, Stats, Settings, Undo and Chat leave the visible HUD on desktop and phone.
+  - The freed space is rebalanced without moving the board framing or the camera, and checked against the reference.
+- [ ] **G7.8 Exit check.**
+  - Rerun G7.0's flows and audits on desktop and at 390×844, and compare with the baseline: hover-only information is 0, G6 click counts have not risen, every dev-card type has been played through the UI, and both the successful and the refused trade and card actions have been checked.
+  - axe and keyboard-only flows on the changed panels.
+  - Hot-seat desktop and phone replays, and the online game.
+  - Before/after screenshots.
+  - Deploy only with the owner's approval.
+
+### G8 — Phone play (later, after the owner asks)
+
+From `UX_PRODUCT_SPEC.md` UX-5 and the G6 open item:
+- 360×740 as well as 390×844, with no horizontal scroll;
+- larger touch targets for board spots and edges;
+- a touch-only confirm for placements (decision 2);
+- trade and dev panels that never cover their own buttons;
+- bank-then-road in 3 taps.
 
 ## 6. Suggested code organization (adapt to actual repo)
 
@@ -856,6 +946,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
+| G7 — Clear state and next step | Planned | — | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -863,4 +954,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** the owner decides the phone dock question and approves the deploy, then plays the new trade and build flow; G6 is marked done after that review.
+**Recommended next action:** G7.0: baseline of the current flows (resources, bank and port trades, player offers, every dev card, refused cases) and the hover-only audit, with the friction table; no code changes. In parallel the owner plays the deployed G6 flow, and G6 is marked done after that review.
