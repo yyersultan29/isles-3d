@@ -10,6 +10,11 @@ const [W, H, SEED] = [Number(process.argv[2] ?? 1440), Number(process.argv[3] ??
 const b = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] })
 const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 })
 const errors = []; p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 160)) }); p.on('pageerror', (e) => errors.push('pageerror ' + e.message))
+// page-level events (a reload, a renderer crash, a lost GPU context) are printed as they happen
+const t00 = Date.now(); const ev = (m) => console.log(`EVENT +${Math.round((Date.now() - t00) / 1000)}s ${m}`)
+p.on('framenavigated', (f) => { if (f === p.mainFrame()) ev('navigated ' + f.url()) })
+p.on('crash', () => ev('renderer crashed'))
+p.on('console', (m) => { if (/context|webgl|GPU/i.test(m.text())) ev('console ' + m.type() + ' ' + m.text().slice(0, 160)) })
 await p.goto(`http://localhost:5173/?seed=${SEED}`, { waitUntil: 'networkidle' }); await p.waitForSelector('canvas'); await p.waitForTimeout(4000)
 let rng = SEED; const rand = () => ((rng = (rng * 1103515245 + 12345) % 2147483648) / 2147483648)
 const NAME = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
@@ -25,7 +30,16 @@ const info = () => p.evaluate(async () => {
 const stats = { ui: {}, rejections: 0, handMismatch: 0, passScreens: 0, steps: 0 }
 const did = (k) => { stats.ui[k] = (stats.ui[k] ?? 0) + 1 }
 const exists = (sel) => p.$(sel).then((x) => !!x)
-const click = async (sel, t = 3000) => { const el = await p.waitForSelector(sel + ':not([disabled])', { timeout: t }); await el.click(); await p.waitForTimeout(60) }
+const click = async (sel, t = 3000) => {
+  const el = await p.waitForSelector(sel + ':not([disabled])', { timeout: t })
+  // a failed click leaves a screenshot and what covers the target, then fails as before
+  try { await el.click({ timeout: 10000 }) } catch (e) {
+    await p.screenshot({ path: `${D}/click-failed.png` })
+    console.log('CLICK FAILED', sel, JSON.stringify(await el.evaluate((x) => { const r = x.getBoundingClientRect(); const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return { box: [r.x, r.y, r.width, r.height], top: top?.outerHTML.slice(0, 200) } })))
+    throw e
+  }
+  await p.waitForTimeout(60)
+}
 const boardPick = async () => {
   await p.waitForSelector('[data-board-picker]', { timeout: 3000 })
   await p.focus('[data-board-picker]')

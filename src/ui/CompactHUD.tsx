@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { AwardBadges, BuildRows, HandCards, HandHint, DevButton, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
+import { AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
 import { useGameView } from './gameView'
 import { HelpButton } from './shortcuts'
 import { GameDialogs } from './Dialogs'
@@ -20,6 +20,7 @@ export function CompactHUD() {
   const [menu, setMenu] = useState(false)
   const [build, setBuild] = useState(false)
   const { seats } = useGameView()
+  const setup = useSetup() // G7.6: the tools step back in setup
   // short (landscape phone) screens: the seven dialogs sit over the disabled dock instead of
   // climbing over the top bar
   const short = useViewport().h < 560
@@ -106,6 +107,7 @@ export function CompactHUD() {
       {/* an open build popover sits above the dialogs: it rises over the dock, where the trade panel is (G6.3) */}
       <div className={`absolute inset-x-[8px] bottom-[8px] flex flex-col items-center gap-[8px] ${build ? 'z-[2]' : ''}`} style={{ height: COMPACT_SAFE.bottom - 8 }}>
         <HandHint compact className="absolute bottom-full mb-[8px] !text-[12.5px]" />
+        <SetupNote compact className="absolute bottom-full mb-[8px] !text-[12.5px]" />
         <div className="relative flex w-full max-w-[560px] items-center gap-[6px]">
           <button
             onClick={act}
@@ -135,7 +137,7 @@ export function CompactHUD() {
             aria-expanded={build}
             aria-controls="compact-build"
             onClick={() => { setBuild((v) => !v); setMenu(false) }}
-            className={`ml-auto flex h-[44px] shrink-0 items-center gap-[6px] rounded-[10px] px-[12px] font-display text-[17px] font-medium ${focusRing} ${panel}`}
+            className={`ml-auto flex h-[44px] shrink-0 items-center gap-[6px] rounded-[10px] px-[12px] font-display text-[17px] font-medium ${focusRing} ${panel} ${setBack(setup)}`}
           >
             Build
             <svg aria-hidden viewBox="0 0 24 24" className={`h-[16px] w-[16px] transition-transform ${build ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6" /></svg>

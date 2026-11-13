@@ -73,7 +73,8 @@ export function phaseText(s: GameState): string {
   switch (s.phase.kind) {
     case 'setup': {
       const round = s.phase.round === 1 ? 'first' : 'second'
-      return s.phase.step === 'settlement' ? `${who}: place your ${round} settlement` : `${who}: place a road next to it`
+      // G7.6: a command, naming what to look for on the board
+      return s.phase.step === 'settlement' ? `${who}: choose a light spot for your ${round} settlement` : `${who}: place a road next to your settlement`
     }
     case 'preRoll': return `${who}: roll the dice`
     case 'actions': return `${who}: build, trade or end your turn`
@@ -83,7 +84,7 @@ export function phaseText(s: GameState): string {
       return `Seven! Discard half: ${list}`
     }
     // G7.5: a card's steps say which card it is, what to pick and how many are left
-    case 'moveRobber': return s.phase.source === 'knight' ? `${who}: Knight: pick a tile for the robber` : `${who}: move the robber`
+    case 'moveRobber': return s.phase.source === 'knight' ? `${who}: Knight: pick a tile for the robber` : `${who}: move the robber to another tile`
     case 'steal': return `${who}: choose a player to rob`
     case 'roadBuilding': return `${who}: Road Building: pick an edge for a free road (${s.phase.remaining} left)`
     case 'gameOver': return `${SEATS[s.phase.winner].name} wins!`
@@ -103,7 +104,8 @@ export function primaryAction(s: GameState, me: Me = null): { label: string; sho
   if (s.phase.kind === 'preRoll' && legal.some((a) => a.type === 'ROLL')) return { label: 'Roll Dice', short: 'Roll', action: { type: 'ROLL' }, player }
   if (s.phase.kind === 'actions' && legal.some((a) => a.type === 'END_TURN')) return { label: 'End Turn', short: 'End', action: { type: 'END_TURN' }, player }
   // disabled hints: [desktop label, compact label]
-  const hint: Record<string, [string, string]> = { setup: ['Place on board', 'Place'], discard: ['Discarding…', 'Wait'], moveRobber: ['Move robber', 'Robber'], steal: ['Choose victim', 'Rob'], roadBuilding: ['Place roads', 'Roads'] }
+  // G7.6: never a bare "Place": the hint says where the action is
+  const hint: Record<string, [string, string]> = { setup: ['On the board', 'On board'], discard: ['Discarding…', 'Wait'], moveRobber: ['Move the robber', 'Robber'], steal: ['Pick who to rob', 'Rob'], roadBuilding: ['Free roads', 'Roads'] }
   const [label, short] = hint[s.phase.kind] ?? ['Wait', 'Wait']
   return { label, short, action: null, player }
 }
@@ -191,6 +193,7 @@ export function buildOptions(s: GameState, me: Me = null): BuildOption[] {
     if (!enabled) {
       const missing = RESOURCE_ORDER.filter((r) => pl.resources[r] < (cost[r] ?? 0))
       if (s.phase.kind === 'preRoll') reason = 'Roll the dice first'
+      else if (s.phase.kind === 'setup') reason = 'After setup' // G7.6
       else if (s.phase.kind !== 'actions') reason = 'Not now'
       else if (pieces[kind] === 0) reason = kind === 'dev' ? 'The deck is empty' : `No ${kind === 'city' ? 'cities' : kind + 's'} left`
       else if (missing.length) reason = `Need ${missing.map((r) => `${(cost[r] ?? 0) - pl.resources[r]} ${RES_NAME[r]}`).join(', ')}` // G7.4: short, so the rows fit above the dice

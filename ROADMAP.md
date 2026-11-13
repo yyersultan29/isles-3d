@@ -871,7 +871,7 @@ Steps:
   - Knight, Road Building, Year of Plenty and Monopoly become short guided steps. Each step says what to choose (on the board or in the panel), what will happen and how to cancel before it applies.
   - Road Building shows the free roads left, Year of Plenty the cards still to choose, Monopoly the chosen resource before confirming.
   - Engine flow unchanged.
-- [ ] **G7.6 Phase as a command (UX-5, not phone-specific).**
+- [x] **G7.6 Phase as a command (UX-5, not phone-specific).**
   - The phase line becomes a short instruction ("Choose a light spot on the board", "Place a road next to your settlement", "Roll the dice"), and the dice-side button never shows a bare "Place".
   - In setup, Build, Trade and Dev Cards are visibly set back. In a normal turn the main action and its tools come first.
   - Keyboard focus stays visible.
@@ -1032,6 +1032,30 @@ Steps:
   - Online, seed 7: 0 rejections or mismatches, 14 Knights and 2 Road Building cards played, no other hands shown.
 - Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.5/`. Not deployed.
 
+**G7.6 result (2026-11-13):** the phase as a command, and setup sets the tools back.
+- **Commands.** The phase line now reads:
+  - setup: "Red: choose a light spot for your first settlement", then "Red: place a road next to your settlement";
+  - a seven: "move the robber to another tile";
+  - a Knight: "Knight: pick a tile for the robber";
+  - free roads: "Road Building: pick an edge… (N left)".
+  - The dice-side hint never shows a bare "Place". It reads "On the board" (phone "On board"), "Move the robber", "Pick who to rob" or "Free roads".
+- **Setup.** The hand, Build, Trade and the cards button are dimmed with a filter, so the panels stay solid (an opacity version let the board show through). One visible line above the hand says why: "Setup: place on the board. Building, trading and cards start after it." (phone: "Building, trading and cards start after setup").
+  - The disabled Trade and cards buttons point to that line with `aria-describedby` instead of a "(Not now)" tooltip, and the build rows say "After setup".
+  - In a normal turn the main action (Roll / End Turn) and its tools were already first. Disabled controls aren't focusable, and focus rings are unchanged.
+- **Hover-only reasons** (`g7-baseline.mjs`): setup 7 → 0 desktop and 6 → 0 phone. All four audited states are now 0 at both sizes, which meets that G7 goal.
+- **Fixed during the step.** The first version called a hook after an early return in `SetupNote`, which blanked the app when setup ended. The audit run caught it before anything else ran on it.
+- **Checks.** `tsc -b`, 271 tests (new: setup command, "After setup", no bare "Place") and the build pass.
+  - `ux-flows` (3/1/4 desktop, 4/1/4 phone), `hand-trade`, `shortcuts`, `g7-hand`, `g7-dev` and the `g7-baseline` flows are unchanged: bank 3, port 3, Knight 4, Road Building 5, Year of Plenty 5, Monopoly 4.
+  - `g6-audit` (axe 0, fit at 3 sizes; keyboard 4/5/15) passes.
+  - The hot-seat desktop replay is exact: seed 2024, 194/939.
+  - Online, seed 7: turn 135, 702 actions, 0 rejections or mismatches, no other hands shown.
+- **Open item: the phone replay (seed 77, 390×844) is flaky.** It was exact (272/1249, 0 rejections, 0 hand mismatches, no console errors) in 2 runs and failed in 3, always after turn 120:
+  - twice a click on the pass screen's button never became "stable";
+  - once "execution context destroyed".
+  - None of the failures logged an app error, and Vite logged no reload during them. A later run with page-event logging (navigation, renderer crash, GPU messages) was exact and clean.
+  - The cause isn't known yet; long headless GPU sessions are a guess, not verified. The driver now logs page events and a screenshot with the covering element on a failed click, so the next failure will show more. To be settled in G7.8.
+- Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.6/`. Not deployed.
+
 
 ### G8 — Phone play (later, after the owner asks)
 
@@ -1094,7 +1118,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
-| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, G7.5 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, `038247e`, G7.6 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -1102,4 +1126,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G7.6: the phase as a command ("Choose a light spot on the board", "Roll the dice"), and in setup the Build, Trade and Dev tools set back. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
+**Recommended next action:** G7.7: remove the placeholders (Home, Game, Stats, Settings, Undo, Chat; Fullscreen stays), keeping the layout balanced. G7.8 then settles the flaky phone replay. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.

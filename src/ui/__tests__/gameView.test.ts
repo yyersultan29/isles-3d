@@ -18,7 +18,7 @@ describe('G4.4a HUD view', () => {
   it('phase text names who acts and what to do', () => {
     let s = newGame(2)
     const first = SEATS[s.order[0]].name
-    expect(phaseText(s)).toBe(`${first}: place your first settlement`)
+    expect(phaseText(s)).toBe(`${first}: choose a light spot for your first settlement`)
     s = playSetup(s)
     expect(phaseText(s)).toBe(`${SEATS[s.order[0]].name}: roll the dice`)
     expect(phaseText(fixture({ phase: { kind: 'discard', pending: { p2: 4, p4: 5 } } }))).toBe('Seven! Discard half: Blue 4, Orange 5')
@@ -150,9 +150,16 @@ describe('G4.4a HUD view', () => {
   it('G7.5: a card\'s board step names the card and what is left', () => {
     const name = SEATS[fixture().order[0]].name
     expect(phaseText(fixture({ phase: { kind: 'moveRobber', source: 'knight', resume: 'actions' } }))).toBe(`${name}: Knight: pick a tile for the robber`)
-    expect(phaseText(fixture({ phase: { kind: 'moveRobber', source: 'seven', resume: 'actions' } }))).toBe(`${name}: move the robber`)
+    expect(phaseText(fixture({ phase: { kind: 'moveRobber', source: 'seven', resume: 'actions' } }))).toBe(`${name}: move the robber to another tile`)
     expect(phaseText(fixture({ phase: { kind: 'roadBuilding', remaining: 2, resume: 'actions' } }))).toBe(`${name}: Road Building: pick an edge for a free road (2 left)`)
     expect(phaseText(fixture({ phase: { kind: 'roadBuilding', remaining: 1, resume: 'actions' } }))).toMatch(/\(1 left\)$/)
+  })
+
+  it('G7.6: setup is a command, and the build rows say they start after it', () => {
+    const s = fixture({ phase: { kind: 'setup', round: 1, step: 'road' } })
+    expect(phaseText(s)).toBe(`${SEATS[s.order[0]].name}: place a road next to your settlement`)
+    expect(buildOptions(s).every((o) => !o.enabled && o.reason === 'After setup')).toBe(true)
+    expect(primaryAction(s).label).not.toMatch(/^Place/)
   })
 
   it('G4.5d: final scores reveal VP cards and match the engine’s GAME_WON totals', () => {

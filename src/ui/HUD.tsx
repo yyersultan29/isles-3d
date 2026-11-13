@@ -305,6 +305,26 @@ function useHandDelta(counts: HandCounts, owner: PlayerId | null): { d: Partial<
 }
 
 /**
+ * G7.6: in setup the board is the only thing to do, so the tools (hand, Build, Trade, cards) are set
+ * back and this one visible line says why, instead of a "Not now" in each control's tooltip. The
+ * disabled Trade and cards buttons point to it with aria-describedby.
+ */
+export const SETUP_NOTE_ID = 'setup-note'
+export function useSetup() { return useGameView().phaseKind === 'setup' }
+/** Classes that set a tool back during setup (dimmed, still readable). */
+export const setBack = (on: boolean) => `transition-[filter] duration-300 ${on ? 'brightness-[.62] saturate-[.45]' : ''}` // no opacity: panels stay solid
+export function SetupNote({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
+  const setup = useSetup()
+  const covered = usePrivacy().covered // hooks before any early return
+  if (!setup || covered) return null
+  return (
+    <p id={SETUP_NOTE_ID} data-setup-note className={`pointer-events-none whitespace-nowrap rounded-full px-[12px] py-[5px] text-[13px] font-medium text-[#f4efe6] ring-1 ring-white/15 ${panel} ${className}`}>
+      {compact ? 'Building, trading and cards start after setup' : 'Setup: place on the board. Building, trading and cards start after it.'}
+    </p>
+  )
+}
+
+/**
  * G7.2: a one-line hint above the hand, once per device: on the first own turn where a trade is
  * possible, say that clicking a card puts it in a trade. It stays for that turn until a card is
  * chosen or a panel opens. Never behind the pass screen.
@@ -353,6 +373,7 @@ export function usePlacementAutoReset() {
 export function HandCards({ compact = false }: { compact?: boolean }) {
   const { counts, owner, ownerName } = useHand()
   const { bank } = useGameView()
+  const setup = useSetup()
   const delta = useHandDelta(counts, owner)
   const covered = usePrivacy().covered
   const draft = useTradeDraft()
@@ -360,7 +381,7 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
   const size = compact ? 'h-[72px] w-[62px] rounded-[8px] p-[2px] shadow-[0_6px_14px_rgba(0,0,0,0.55)]' : 'h-[96px] w-[88px] rounded-[9px] p-[3px] shadow-[0_10px_22px_rgba(0,0,0,0.6)]'
   const frame = `relative block ${size} bg-[linear-gradient(180deg,#ffe2a0,#b98a3a_50%,#f2cf84)] transition-transform`
   return (
-    <ul aria-label={`${ownerName}'s resources`} className={`relative flex ${compact ? 'gap-[6px]' : 'gap-[8px] pb-[12px]'}`}>
+    <ul aria-label={`${ownerName}'s resources`} className={`relative flex ${compact ? 'gap-[6px]' : 'gap-[8px] pb-[12px]'} ${setBack(setup)}`}>
       {RESOURCES.map(({ key, name, Icon, bg }) => {
         const n = counts[key]
         const chosen = can ? draft.give[key] ?? 0 : 0
@@ -383,7 +404,7 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
           <span key={delta!.seq} aria-hidden data-hand-delta className={`pointer-events-none absolute inset-x-0 z-[1] mx-auto w-fit rounded-full px-[7px] py-[1px] font-bold leading-[1.25] text-white shadow-[0_2px_6px_rgba(0,0,0,.55)] ring-1 ring-white/40 animate-[delta-pop_2.5s_ease-out] ${d > 0 ? 'bg-[#2f8a3a]' : 'bg-[#b8322b]'} ${compact ? '-top-[11px] text-[13px]' : '-top-[13px] text-[15px]'}`}>{deltaText(d)}</span>
         ) : null
         if (!can) {
-          const why = covered ? '' : bank.reason ? ` (${bank.reason})` : ''
+          const why = covered || setup ? '' : bank.reason ? ` (${bank.reason})` : '' // G7.6: setup says why in its note
           return <li key={key} aria-label={`${name}: ${n}`} title={`${name}: ${n}${why}`} className={`${frame} pointer-events-auto`}>{face}{badge}</li>
         }
         const label = `Trade one ${word} (you have ${n}${chosen ? `, ${chosen} chosen` : ''})`
@@ -412,6 +433,7 @@ function ResourceCards() {
       {/* wooden tray */}
       <div className="absolute -bottom-[30px] left-1/2 h-[64px] w-[700px] -translate-x-1/2 rounded-[40px_40px_0_0] bg-[linear-gradient(180deg,#5c3d22,#2c1c10)] shadow-[0_-6px_20px_rgba(0,0,0,0.5),inset_0_2px_0_rgba(255,210,160,0.2)]" />
       <HandHint className="absolute bottom-[124px] left-1/2 -translate-x-1/2" />
+      <SetupNote className="absolute bottom-[124px] left-1/2 -translate-x-1/2" />
       <HandCards />
     </div>
   )
@@ -549,8 +571,9 @@ export function FullscreenButton({ className = '' }: { className?: string }) {
 }
 
 function BuildPanel() {
+  const setup = useSetup()
   return (
-    <section aria-labelledby="build-title" className={`absolute bottom-[42px] right-[16px] w-[246px] rounded-[12px] px-[10px] pb-[8px] pt-[12px] ${panel}`}>
+    <section aria-labelledby="build-title" className={`absolute bottom-[42px] right-[16px] w-[246px] rounded-[12px] px-[10px] pb-[8px] pt-[12px] ${panel} ${setBack(setup)}`}>
       <h2 id="build-title" className="mb-[8px] px-[6px] font-display text-[20px] font-medium text-[#f4efe6]">Build</h2>
       <BuildRows />
     </section>
@@ -565,10 +588,11 @@ const TradeIco = ({ size }: { size: number }) => (
 export function TradeButton({ className = '', icon = 24 }: { className?: string; icon?: number }) {
   const { bank } = useGameView()
   const open = useTradeOpen()
-  const label = `Trade${bank.reason ? ` (${bank.reason})` : ''}`
+  const setup = useSetup()
+  const label = `Trade${bank.reason && !setup ? ` (${bank.reason})` : ''}`
   return (
     <IconButton label={label} data-trade-button aria-pressed={open} aria-keyshortcuts="T" disabled={!bank.open} onClick={() => setTradeOpen(!open)}
-      className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
+      aria-describedby={setup ? SETUP_NOTE_ID : undefined} className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)} ${className}`}>
       <TradeIco size={icon} />
     </IconButton>
   )
@@ -582,11 +606,12 @@ const CardsStackIco = ({ size }: { size: number }) => (
 export function DevButton({ className = '', icon = 24 }: { className?: string; icon?: number }) {
   const { dev } = useGameView()
   const open = useDevOpen()
-  const label = `My development cards: ${dev.total}${dev.canOpen ? '' : ' (Not now)'}`
+  const setup = useSetup()
+  const label = `My development cards: ${dev.total}${dev.canOpen || setup ? '' : ' (Not now)'}`
   return (
     <div className="relative shrink-0">
       <IconButton label={label} aria-pressed={open} disabled={!dev.canOpen} onClick={() => setDevOpen(!open)}
-        className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
+        aria-describedby={setup ? SETUP_NOTE_ID : undefined} className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)} ${className}`}>
         <CardsStackIco size={icon} />
       </IconButton>
       {dev.total > 0 && <span aria-hidden className="pointer-events-none absolute -right-[5px] -top-[5px] grid h-[19px] min-w-[19px] place-items-center rounded-full bg-[#f2b544] px-[4px] text-[11px] font-bold text-[#2a1a06] shadow-[0_1px_4px_rgba(0,0,0,.5)]">{dev.total}</span>}
