@@ -9,12 +9,15 @@ mkdirSync(D, { recursive: true })
 const [W, H, SEED] = [Number(process.argv[2] ?? 1440), Number(process.argv[3] ?? 900), Number(process.argv[4] ?? 2024)]
 const b = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] })
 const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 })
+// The Vite dev client reloads the page when its socket drops (seen on a busy machine mid-game), so long
+// checks give it a socket that never closes; the game server's socket (8787) is untouched.
+await p.routeWebSocket(/\/\/localhost:5173\//, () => {})
 const errors = []; p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().slice(0, 160)) }); p.on('pageerror', (e) => errors.push('pageerror ' + e.message))
 // page-level events (a reload, a renderer crash, a lost GPU context) are printed as they happen
 const t00 = Date.now(); const ev = (m) => console.log(`EVENT +${Math.round((Date.now() - t00) / 1000)}s ${m}`)
 p.on('framenavigated', (f) => { if (f === p.mainFrame()) ev('navigated ' + f.url()) })
 p.on('crash', () => ev('renderer crashed'))
-p.on('console', (m) => { if (/context|webgl|GPU/i.test(m.text())) ev('console ' + m.type() + ' ' + m.text().slice(0, 160)) })
+p.on('console', (m) => { if (/context|webgl|GPU|\[vite\]/i.test(m.text())) ev('console ' + m.type() + ' ' + m.text().slice(0, 160)) })
 await p.goto(`http://localhost:5173/?seed=${SEED}`, { waitUntil: 'networkidle' }); await p.waitForSelector('canvas'); await p.waitForTimeout(4000)
 let rng = SEED; const rand = () => ((rng = (rng * 1103515245 + 12345) % 2147483648) / 2147483648)
 const NAME = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
@@ -32,11 +35,13 @@ const did = (k) => { stats.ui[k] = (stats.ui[k] ?? 0) + 1 }
 const exists = (sel) => p.$(sel).then((x) => !!x)
 const click = async (sel, t = 3000) => {
   const el = await p.waitForSelector(sel + ':not([disabled])', { timeout: t })
-  // a failed click leaves a screenshot and what covers the target, then fails as before
+  // a click whose actionability check times out (seen rarely on a busy machine, with the page at 61 fps)
+  // is retried without the checks, but only when nothing covers the target; the retry is counted
   try { await el.click({ timeout: 10000 }) } catch (e) {
-    await p.screenshot({ path: `${D}/click-failed.png` })
-    console.log('CLICK FAILED', sel, JSON.stringify(await el.evaluate((x) => { const r = x.getBoundingClientRect(); const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return { box: [r.x, r.y, r.width, r.height], top: top?.outerHTML.slice(0, 200) } })))
-    throw e
+    const info = await el.evaluate((x) => { const r = x.getBoundingClientRect(); const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return { box: [r.x, r.y, r.width, r.height], own: !!top && (top === x || x.contains(top)), top: top?.outerHTML.slice(0, 200) } })
+    console.log('CLICK FAILED', sel, JSON.stringify(info))
+    if (!info.own) { await p.screenshot({ path: `${D}/click-failed.png` }); throw e }
+    await el.click({ force: true }); stats.forcedClicks = (stats.forcedClicks ?? 0) + 1
   }
   await p.waitForTimeout(60)
 }
@@ -64,6 +69,12 @@ const checkHand = async () => {
 const t0 = Date.now(); let last = -1, stuck = 0
 const shots = new Set()
 while (stats.steps++ < 20000) {
+  // every 100 steps: frames in 1 s, the longest gap between frames and the JS heap, to catch a page that slows down
+  if (stats.steps % 100 === 0) ev('perf ' + JSON.stringify(await p.evaluate(() => new Promise((res) => {
+    const t = []; const t0 = performance.now()
+    const f = (now) => { t.push(now); if (now - t0 < 1000) requestAnimationFrame(f); else res({ fps: t.length, maxGapMs: Math.round(Math.max(...t.slice(1).map((x, i) => x - t[i]))), heapMB: Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1e6), nodes: document.getElementsByTagName('*').length }) }
+    requestAnimationFrame(f)
+  }))))
   stats.rejections = await p.evaluate(() => document.querySelectorAll('[role=alert]').length) > 0 ? stats.rejections + 1 : stats.rejections
   if (await exists('#victory-title')) break
   if (await exists('[aria-labelledby=pass-title]')) { await click('[aria-labelledby=pass-title] button'); stats.passScreens++; did('pass'); await p.waitForTimeout(80); await checkHand(); continue }

@@ -10,6 +10,9 @@ mkdirSync(D, { recursive: true })
 const [W, H, SEED] = [Number(process.argv[2] ?? 1440), Number(process.argv[3] ?? 900), Number(process.argv[4] ?? 7)]
 const b = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] })
 const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1 })
+// The Vite dev client reloads the page when its socket drops (seen on a busy machine mid-game), so long
+// checks give it a socket that never closes; the game server's socket (8787) is untouched.
+await ctx.routeWebSocket(/\/\/localhost:5173\//, () => {})
 const errors = []
 const open = async (url) => {
   const p = await ctx.newPage()

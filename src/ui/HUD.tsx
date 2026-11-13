@@ -54,43 +54,6 @@ function Brand() {
 /** Visible keyboard focus that reads over both water and panels. */
 export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-[#f2b544] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1018]'
 
-export const NavIcon = ({ d }: { d: ReactNode }) => (
-  <svg viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="currentColor">
-    {d}
-  </svg>
-)
-
-export const NAV_ITEMS: [string, ReactNode][] = [
-    ['Home', <path key="h" d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z" />],
-    ['Game', <g key="g"><circle cx="8" cy="8" r="3.4" /><circle cx="16.5" cy="8.5" r="3" /><path d="M1.5 20c0-4 3-6.5 6.5-6.5s6.5 2.5 6.5 6.5z" /><path d="M14 13.6c3.6-.6 8 1.4 8.5 6.4h-6.3c0-2.4-.8-4.6-2.2-6.4z" /></g>],
-    ['Stats', <g key="s"><circle cx="12" cy="6" r="3.2" /><path d="M5 21v-3.5C5 14 8 11.5 12 11.5s7 2.5 7 6V21z" /><rect x="3" y="19" width="18" height="3" rx="1" /></g>],
-    ['Settings', <path key="st" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.4-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.4L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.4 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.7h4l.4-2.7a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)" />],
-  ]
-
-function Nav() {
-  const items = NAV_ITEMS
-  return (
-    <nav aria-label="Main" className={`absolute left-[16px] top-[82px] w-[122px] rounded-[12px] p-[5px] ${panel}`}>
-      {items.map(([label, d], i) => (
-        <button
-          key={label}
-          aria-current={i === 0 ? 'page' : undefined}
-          className={`flex w-full items-center gap-[11px] rounded-[9px] px-[11px] h-[47px] mb-[5px] last:mb-0 text-[14px] font-medium transition-colors ${focusRing} ${
-            i === 0
-              ? 'bg-[linear-gradient(180deg,rgba(60,70,90,0.55),rgba(30,36,48,0.6))] text-white ring-1 ring-[#8fa8d0]/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-              : 'text-[#e3e1dc] hover:bg-white/[0.07] hover:text-white'
-          }`}
-        >
-          <span aria-hidden className={i === 0 ? 'text-[#f1d9a8]' : 'text-[#c9ccd2]'}>
-            <NavIcon d={d} />
-          </span>
-          {label}
-        </button>
-      ))}
-    </nav>
-  )
-}
-
 export function IconButton({ children, label, className = '', ref, ...rest }: { children: ReactNode; label: string; className?: string; ref?: React.Ref<HTMLButtonElement> } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className'>) {
   return (
     <button
@@ -624,15 +587,6 @@ function BottomLeft() {
     <div className="absolute bottom-[16px] left-[22px] flex gap-[12px]">
       <TradeButton className="!h-[52px] !w-[52px] !rounded-[12px]" />
       <DevButton className="!h-[52px] !w-[52px] !rounded-[12px]" />
-      <IconButton label="Undo" className="!h-[52px] !w-[52px] !rounded-[12px]">
-        <svg aria-hidden viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
-      </IconButton>
-      <div className="relative">
-        <IconButton label="Chat (new messages)" className="!h-[52px] !w-[52px] !rounded-[12px]">
-          <svg aria-hidden viewBox="0 0 24 24" className="h-[24px] w-[24px]" fill="currentColor"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.4 1.3 4.6 3.4 6L4.5 21l4.4-2.3c1 .2 2 .3 3.1.3 5.5 0 10-3.6 10-8s-4.5-8-10-8zM7.5 12.3a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6z" /></svg>
-        </IconButton>
-        <span aria-hidden className="absolute right-[3px] top-[3px] h-[9px] w-[9px] rounded-full bg-[#f2a33a] shadow-[0_0_6px_#f2a33a]" />
-      </div>
     </div>
   )
 }
@@ -650,7 +604,6 @@ export const HUD = memo(function HUD() {
         style={{ width: `${100 / s}vw`, height: `${100 / s}vh`, transform: `scale(${s})` }}
       >
         <Brand />
-        <Nav />
         <div className="absolute right-[18px] top-[14px] flex gap-[10px]">
           <FullscreenButton />
           <HelpButton />

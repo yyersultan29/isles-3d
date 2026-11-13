@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, IconButton, NAV_ITEMS, NavIcon, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
+import { AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
 import { useGameView } from './gameView'
 import { HelpButton } from './shortcuts'
 import { GameDialogs } from './Dialogs'
@@ -17,7 +17,6 @@ import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
  * uses to keep the whole board between the bars.
  */
 export function CompactHUD() {
-  const [menu, setMenu] = useState(false)
   const [build, setBuild] = useState(false)
   const { seats } = useGameView()
   const setup = useSetup() // G7.6: the tools step back in setup
@@ -27,16 +26,13 @@ export function CompactHUD() {
   const { ref: dice, a, b, primary, act } = useDiceAndAction((el) =>
     gsap.fromTo(el.children, { y: -10, rotate: -25 }, { y: 0, rotate: 0, duration: 0.6, ease: 'bounce.out', stagger: 0.08 }),
   )
-  // Escape closes any open popover; focus inside it goes back to its toggle (G4.6b)
-  const menuBtn = useRef<HTMLButtonElement>(null)
+  // Escape closes the build popover; focus inside it goes back to its toggle (G4.6b)
   const buildBtn = useRef<HTMLButtonElement>(null)
   const refocus = () => {
-    const a = document.activeElement
-    if (a?.closest('#compact-menu')) menuBtn.current?.focus()
-    else if (a?.closest('#compact-build')) buildBtn.current?.focus()
+    if (document.activeElement?.closest('#compact-build')) buildBtn.current?.focus()
   }
   useEffect(() => {
-    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { refocus(); setMenu(false); setBuild(false) } }
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { refocus(); setBuild(false) } }
     window.addEventListener('keydown', f)
     return () => window.removeEventListener('keydown', f)
   }, [])
@@ -45,32 +41,10 @@ export function CompactHUD() {
     <div className="pointer-events-none fixed inset-0 z-[20] select-none overflow-hidden font-ui text-[#f4efe6] [&_button]:pointer-events-auto">
       {/* ---------- top bar ---------- */}
       <div className="absolute inset-x-[8px] top-[8px] flex items-start gap-[8px]" style={{ height: COMPACT_SAFE.top - PHASE_ROW - 8 }}>
-        <div className="relative">
-          <button
-            ref={menuBtn}
-            aria-label="Menu"
-            aria-expanded={menu}
-            aria-controls="compact-menu"
-            onClick={() => { setMenu((v) => !v); setBuild(false) }}
-            className={`grid h-[46px] w-[46px] place-items-center rounded-full border-2 border-[#e0a94a] bg-[radial-gradient(circle_at_40%_35%,#3a2a1a,#120c08)] shadow-[0_0_10px_rgba(224,169,74,0.4)] ${focusRing}`}
-          >
-            <HexLogo aria-hidden className="h-[34px] w-[34px]" />
-          </button>
-          {menu && (
-            <nav id="compact-menu" aria-label="Main" className={`pointer-events-auto absolute left-0 top-[54px] w-[180px] rounded-[12px] p-[5px] ${panel}`}>
-              {NAV_ITEMS.map(([label, d], i) => (
-                <button
-                  key={label}
-                  aria-current={i === 0 ? 'page' : undefined}
-                  className={`mb-[4px] flex h-[44px] w-full items-center gap-[10px] rounded-[9px] px-[10px] text-[14px] font-medium last:mb-0 ${focusRing} ${i === 0 ? 'bg-white/[0.08] text-white' : 'text-[#e3e1dc] hover:bg-white/[0.07]'}`}
-                >
-                  <span aria-hidden className={i === 0 ? 'text-[#f1d9a8]' : 'text-[#c9ccd2]'}><NavIcon d={d} /></span>
-                  {label}
-                </button>
-              ))}
-            </nav>
-          )}
-        </div>
+        {/* G7.7: the menu held only placeholders (Home, Game, Stats, Settings), so this is the logo alone */}
+        <span aria-hidden className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full border-2 border-[#e0a94a] bg-[radial-gradient(circle_at_40%_35%,#3a2a1a,#120c08)] shadow-[0_0_10px_rgba(224,169,74,0.4)]">
+          <HexLogo className="h-[34px] w-[34px]" />
+        </span>
 
         <ul aria-label="Players" className="flex min-w-0 flex-1 gap-[6px]">
           {seats.map((p) => (
@@ -123,20 +97,12 @@ export function CompactHUD() {
           </button>
           <TradeButton icon={22} className="!h-[44px] !w-[40px] shrink-0" />
           <DevButton icon={22} className="!h-[44px] !w-[40px]" />
-          {/* undo and chat are still placeholders: they give way to Trade and Cards on small screens (G4.4d/e) */}
-          <IconButton label="Undo" className="!h-[44px] !w-[40px] shrink-0 max-[389px]:!hidden">
-            <svg aria-hidden viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
-          </IconButton>
-          <IconButton label="Chat (new messages)" className="relative !h-[44px] !w-[40px] shrink-0 max-[559px]:!hidden">
-            <svg aria-hidden viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="currentColor"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.4 1.3 4.6 3.4 6L4.5 21l4.4-2.3c1 .2 2 .3 3.1.3 5.5 0 10-3.6 10-8s-4.5-8-10-8z" /></svg>
-            <span aria-hidden className="absolute right-[4px] top-[4px] h-[8px] w-[8px] rounded-full bg-[#f2a33a]" />
-          </IconButton>
           <button
             ref={buildBtn}
             data-build-toggle
             aria-expanded={build}
             aria-controls="compact-build"
-            onClick={() => { setBuild((v) => !v); setMenu(false) }}
+            onClick={() => setBuild((v) => !v)}
             className={`ml-auto flex h-[44px] shrink-0 items-center gap-[6px] rounded-[10px] px-[12px] font-display text-[17px] font-medium ${focusRing} ${panel} ${setBack(setup)}`}
           >
             Build

@@ -189,7 +189,7 @@ await playCard('PLAY_MONOPOLY', 'Monopoly', async () => {
 // ---- placeholders: visible controls that do nothing (known from the source: no handler)
 out.placeholders = await p.evaluate(() => {
   const vis = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length)
-  const names = ['Home', 'Game', 'Stats', 'Settings', 'Undo', 'Chat (new messages)', 'Fullscreen', 'Menu']
+  const names = ['Home', 'Game', 'Stats', 'Settings', 'Undo', 'Chat (new messages)', 'Menu'] // Fullscreen works since G7.1
   return [...document.querySelectorAll('button')].filter(vis).map((b) => b.getAttribute('aria-label') ?? b.textContent.trim()).filter((t) => names.includes(t))
 })
 

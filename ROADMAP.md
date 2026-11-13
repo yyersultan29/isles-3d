@@ -875,7 +875,7 @@ Steps:
   - The phase line becomes a short instruction ("Choose a light spot on the board", "Place a road next to your settlement", "Roll the dice"), and the dice-side button never shows a bare "Place".
   - In setup, Build, Trade and Dev Cards are visibly set back. In a normal turn the main action and its tools come first.
   - Keyboard focus stays visible.
-- [ ] **G7.7 Remove placeholders (UX-5, decision 4).**
+- [x] **G7.7 Remove placeholders (UX-5, decision 4).**
   - Home, Game, Stats, Settings, Undo and Chat leave the visible HUD on desktop and phone.
   - Fullscreen is kept and made to work instead (owner, 2026-11-13).
   - The freed space is rebalanced without moving the board framing or the camera, and checked against the reference.
@@ -1053,9 +1053,21 @@ Steps:
   - twice a click on the pass screen's button never became "stable";
   - once "execution context destroyed".
   - None of the failures logged an app error, and Vite logged no reload during them. A later run with page-event logging (navigation, renderer crash, GPU messages) was exact and clean.
-  - The cause isn't known yet; long headless GPU sessions are a guess, not verified. The driver now logs page events and a screenshot with the covering element on a failed click, so the next failure will show more. To be settled in G7.8.
+  - The cause isn't known yet; long headless GPU sessions are a guess, not verified. The driver now logs page events and a screenshot with the covering element on a failed click, so the next failure will show more. **Resolved in G7.7:** the cause was the Vite dev client reloading the page (see the G7.7 result).
 - Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.6/`. Not deployed.
 
+
+**G7.7 result (2026-11-14):** placeholders removed.
+- **Desktop.** The top-left nav (Home, Game, Stats, Settings) and the bottom-left Undo and Chat buttons are gone. The top-left keeps only the logo, and the bottom-left keeps Trade and the development cards button. Fullscreen (made working in G7.1) stays.
+- **Phone.** The Menu button only opened the same placeholders, so it is replaced by the logo, and Undo and Chat are gone. The Build toggle keeps its focus return.
+- **Placeholders** (`g7-baseline.mjs`, controls that do nothing): 7 → 0 desktop, 2 → 0 phone (plus the Menu that opened the rest). Hover-only reasons stay 0 in every audited state.
+- **Layout.** The board framing and camera are unchanged (same viewport and pose as G7.6). The corners are lighter and nothing moved into the freed space, compared against the reference.
+- **The G7.6 flaky phone replay: cause found.** The Vite dev client reloads the page when its HMR websocket drops ("server connection lost. Polling for restart…"), which destroyed the execution context mid-game. `server.hmr: false` doesn't stop the client in Vite 6, so the long drivers (`playthrough.mjs`, `online-playthrough.mjs`) now mock that websocket with `routeWebSocket`. The rare "not stable" click timeouts while the page ran at 61 fps get one forced retry, only when `elementFromPoint` is the target itself; otherwise the driver takes a screenshot and fails. A perf probe every 100 steps showed fps 61, longest frame gap 17 ms and heap 85–192 MB with GC, so no leak. This is a test-harness fix; the app wasn't involved.
+- **Checks.** `tsc -b`, 271 tests and the build pass.
+  - `ux-flows` (3/1/4 desktop, 4/1/4 phone), `hand-trade`, `shortcuts`, `g7-hand`, `g7-dev` and the `g7-baseline` flows are unchanged.
+  - `g6-audit` (axe 0, fit at 3 sizes, keyboard flows) passes.
+  - Replays are exact with 0 rejections and 0 hand mismatches: desktop seed 2024 194/939, phone seed 77 272/1249, online seed 7 turn 133, 723 actions, no other hands shown.
+- Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.7/`. Not deployed.
 
 ### G8 — Phone play (later, after the owner asks)
 
@@ -1118,7 +1130,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
-| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, `038247e`, G7.6 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, `038247e`, `fca18b0`, G7.7 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -1126,4 +1138,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G7.7: remove the placeholders (Home, Game, Stats, Settings, Undo, Chat; Fullscreen stays), keeping the layout balanced. G7.8 then settles the flaky phone replay. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
+**Recommended next action:** G7.8, the exit check: rerun G7.0's flows and audits at desktop and 390×844 against the baseline, axe and keyboard on the changed panels, and the hot-seat and online replays. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.
