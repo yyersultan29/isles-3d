@@ -13,7 +13,7 @@ import { TurnClock } from './TurnClock'
 import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
 import { changeDraft, clearDraft, draftCovered, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
-import type { Action, PlayerId, Resource } from '../game'
+import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 import { useGame, useGameStore, useGameEvents } from '../store/GameProvider'
 import { affordable, shortfall, tradesText, type Shortfall } from './tradePlan'
 import { HelpButton, useShortcuts } from './shortcuts'
@@ -407,6 +407,7 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
   const store = useGameStore()
   const mode = usePlacementMode()
   const hidden = usePrivacy().covered
+  const { counts } = useHand() // the shown hand (empty behind the pass screen)
   const plans = useMemo(() => Object.fromEntries(build.map((b) => [b.kind, b.enabled || hidden ? null : shortfall(s, b.kind, me)])), [s, me, build, hidden])
   const choose = (kind: BuildKind, enabled: boolean) => {
     chooseBuild(kind, { enabled, plan: plans[kind], player: primary.player, mode, dispatch: (p, a) => store.dispatch(p, a) })
@@ -420,11 +421,10 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
         const tradable = !enabled && !!plan?.covered && plan.trades.length > 0
         // G6.5: how many the hand pays for, on enabled rows
         const many = enabled && primary.player ? affordable(s, kind, primary.player) : 0
-        const via = tradable && primary.player ? `; trade ${tradesText(s, primary.player, plan!.trades)} first` : ''
-        const label = `${kind === 'dev' ? 'Buy' : 'Build'} ${BUILD_NAME[kind]}: ${costText(cost)}${reason ? ` (${reason}${via})` : ''}${many ? ` (can pay for ${many})` : ''}`
-        const icons = (Object.entries(cost) as [Resource, number][]).flatMap(([r, n]) => Array.from({ length: n }, (_, k) => [r, k] as const))
-        // the last `missing` icons of a kind are the cards the hand lacks
-        const lacks = (r: Resource, k: number) => !!plan && k >= (cost[r] ?? 0) - (plan.missing[r] ?? 0)
+        const trades = tradable && primary.player ? tradesText(s, primary.player, plan!.trades) : ''
+        const label = `${kind === 'dev' ? 'Buy' : 'Build'} ${BUILD_NAME[kind]}: ${costText(cost)}${reason ? ` (${reason}${trades ? `; trade ${trades} first` : ''})` : ''}${many ? ` (can pay for ${many})` : ''}`
+        // G7.1: the cost per kind as "have/need", the missing kinds marked by a dashed outline and the count still needed, not by colour alone
+        const kinds = RESOURCE_ORDER.filter((r) => cost[r])
         return (
           <button
             key={kind}
@@ -435,22 +435,54 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
             data-trade-for={tradable ? kind : undefined}
             aria-keyshortcuts={BUILD_KEY[kind]}
             onClick={() => choose(kind, enabled)}
-            className={`group flex h-[46px] w-full items-center gap-[12px] rounded-[8px] border-b border-white/5 px-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : enabled ? 'shadow-[inset_3px_0_0_#f2b544]' : ''} ${focusRing}`}
+            className={`group relative flex w-full items-start gap-[10px] rounded-[8px] border-b border-white/5 py-[5px] pl-[6px] pr-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : enabled ? 'shadow-[inset_3px_0_0_#f2b544]' : ''} ${focusRing}`}
           >
-            <span aria-hidden className="relative w-[28px]">
+            <span aria-hidden className={`relative mt-[2px] w-[28px] shrink-0 ${enabled || tradable ? '' : 'opacity-50'}`}>
               {BUILD_ICON[kind]}
               {many > 0 && <span className="absolute -right-[7px] -top-[9px] rounded-full bg-[#f2b544] px-[4px] text-[11px] font-bold leading-[15px] text-[#2a1a06] shadow-[0_1px_3px_rgba(0,0,0,.5)]">×{many}</span>}
             </span>
-            <span aria-hidden className="flex flex-1 items-center gap-[2px]">
-              {icons.map(([r, k]) => { const I = RES_ICON[r]; return <span key={r + k} className={`block h-[24px] w-[28px] [&>svg]:h-full [&>svg]:w-full ${lacks(r, k) ? 'opacity-30 grayscale' : ''}`}><I /></span> })}
+            <span aria-hidden className="min-w-0 flex-1">
+              <span className={`block pr-[26px] text-[14px] font-semibold leading-[18px] ${enabled ? 'text-white' : 'text-[#cfcac1]'}`}>{kind === 'dev' ? 'Buy development card' : BUILD_NAME[kind]}</span>
+              <span className="mt-[3px] flex flex-wrap gap-[3px]">
+                {kinds.map((r) => {
+                  const I = RES_ICON[r]; const need = cost[r]!; const have = counts[r]; const short = need - have
+                  return (
+                    <span key={r} className={`flex h-[21px] items-center gap-[1px] rounded-[6px] pl-[1px] pr-[4px] text-[12px] font-bold leading-none ${short > 0 ? 'border border-dashed border-[#ff9b8a] bg-[#c8302a]/20 text-[#ffd2c8]' : 'border border-transparent bg-white/[0.08] text-[#eaf2d8]'}`}>
+                      <span className="block h-[16px] w-[18px] [&>svg]:h-full [&>svg]:w-full"><I /></span>
+                      {Math.min(have, 99)}/{need}
+                    </span>
+                  )
+                })}
+              </span>
+              {reason && <span className={`mt-[3px] block text-[12px] leading-[15px] ${tradable ? 'text-[#e9e3d8]' : 'text-[#d9b8a8]'}`}>{reason}</span>}
+              {tradable && <span className="mt-[2px] block text-[12px] font-semibold leading-[15px] text-[#f2b544]">Trade &amp; build: {trades}</span>}
             </span>
             {tradable
-              ? <span aria-hidden className="grid h-[26px] w-[26px] place-items-center rounded-full bg-[#f2b544]/20 text-[#f2b544] ring-1 ring-[#f2b544]/60"><TradeIco size={16} /></span>
-              : <span aria-hidden className="text-[#ece8e0] transition-transform group-hover:translate-x-[2px]"><Arrow /></span>}
+              ? <span aria-hidden className="absolute right-[6px] top-[4px] grid h-[24px] w-[24px] place-items-center rounded-full bg-[#f2b544]/20 text-[#f2b544] ring-1 ring-[#f2b544]/60"><TradeIco size={15} /></span>
+              : <span aria-hidden className={`absolute right-[6px] top-[5px] text-[#ece8e0] transition-transform group-hover:translate-x-[2px] ${enabled ? '' : 'opacity-40'}`}><Arrow /></span>}
           </button>
         )
       })}
     </>
+  )
+}
+
+/** G7: toggles browser fullscreen for the whole page; hidden where the browser has no fullscreen (iPhone Safari). */
+export function FullscreenButton({ className = '' }: { className?: string }) {
+  const [on, setOn] = useState(() => typeof document !== 'undefined' && !!document.fullscreenElement)
+  useEffect(() => {
+    const f = () => setOn(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', f)
+    return () => document.removeEventListener('fullscreenchange', f)
+  }, [])
+  if (typeof document === 'undefined' || !document.fullscreenEnabled) return null
+  const toggle = () => { (on ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {}) }
+  return (
+    <IconButton label={on ? 'Exit fullscreen' : 'Fullscreen'} aria-pressed={on} onClick={toggle} className={className}>
+      <svg aria-hidden viewBox="0 0 24 24" className="h-[20px] w-[20px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        {on ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
+      </svg>
+    </IconButton>
   )
 }
 
@@ -533,9 +565,7 @@ export const HUD = memo(function HUD() {
         <Brand />
         <Nav />
         <div className="absolute right-[18px] top-[14px] flex gap-[10px]">
-          <IconButton label="Fullscreen">
-            <svg aria-hidden viewBox="0 0 24 24" className="h-[20px] w-[20px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
-          </IconButton>
+          <FullscreenButton />
           <HelpButton />
         </div>
         <PhaseBanner className="absolute left-1/2 top-[14px] -translate-x-1/2 whitespace-nowrap" />

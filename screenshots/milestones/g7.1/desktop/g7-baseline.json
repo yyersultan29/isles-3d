@@ -1,0 +1,127 @@
+{
+ "viewport": "1440x900",
+ "compact": false,
+ "hoverOnly": {
+  "setup": [
+   "Wood — Not now",
+   "Brick — Not now",
+   "Wool — Not now",
+   "Grain — Not now",
+   "Ore — Not now",
+   "Trade — Not now",
+   "Development cards — Not now"
+  ],
+  "actions": [],
+  "trade-open": [
+   "Offer to players — Add cards you want"
+  ],
+  "dev-panel": []
+ },
+ "flows": {
+  "roll": {
+   "found": true,
+   "phase": "preRoll",
+   "gained": {
+    "grain": 1
+   },
+   "noticeAt05s": [
+    "Red rolled 8 (3 and 5). Red: build, trade or end your turn",
+    "Red +1 grain"
+   ],
+   "handDeltaOnCards": false,
+   "noticeAt45s": [
+    "Red rolled 8 (3 and 5). Red: build, trade or end your turn"
+   ]
+  },
+  "bank4": {
+   "clicks": 3,
+   "options": [
+    "4 wool"
+   ],
+   "ok": true
+  },
+  "port": {
+   "clicks": 3,
+   "options": [
+    "3 brick (port)"
+   ],
+   "ok": true
+  },
+  "port2": {
+   "clicks": 3,
+   "options": [
+    "2 grain (port)"
+   ],
+   "ok": true
+  },
+  "buyDev": {
+   "clicks": 2,
+   "ok": true,
+   "noticesAfterBuy": [
+    "Red rolled 7 (4 and 3). Red: build, trade or end your turn",
+    "Blue traded 2 grain for 1 wood with the bank.Red bought a development card."
+   ],
+   "devRows": [
+    "Knight Bought this turn Play"
+   ]
+  },
+  "Knight": {
+   "clicks": 3,
+   "actions": 2,
+   "phase": "actions",
+   "firstScreen": [
+    null,
+    [
+     "Red rolled 6 (2 and 4). Red: move the robber",
+     "Red bought a development card.Red played a Knight."
+    ]
+   ]
+  },
+  "Road Building": {
+   "clicks": 4,
+   "actions": 3,
+   "phase": "actions",
+   "firstScreen": [
+    null,
+    [
+     "White: place two free roads",
+     "Red played a Knight.Red stole a card from White.White played Road Building."
+    ]
+   ]
+  },
+  "Year of Plenty": {
+   "clicks": 5,
+   "actions": 1,
+   "phase": "actions",
+   "firstScreen": [
+    "White: Year of Plenty × Take from the bank (bank has) 11 14 15 15 16 Choose two resources (the same twice is fine) Back Play",
+    [
+     "White played Road Building.",
+     "Choose two resources (the same twice is fine)"
+    ]
+   ]
+  },
+  "Monopoly": {
+   "clicks": 4,
+   "actions": 1,
+   "phase": "actions",
+   "firstScreen": [
+    "White: Monopoly × Name a resource Choose a resource Back Play",
+    [
+     "White played Year of Plenty: +2 wood.",
+     "Choose a resource"
+    ]
+   ]
+  }
+ },
+ "placeholders": [
+  "Home",
+  "Game",
+  "Stats",
+  "Settings",
+  "Fullscreen",
+  "Undo",
+  "Chat (new messages)"
+ ],
+ "errors": []
+}

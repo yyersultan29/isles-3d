@@ -844,7 +844,7 @@ Steps:
   - Play the current flows through the UI on desktop and phone: resources after a roll, a bank and a port trade, a player offer, buying a card, and each card type, plus the refused cases. Record screenshots and clicks.
   - Add the hover-only audit script.
   - Write a compact table "screen / state → what the player wants → what's in the way → change", mapped to UX-1…UX-5. No code changes.
-- [ ] **G7.1 Build rows say what's missing (UX-2).**
+- [x] **G7.1 Build rows say what's missing (UX-2).**
   - Each row shows its cost as "need / have" per resource, and the missing ones are marked by more than colour (a number and a mark).
   - A disabled row says why in visible text ("Need 1 more brick", "No legal spot", "Roll the dice first").
   - A row the bank can cover keeps the G6.4 button, labelled "Trade & build", with the trades in short form.
@@ -924,6 +924,33 @@ Steps:
 | Knight / Road Building | know what to do and what's left | The panel closes; no road count; Knight can't be cancelled | Step text with counts; say before Play that it starts at once (G7.5) |
 | Desktop corners | find working controls | 7 controls that do nothing | Remove them (G7.7) |
 
+**G7.1 result (2026-11-13):** build rows show what's missing; Fullscreen works.
+- **Rows.** Each row shows the name ("Buy development card" for the card), then one chip per resource kind: icon and "have/need" (e.g. "0/1").
+  - A short chip gets a dashed red border and tint, so the shortage isn't marked by colour alone.
+  - The reason is visible text on the row ("Need 1 more grain").
+  - A row the bank can cover adds "Trade & build: {trades}".
+  - Disabled rows aren't dimmed as a whole any more. The accessible names keep the G6 prefix (`Build Road: …`), so the scripts and shortcuts work unchanged.
+  - The chips read "have/need" rather than the plan's "need / have": the count in hand comes first, and the dashed mark carries the shortage.
+- **Hover-only audit** (`g7-baseline.mjs`), before → after:
+
+  | State | Desktop | Phone |
+  |---|---|---|
+  | Setup | 11 → 7 | 11 → 6 |
+  | Own turn, actions | 3 → 0 | 3 → 0 |
+  | Trade panel open | 4 → 1 | 4 → 1 |
+  | Dev panel open | 4 → 0 | 0 → 0 |
+
+  Setup still has the hand cards' and the Trade and Dev buttons' "Not now" (G7.2/G7.6). The trade-open item is Offer's "Add cards you give", which the status line already says (G7.3).
+- **Fullscreen.** It replaces the placeholder in the desktop top-right. It toggles `requestFullscreen`/`exitFullscreen`, its label becomes "Exit fullscreen" with `aria-pressed`, and it follows `fullscreenchange`, so Esc updates it. The button is hidden when the browser has no fullscreen.
+  - The automated Chrome refuses fullscreen even on a blank test page ("not granted"). So the wiring was checked with a stubbed API (enter, exit, outside exit). The real toggle still needs a check in a real browser.
+- **Fit.** The desktop panel clears the dice plinth, ports and tokens. At 844×390 the taller popover overflowed by 120 px, so it now has `max-h: calc(100dvh - 164px)` and scrolls: the dev row is reached by scrolling there (phone work is G8). Portrait 390×844 is unchanged.
+- **Checks:** `tsc -b`, 262 tests and the build pass. `ux-flows` at both sizes matches G6: 3/1/4 desktop, 4/1/4 phone. `hand-trade`, `shortcuts` and `g6-audit` (axe, fit at 1440×900, 390×844 and 844×390) report 0 errors.
+  - The hot-seat replays are exact: 1440×900 seed 2024 reaches turn 194 in 939 actions; 390×844 seed 77 reaches turn 272 in 1249 actions. Both have 0 rejections and 0 hand mismatches.
+  - Online, seed 7: turn 167, 961 actions, 6 trade-then-builds, 0 rejections or mismatches, no other hands shown.
+- Screenshots (JPEG) and audit JSON are in `screenshots/milestones/g7.1/`. The "before" is `g7.0/`.
+- Not deployed (needs the owner's approval).
+
+
 ### G8 — Phone play (later, after the owner asks)
 
 From `UX_PRODUCT_SPEC.md` UX-5 and the G6 open item:
@@ -985,7 +1012,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
-| G7 — Clear state and next step | In progress | `9353a6f`, G7.0 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G7 — Clear state and next step | In progress | `9353a6f`, `b120a2c`, G7.1 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -993,4 +1020,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G7.1: build rows say what is missing (need / have, the reason as text, "Trade & build"). In parallel the owner plays the deployed G6 flow, and G6 is marked done after that review.
+**Recommended next action:** G7.2: the hand shows what changed ("+1 grain" on the cards after a roll, a trade or a build) and a count of cards chosen for the trade. In parallel the owner plays the deployed G6 flow and checks Fullscreen in a real browser.

@@ -140,7 +140,7 @@ export function CompactHUD() {
             <svg aria-hidden viewBox="0 0 24 24" className={`h-[16px] w-[16px] transition-transform ${build ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6" /></svg>
           </button>
           {build && (
-            <section id="compact-build" aria-label="Build" className={`pointer-events-auto absolute bottom-[54px] right-0 w-[246px] rounded-[12px] px-[10px] py-[8px] ${panel}`}>
+            <section id="compact-build" aria-label="Build" className={`pointer-events-auto absolute bottom-[54px] right-0 max-h-[calc(100dvh-164px)] w-[246px] overflow-y-auto overscroll-contain rounded-[12px] px-[10px] py-[8px] ${panel}`}>
               <BuildRows onChosen={() => { refocus(); setBuild(false) }} />
             </section>
           )}
