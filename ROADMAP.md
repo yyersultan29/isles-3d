@@ -840,7 +840,7 @@ Steps:
 
 Steps:
 
-- [ ] **G7.0 Baseline and friction table.**
+- [x] **G7.0 Baseline and friction table.**
   - Play the current flows through the UI on desktop and phone: resources after a roll, a bank and a port trade, a player offer, buying a card, and each card type, plus the refused cases. Record screenshots and clicks.
   - Add the hover-only audit script.
   - Write a compact table "screen / state → what the player wants → what's in the way → change", mapped to UX-1…UX-5. No code changes.
@@ -877,6 +877,7 @@ Steps:
   - Keyboard focus stays visible.
 - [ ] **G7.7 Remove placeholders (UX-5, decision 4).**
   - Home, Game, Stats, Settings, Undo and Chat leave the visible HUD on desktop and phone.
+  - Fullscreen is kept and made to work instead (owner, 2026-11-13).
   - The freed space is rebalanced without moving the board framing or the camera, and checked against the reference.
 - [ ] **G7.8 Exit check.**
   - Rerun G7.0's flows and audits on desktop and at 390×844, and compare with the baseline: hover-only information is 0, G6 click counts have not risen, every dev-card type has been played through the UI, and both the successful and the refused trade and card actions have been checked.
@@ -884,6 +885,44 @@ Steps:
   - Hot-seat desktop and phone replays, and the online game.
   - Before/after screenshots.
   - Deploy only with the owner's approval.
+
+**G7.0 result (2026-11-13):** baseline recorded by `scripts/g7-baseline.mjs`; no app changes.
+- **How it works.** The script plays real positions from a seeded bot game, which also buys development cards, and clicks the UI at 1440×900 and 390×844. A board spot counts as one click.
+- **Hover-only audit.** It counts reasons for disabled controls that appear only in `title` or `aria-label`, not in visible text next to the control.
+
+  | State | Desktop | Phone | What |
+  |---|---|---|---|
+  | Setup | 11 | 11 | 5 hand cards, 4 build rows, Trade and Dev buttons: "Not now" only on hover |
+  | Own turn, actions | 3 | 3 | Build rows: "Need 1 more grain" only on hover (missing icons are greyed, but no text) |
+  | Trade panel open | 4 | 4 | The 3 rows above, plus Offer's "Add cards you want" (the status line already says it) |
+  | Dev panel open | 4 | 0* | Build rows; the card reasons are already visible ("Bought this turn") |
+
+  \* On the phone the build rows are closed in their popover, so they aren't counted there.
+- **Flows, in clicks** (the same on desktop and phone unless noted):
+  - roll: 1 click. The gain shows only in a toast ("Red +1 grain"), gone after 4.5 s; nothing on the hand cards.
+  - bank 4:1: 3 clicks ("4 wool"). Port 3:1: 3 clicks ("3 brick (port)"). Port 2:1: 3 clicks.
+  - buying a card: 2 clicks (phone 3). The toast says "Red bought a development card", not which card. In the panel it reads "Knight — Bought this turn", with a greyed-out Play.
+  - Knight: 3 clicks (Dev, Play, robber spot). The panel closes and the phase line says "move the robber". Playing applies at once, so it can't be cancelled.
+  - Road Building: 4 clicks. "Place two free roads", but there is no count of the roads left during placement.
+  - Year of Plenty: 5 clicks. Monopoly: 4 clicks. Both have a Back button before Play.
+- **Placeholders.** Desktop shows 7 controls that do nothing: Home, Game, Stats, Settings, Fullscreen, Undo, Chat. The phone shows Menu (it holds the 4 nav items) and Undo; Chat is hidden below 560 px. Fullscreen wasn't in the spec's list, but it does nothing too.
+- 0 console errors. Screenshots (JPEG) and JSON are in `screenshots/milestones/g7.0/`.
+
+**Friction table** (→ the G7 step that changes it):
+
+| Screen / state | The player wants to | What's in the way | Change |
+|---|---|---|---|
+| Setup | place a settlement | Build, Trade, Dev and the hand look almost as active as the board; reasons "Not now" are hover-only; the dice button says "Place on board" | Set the tools back in setup and make the phase line the command (G7.6) |
+| Own turn, build menu | know what's missing | Missing cards are only greyed icons; "Need 1 more grain" is hover-only | "need / have" and the reason on the row (G7.1) |
+| Build row the bank can cover | trade and build | A gold trade icon whose meaning is on hover | Label it "Trade & build" with the trades (G7.1) |
+| After a roll | see what they got | A toast for about 4 s, nothing on the cards | "+1" on the changed cards, and "No resources this roll" (G7.2) |
+| Hand cards | know a card can be clicked | No hint that clicking adds it to a trade | A once-only hint and a visible chosen count (G7.2) |
+| Trade panel | choose the bank or players | Both modes' parts are on screen together (rates, recipients, two buttons) | Bank / Players modes over one draft (G7.3) |
+| Open offer | understand the next step | "Trade with Blue" is the final step, but nothing says so | Statuses and the separate final confirm (G7.3) |
+| After buying a card | know what they got | The toast hides which card | Show the card to its owner and when it can be played (G7.4) |
+| Dev panel | tell playable cards from waiting ones | One flat list; a VP card looks like the others but has no button | Groups, and the VP shown as a point (G7.4) |
+| Knight / Road Building | know what to do and what's left | The panel closes; no road count; Knight can't be cancelled | Step text with counts; say before Play that it starts at once (G7.5) |
+| Desktop corners | find working controls | 7 controls that do nothing | Remove them (G7.7) |
 
 ### G8 — Phone play (later, after the owner asks)
 
@@ -946,7 +985,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G4 — 3D/UI integration | Done | `62ed0d3`, `cd3258b`, `ed0f78b`, `83f998b`, `2d31b1f`, `fe96cb1`, `2fb6b3a`, `8e49704`, `0c655e3`, `1cf7dec`, `286c0d0`, `9b67662`, `7d5c011`, `1b27410`, `9b9c47a`, `ea5a7bd`, `05fcb1b`, `7f208ac`, `2c9f7df`, `99a1c09`, G4 exit | `screenshots/milestones/g4.1/` … `g4.8b/`, `g4-exit/` | G4.1 store; G4.2 board from state; G4.3 placement; G4.4a players, phase, dice, Roll/End Turn; G4.4b hand and build menu; G4.4c discard and steal; G4.4d bank, port and player trades; G4.4e dev cards (G4.4 done); G4.5a notices; G4.5b robber; G4.5c build/production feedback; G4.5d victory screen (G4.5 done); G4.6a keyboard placement; G4.6b focus and announcements (G4.6 done); G4.7 regression vs V8; G4.8a pass-the-device screen; G4.8b autosave and resume; exit check: two full games through the UI (reviewed 2026-11-12) |
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
-| G7 — Clear state and next step | Planned | — | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G7 — Clear state and next step | In progress | `9353a6f`, G7.0 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
 
 ## 9. How to instruct Claude Code
 
@@ -954,4 +993,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** G7.0: baseline of the current flows (resources, bank and port trades, player offers, every dev card, refused cases) and the hover-only audit, with the friction table; no code changes. In parallel the owner plays the deployed G6 flow, and G6 is marked done after that review.
+**Recommended next action:** G7.1: build rows say what is missing (need / have, the reason as text, "Trade & build"). In parallel the owner plays the deployed G6 flow, and G6 is marked done after that review.
