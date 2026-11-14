@@ -50,7 +50,7 @@ export function Tokens() {
         }
         y = Math.max(y, tileHeight(t, t.x, t.z)) + 0.04
         return (
-          <group key={t.id} position={[t.x, y, t.z]} rotation-y={0}>
+          <group key={t.id} position={[t.x, y, t.z]} rotation-y={0} userData={{ piece: 'token' }}>
             <mesh geometry={side} material={TOKEN_SIDE} castShadow receiveShadow />
             <mesh geometry={top} material={tokenTop(t.number!)} position-y={0.0525} receiveShadow />
           </group>
@@ -115,7 +115,7 @@ export function Robber() {
   useEffect(() => () => { geo.body.dispose(); geo.base.dispose() }, [geo])
 
   return (
-    <group ref={ref}>
+    <group ref={ref} userData={{ piece: 'robber' }}>
       <mesh geometry={geo.base} material={baseMat} castShadow receiveShadow />
       <mesh geometry={geo.body} material={robberMat} castShadow receiveShadow />
     </group>
@@ -124,8 +124,11 @@ export function Robber() {
 
 // ---------------- Buildings ----------------
 
-/** Gabled house; footprint ~ w × d, origin at ground centre. Returns body and roof parts. */
-function houseParts(w: number, d: number, wallH: number, roofH: number) {
+/**
+ * Gabled house; footprint ~ w × d, origin at ground centre. Returns body and roof parts.
+ * `eave` is how far the roof runs past the walls down the slope, `gable` past each gable end.
+ */
+function houseParts(w: number, d: number, wallH: number, roofH: number, eave = 0.03, gable = 0.025) {
   const shape = new THREE.Shape()
   shape.moveTo(-w / 2, 0)
   shape.lineTo(w / 2, 0)
@@ -139,9 +142,10 @@ function houseParts(w: number, d: number, wallH: number, roofH: number) {
   const slope = Math.hypot(w / 2, roofH)
   const ang = Math.atan2(roofH, w / 2)
   const roofParts: THREE.BufferGeometry[] = []
+  const L = slope + eave, D = d + 2 * gable
   for (const s of [-1, 1]) {
-    const slab = new THREE.BoxGeometry(slope + 0.03, 0.022, d + 0.05)
-    slab.translate((s * (slope + 0.03)) / 2, 0.011, 0)
+    const slab = new THREE.BoxGeometry(L, 0.022, D)
+    slab.translate((s * L) / 2, 0.011, 0)
     slab.rotateZ(s * -ang)
     slab.translate(0, wallH + roofH + 0.004, 0)
     // the slab pivot is the ridge; rotate already handled
@@ -153,12 +157,12 @@ function houseParts(w: number, d: number, wallH: number, roofH: number) {
   const trimParts: THREE.BufferGeometry[] = []
   const board = (g: THREE.BoxGeometry, s: number) => { g.rotateZ(s * -ang); g.translate(0, wallH + roofH + 0.004, 0); trimParts.push(g.toNonIndexed()) }
   for (const s of [-1, 1]) {
-    const eave = new THREE.BoxGeometry(0.014, 0.028, d + 0.062)
-    eave.translate(s * (slope + 0.03), 0.008, 0)
-    board(eave, s)
+    const eaveBoard = new THREE.BoxGeometry(0.014, 0.028, D + 0.012)
+    eaveBoard.translate(s * L, 0.008, 0)
+    board(eaveBoard, s)
     for (const sz of [-1, 1]) {
-      const rake = new THREE.BoxGeometry(slope + 0.03, 0.028, 0.01)
-      rake.translate((s * (slope + 0.03)) / 2, 0.008, (sz * (d + 0.05)) / 2)
+      const rake = new THREE.BoxGeometry(L, 0.028, 0.01)
+      rake.translate((s * L) / 2, 0.008, (sz * D) / 2)
       board(rake, s)
     }
   }
@@ -294,9 +298,9 @@ const glowTex = (() => {
 })()
 const GROUND_GLOW = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.45, toneMapped: false })
 
-function House({ w, d, wallH, roofH, wall, roof }: { w: number; d: number; wallH: number; roofH: number; wall: THREE.Material; roof: THREE.Material }) {
+function House({ w, d, wallH, roofH, wall, roof, eave, gable = 0.025, step = false }: { w: number; d: number; wallH: number; roofH: number; wall: THREE.Material; roof: THREE.Material; eave?: number; gable?: number; step?: boolean }) {
   const g = useMemo(() => {
-    const h = houseParts(w, d, wallH, roofH)
+    const h = houseParts(w, d, wallH, roofH, eave, gable)
     return {
       ...h,
       win: windowGeometry(w, d, wallH),
@@ -307,7 +311,7 @@ function House({ w, d, wallH, roofH, wall, roof }: { w: number; d: number; wallH
       })(),
       timber: timberGeometry(w, d, wallH),
     }
-  }, [w, d, wallH, roofH])
+  }, [w, d, wallH, roofH, eave, gable])
   return (
     <group>
       {/* stone plinth */}
@@ -321,7 +325,7 @@ function House({ w, d, wallH, roofH, wall, roof }: { w: number; d: number; wallH
         <mesh geometry={g.trim} material={TRIM} castShadow />
         {/* ridge cap: pale like the trim, so the roof line reads from the board camera */}
         <mesh position-y={wallH + roofH + 0.016} rotation-z={Math.PI / 4} material={TRIM} castShadow>
-          <boxGeometry args={[0.02, 0.02, d + 0.06]} />
+          <boxGeometry args={[0.02, 0.02, d + 2 * gable + 0.01]} />
         </mesh>
         <mesh geometry={g.frame} material={WOOD} />
         <mesh geometry={g.win} material={GLOW} />
@@ -332,6 +336,12 @@ function House({ w, d, wallH, roofH, wall, roof }: { w: number; d: number; wallH
         <mesh position={[0, 0.031, d / 2 + 0.003]} material={DOOR}>
           <planeGeometry args={[0.034, 0.062]} />
         </mesh>
+        {/* a stone step in front of the door */}
+        {step && (
+          <mesh position={[0, 0.004, d / 2 + 0.016]} material={STONE} castShadow receiveShadow>
+            <boxGeometry args={[0.06, 0.012, 0.03]} />
+          </mesh>
+        )}
       </group>
     </group>
   )
@@ -381,6 +391,175 @@ const PENNANT = (() => {
   return g
 })()
 
+// ---------------- City: a small walled castle ----------------
+// Local units, before BuildingPiece's ×1.38; +z is the front (gate and hall door). The hall keeps the
+// old city hall's size, so Vegetation's ROOF_MID and the chimney smoke stay valid.
+const CW = { hx: 0.165, hz: 0.15, h: 0.085, t: 0.026, gate: 0.064 } // curtain wall
+const TOWER = { r: 0.042, front: 0.13, back: 0.15, roofR: 0.054, roofH: 0.075 }
+const KEEP = { x: -0.07, z: -0.06, r: 0.05, h: 0.27, roofR: 0.066, roofH: 0.115 }
+const HALL = { x: 0.05, z: 0, w: 0.14, d: 0.18, wallH: 0.13, roofH: 0.085 }
+const UV_UNIT = 0.12 // one repeat of the masonry texture, in local units
+
+/** Masonry blocks in running bond, near-neutral so the stone keeps one tone under the warm sun. */
+const masonryTex = (() => {
+  const c = document.createElement('canvas')
+  c.width = c.height = 128
+  const g = c.getContext('2d')!
+  g.fillStyle = '#7b7368'
+  g.fillRect(0, 0, 128, 128)
+  const rnd = mulberry32(11)
+  const rows = 5, rh = 128 / rows
+  for (let r = 0; r < rows; r++) {
+    const bw = 128 / 3, off = (r % 2) * bw * 0.5
+    for (let k = -1; k < 4; k++) {
+      const v = 200 + Math.floor(rnd() * 45)
+      g.fillStyle = `rgb(${v},${v - 4},${v - 10})`
+      g.fillRect(k * bw + off + 2, r * rh + 2, bw - 4, rh - 4)
+    }
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.anisotropy = 8
+  return t
+})()
+const MASONRY = new THREE.MeshStandardMaterial({ color: '#b3aa9b', map: masonryTex, roughness: 0.9 })
+
+/** Box-projected UVs in local units, so every wall piece shows blocks of the same size. */
+function boxUV(geo: THREE.BufferGeometry) {
+  const pos = geo.attributes.position, nor = geo.attributes.normal
+  const uv = new Float32Array(pos.count * 2)
+  for (let i = 0; i < pos.count; i++) {
+    const ax = Math.abs(nor.getX(i)), ay = Math.abs(nor.getY(i)), az = Math.abs(nor.getZ(i))
+    const [u, v] = ay > ax && ay > az ? [pos.getX(i), pos.getZ(i)] : ax > az ? [pos.getZ(i), pos.getY(i)] : [pos.getX(i), pos.getY(i)]
+    uv[i * 2] = u / UV_UNIT; uv[i * 2 + 1] = v / UV_UNIT
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+  return geo
+}
+
+/** Curtain wall with merlons and a lintel over the gate, one merged mesh. */
+const CASTLE_WALL = (() => {
+  const { hx, hz, h, t, gate } = CW
+  const parts: THREE.BufferGeometry[] = []
+  const box = (sx: number, sy: number, sz: number, x: number, y: number, z: number) => {
+    const g = new THREE.BoxGeometry(sx, sy, sz).toNonIndexed()
+    g.translate(x, y, z)
+    parts.push(g)
+  }
+  const side = (len: number, along: 'x' | 'z', fixed: number, from = -len / 2, to = len / 2) => {
+    const l = to - from, c = (from + to) / 2
+    if (along === 'x') box(l, h, t, c, h / 2, fixed); else box(t, h, l, fixed, h / 2, c)
+  }
+  side(2 * hx, 'x', -hz)
+  side(2 * hz, 'z', -hx)
+  side(2 * hz, 'z', hx)
+  side(2 * hx, 'x', hz, -hx, -gate / 2)
+  side(2 * hx, 'x', hz, gate / 2, hx)
+  box(gate, 0.024, t, 0, h - 0.012, hz) // lintel
+  // merlons, kept clear of the corner towers
+  const mer = (len: number, put: (a: number) => void) => {
+    const n = Math.floor((len - 2 * (TOWER.r + 0.02)) / 0.044)
+    for (let i = 0; i <= n; i++) put(-(n * 0.044) / 2 + i * 0.044)
+  }
+  const my = h + 0.011
+  mer(2 * hx, (a) => { box(0.02, 0.022, t + 0.004, a, my, -hz); box(0.02, 0.022, t + 0.004, a, my, hz) })
+  mer(2 * hz, (a) => { box(t + 0.004, 0.022, 0.02, -hx, my, a); box(t + 0.004, 0.022, 0.02, hx, my, a) })
+  for (const p of parts) p.deleteAttribute('uv')
+  return boxUV(mergeGeometries(parts)!)
+})()
+
+/** Tower shaft (open-ended cylinder) with UVs in local units. */
+function towerShaft(r: number, h: number) {
+  const g = new THREE.CylinderGeometry(r, r * 1.04, h, 12, 1, true)
+  g.translate(0, h / 2, 0)
+  const uv = g.attributes.uv
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * 2 * Math.PI * r) / UV_UNIT, (uv.getY(i) * h) / UV_UNIT)
+  return g
+}
+
+/**
+ * Conical roof on the shared shingle material. The whole slope samples the lit part of a single
+ * shingle row (u 0.09–0.16), so a small cone gets a soft tip-to-eave gradient and seams
+ * around it instead of six hard bands; v runs around the cone.
+ */
+function coneRoof(r: number, h: number) {
+  const g = new THREE.ConeGeometry(r, h, 12, 1, true)
+  g.translate(0, h / 2, 0)
+  const uv = g.attributes.uv
+  // the shingle texture clamps (no repeat), so v stays in 0–1: seven tiles once around the cone
+  for (let i = 0; i < uv.count; i++) { const u = uv.getX(i), v = uv.getY(i); uv.setXY(i, 0.09 + (1 - v) * 0.07, 0.01 + u * 0.98) }
+  return g
+}
+
+const CORNER_SHAFT = { front: towerShaft(TOWER.r, TOWER.front), back: towerShaft(TOWER.r, TOWER.back) }
+const CORNER_ROOF = coneRoof(TOWER.roofR, TOWER.roofH)
+const KEEP_SHAFT = (() => {
+  const g = new THREE.CylinderGeometry(KEEP.r, KEEP.r * 1.05, KEEP.h, 14, 1, true)
+  g.translate(0, KEEP.h / 2, 0)
+  return g
+})()
+const KEEP_ROOF = coneRoof(KEEP.roofR, KEEP.roofH)
+/** Pale band under every cone roof: the same outline the house roofs get from their bargeboards. */
+const roofBand = (r: number) => { const g = new THREE.CylinderGeometry(r, r, 0.012, 12); g.deleteAttribute('uv'); return g }
+const CORNER_BAND = roofBand(TOWER.roofR + 0.004)
+const KEEP_BAND = roofBand(KEEP.roofR + 0.004)
+/** Two lit windows and their frames on the keep's front. */
+const KEEP_WINDOWS = (() => {
+  const win: THREE.BufferGeometry[] = [], frame: THREE.BufferGeometry[] = []
+  for (const y of [0.16, 0.215]) {
+    const w = new THREE.PlaneGeometry(0.022, 0.032); w.translate(0, y, KEEP.r + 0.003); win.push(w)
+    const f = new THREE.PlaneGeometry(0.032, 0.042); f.translate(0, y, KEEP.r + 0.0015); f.deleteAttribute('uv'); frame.push(f)
+  }
+  return { win: mergeGeometries(win)!, frame: mergeGeometries(frame)! }
+})()
+
+function Castle({ wall, roof, flag }: { wall: THREE.Material; roof: THREE.Material; flag: THREE.Material }) {
+  const { hx, hz, h, gate } = CW
+  const corners: [number, number, 'front' | 'back'][] = [[-hx, hz, 'front'], [hx, hz, 'front'], [-hx, -hz, 'back'], [hx, -hz, 'back']]
+  return (
+    <group>
+      <mesh geometry={CASTLE_WALL} material={MASONRY} castShadow receiveShadow />
+      {/* the gate: a dark wooden door set into the opening */}
+      <mesh position={[0, (h - 0.024) / 2, hz + 0.001]} material={DOOR}>
+        <planeGeometry args={[gate, h - 0.024]} />
+      </mesh>
+      {corners.map(([x, z, k]) => {
+        const th = TOWER[k]
+        return (
+          <group key={`${x}${z}`} position={[x, 0, z]}>
+            <mesh geometry={CORNER_SHAFT[k]} material={MASONRY} castShadow receiveShadow />
+            <mesh geometry={CORNER_BAND} material={TRIM} position-y={th} castShadow />
+            <mesh geometry={CORNER_ROOF} material={roof} position-y={th + 0.004} castShadow receiveShadow />
+          </group>
+        )
+      })}
+      <group position={[HALL.x, 0, HALL.z]}>
+        <House w={HALL.w} d={HALL.d} wallH={HALL.wallH} roofH={HALL.roofH} wall={wall} roof={roof} />
+      </group>
+      <Chimney x={CITY_CHIMNEY[0]} y={CITY_CHIMNEY[1]} z={CITY_CHIMNEY[2]} />
+      {/* the keep: the tallest part, in the owner's colour, with the pennant on its roof */}
+      <group position={[KEEP.x, 0, KEEP.z]}>
+        <mesh geometry={KEEP_SHAFT} material={wall} castShadow receiveShadow />
+        <mesh geometry={KEEP_WINDOWS.frame} material={WOOD} />
+        <mesh geometry={KEEP_WINDOWS.win} material={GLOW} />
+        <mesh geometry={KEEP_BAND} material={TRIM} position-y={KEEP.h} castShadow />
+        <mesh geometry={KEEP_ROOF} material={roof} position-y={KEEP.h + 0.004} castShadow receiveShadow />
+        <group position-y={KEEP.h + KEEP.roofH - 0.012}>
+          <mesh position-y={0.054} material={WOOD} castShadow>
+            <cylinderGeometry args={[0.006, 0.007, 0.108, 6]} />
+          </mesh>
+          <mesh geometry={PENNANT} material={flag} castShadow />
+        </group>
+      </group>
+    </group>
+  )
+}
+
+// chimney positions inside the settlement group (x, chimney origin y, z); chimneyTops reads them too
+const SETTLEMENT_CHIMNEY = [0.035, 0.016 + 0.11 + 0.035, -0.05] as const
+const CITY_CHIMNEY = [HALL.x + 0.035, 0.016 + HALL.wallH + 0.04, HALL.z - 0.04] as const
+
 function Settlement({ player, city }: { player: Player; city: boolean }) {
   const { wall, roof, ring, flag } = playerMats(player)
   const pad = city ? 0.26 : 0.18
@@ -402,25 +581,13 @@ function Settlement({ player, city }: { player: Player; city: boolean }) {
       </mesh>
       {!city ? (
         <group position-y={0.012}>
-          <House w={0.15} d={0.2} wallH={0.11} roofH={0.08} wall={wall} roof={roof} />
-          <Chimney x={0.035} y={0.016 + 0.11 + 0.035} z={-0.05} />
+          {/* deeper eaves and a door step give the cottage a fuller silhouette from the board camera */}
+          <House w={0.15} d={0.2} wallH={0.11} roofH={0.085} wall={wall} roof={roof} eave={0.042} gable={0.032} step />
+          <Chimney x={SETTLEMENT_CHIMNEY[0]} y={SETTLEMENT_CHIMNEY[1]} z={SETTLEMENT_CHIMNEY[2]} />
         </group>
       ) : (
         <group position-y={0.012}>
-          <group position-x={-0.05}>
-            <House w={0.2} d={0.26} wallH={0.13} roofH={0.09} wall={wall} roof={roof} />
-            <Chimney x={-0.045} y={0.016 + 0.13 + 0.04} z={0.06} />
-          </group>
-          <group position={[0.11, 0, -0.03]}>
-            <House w={0.12} d={0.12} wallH={0.26} roofH={0.11} wall={wall} roof={roof} />
-            {/* a small pennant in the owner's colour on the tower: tells a city from a settlement at a glance */}
-            <group position={[0, 0.016 + 0.26 + 0.11 + 0.012, 0.07]}>
-              <mesh position-y={0.054} material={WOOD} castShadow>
-                <cylinderGeometry args={[0.006, 0.007, 0.108, 6]} />
-              </mesh>
-              <mesh geometry={PENNANT} material={flag} castShadow />
-            </group>
-          </group>
+          <Castle wall={wall} roof={roof} flag={flag} />
         </group>
       )}
     </group>
@@ -450,7 +617,7 @@ export function BuildingPiece({ b }: { b: Building }) {
   const t = tileAt(...b.tile)
   const [x, z] = corner(t, b.corner)
   return (
-    <group position={[x, 0.02, z]} rotation-y={buildingYaw(b, x, z)} scale={b.city ? 1.38 : 1.6}>
+    <group position={[x, 0.02, z]} rotation-y={buildingYaw(b, x, z)} scale={b.city ? 1.38 : 1.6} userData={{ piece: b.city ? 'city' : 'settlement' }}>
       <Settlement player={b.player} city={b.city} />
     </group>
   )
@@ -484,7 +651,8 @@ export function chimneyTops(buildings: Building[]): [number, number, number][] {
     const ry = buildingYaw(b, x, z)
     const S = b.city ? 1.38 : 1.6
     // local chimney-top position inside the settlement group (cap sits 0.089 above the chimney origin)
-    const [lx, ly, lz] = b.city ? [-0.05 - 0.045, 0.012 + 0.016 + 0.13 + 0.04 + 0.09, 0.06] : [0.035, 0.012 + 0.016 + 0.11 + 0.035 + 0.09, -0.05]
+    const [cx, cy, cz] = b.city ? CITY_CHIMNEY : SETTLEMENT_CHIMNEY
+    const [lx, ly, lz] = [cx, 0.012 + cy + 0.09, cz]
     const c = Math.cos(ry), s = Math.sin(ry)
     return [x + (lx * c + lz * s) * S, 0.02 + ly * S, z + (-lx * s + lz * c) * S]
   })
@@ -506,7 +674,7 @@ export function Roads({ roads }: { roads: Road[] }) {
         const len = Math.hypot(b[0] - a[0], b[1] - a[1])
         const ang = -Math.atan2(b[1] - a[1], b[0] - a[0])
         return (
-          <group key={i} position={[(a[0] + b[0]) / 2, 0.03, (a[1] + b[1]) / 2]} rotation-y={ang}>
+          <group key={i} position={[(a[0] + b[0]) / 2, 0.03, (a[1] + b[1]) / 2]} rotation-y={ang} userData={{ piece: 'road' }}>
             {/* darker plinth along the rail, then two chunky painted blocks on top */}
             <mesh position-y={0.012} material={mats.roadEdge} castShadow receiveShadow>
               <boxGeometry args={[len * 0.74, 0.03, 0.135]} />

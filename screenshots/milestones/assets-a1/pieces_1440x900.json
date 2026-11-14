@@ -1,0 +1,13 @@
+{
+ "pos": {
+  "seed": 29,
+  "step": 750,
+  "buildings": 14
+ },
+ "veg": {
+  "trees": 277,
+  "shrunk": 14,
+  "removed": 0
+ },
+ "errors": []
+}
