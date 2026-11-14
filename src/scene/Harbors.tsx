@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { animTime } from './motion'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { HARBORS, corner, tileAt, WATER_Y, islandRadius, type HarborKind } from './board'
+import { HARBORS, corner, tileAt, WATER_Y, islandRadius, groundHeight, type HarborKind } from './board'
 import { signTexture } from './textures'
 import { StaticBatch } from './StaticBatch'
 
@@ -167,8 +167,50 @@ function Lantern({ phase }: { phase: number }) {
 }
 
 export const SIGN_SCALE = 1.5
+/**
+ * A narrow plank gangway along +z from a harbour corner down to the pier, with rope rails and a pair of
+ * mooring posts at the shore end: it shows which two corners of the coast use the harbour.
+ */
+function Gangway({ length, posts }: { length: number; posts: boolean }) {
+  const planks = Math.max(2, Math.floor(length / 0.05))
+  const step = length / planks
+  return (
+    <group>
+      {Array.from({ length: planks }, (_, i) => (
+        <mesh key={i} position={[((i * 37) % 5) * 0.0015 - 0.003, 0, step * (i + 0.5)]} rotation-y={((i * 13) % 7 - 3) * 0.012} material={i % 3 ? wood : woodDark} castShadow receiveShadow>
+          <boxGeometry args={[0.15, 0.014, step * 0.82]} />
+        </mesh>
+      ))}
+      {[-0.06, 0.06].map((x) => (
+        <mesh key={x} position={[x, -0.018, length / 2]} material={woodDark} castShadow>
+          <boxGeometry args={[0.022, 0.022, length]} />
+        </mesh>
+      ))}
+      {/* rope rails between the shore posts and the deck */}
+      {[-0.085, 0.085].map((x) => (
+        <mesh key={`r${x}`} position={[x, 0.055, length / 2]} rotation-x={Math.PI / 2} material={rope}>
+          <cylinderGeometry args={[0.0045, 0.0045, length, 4]} />
+        </mesh>
+      ))}
+      {/* mooring posts at the corner: the gangway's landing */}
+      {posts && [-0.085, 0.085].map((x) => (
+        <group key={`p${x}`} position={[x, 0, 0.012]}>
+          <mesh position-y={0.03} material={woodDark} castShadow>
+            <cylinderGeometry args={[0.014, 0.017, 0.09, 6]} />
+          </mesh>
+          <mesh position-y={0.062} material={rope}>
+            <cylinderGeometry args={[0.018, 0.018, 0.012, 6]} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
 const DECK_Y = WATER_Y + 0.13
 const PIER_LEN = 0.46
+const GANG_X = 0.085 // gangways land on the deck this far either side of its centre line
+const CORNER_CLEAR = 0.13 // they start this far from the corner, clear of a settlement or city
 
 function dockLayout() {
   return HARBORS.map((h, i) => {
@@ -178,7 +220,32 @@ function dockLayout() {
     const out = Math.atan2(mz - t.z, mx - t.x) // outward direction
     const start = Math.hypot(mx, mz)
     const ramp = Math.max(0.3, islandRadius(out) - start + 0.12)
-    return { h, i, mx, mz, out, ramp }
+    // the two corners that use this harbour, in the dock's frame (+z outward, +x = (sin out, -cos out)),
+    // each with a gangway from just off the corner (clear of a building there) to the deck's shore end
+    const gangways = [a, b].map(([cx, cz]) => {
+      const dx = cx - mx, dz = cz - mz
+      const lx = dx * Math.sin(out) - dz * Math.cos(out), lz = dx * Math.cos(out) + dz * Math.sin(out)
+      const ex = Math.sign(lx) * GANG_X, ez = ramp + 0.04, ey = DECK_Y + 0.005
+      const hx = ex - lx, hz = ez - lz, run = Math.hypot(hx, hz)
+      const sx = lx + (hx / run) * CORNER_CLEAR, sz = lz + (hz / run) * CORNER_CLEAR
+      const world = (x: number, z: number) => [mx + x * Math.sin(out) + z * Math.cos(out), mz - x * Math.cos(out) + z * Math.sin(out)]
+      // walk towards the deck: a level span over the land as far as the island's rim, then the descent;
+      // a single straight ramp ran through the slope and the cliff
+      let top = -Infinity, rx = ex, rz = ez
+      for (let k = 0; k <= 24; k++) {
+        const f = k / 24, x = sx + (ex - sx) * f, z = sz + (ez - sz) * f
+        const [wx, wz] = world(x, z)
+        if (Math.hypot(wx, wz) > islandRadius(Math.atan2(wz, wx)) + 0.02 && k > 0) { rx = x; rz = z; break }
+        top = Math.max(top, groundHeight(wx, wz))
+      }
+      const y0 = top + 0.014
+      const span = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, posts: boolean) => {
+        const flat = Math.hypot(x1 - x0, z1 - z0)
+        return { x: x0, y: y0, z: z0, yaw: Math.atan2(x1 - x0, z1 - z0), pitch: Math.atan2(y0 - y1, flat), len: Math.hypot(flat, y0 - y1), posts }
+      }
+      return [span(sx, y0, sz, rx, y0, rz, true), span(rx, y0, rz, ex, ey, ez, false)].filter((g) => g.len > 0.02)
+    }).flat()
+    return { h, i, mx, mz, out, ramp, gangways }
   })
 }
 
@@ -196,16 +263,18 @@ export function Harbors() {
   const docks = useMemo(dockLayout, [])
   return (
     <StaticBatch>
-      {docks.map(({ h, i, mx, mz, out, ramp }) => {
-        const drop = -DECK_Y
-        const ang = Math.atan2(drop, ramp)
-        const rampLen = Math.hypot(drop, ramp)
+      {docks.map(({ h, i, mx, mz, out, ramp, gangways }) => {
         const pierLen = PIER_LEN
         return (
           <group key={i} position={[mx, 0, mz]} rotation-y={Math.PI / 2 - out} userData={{ piece: 'harbor', kind: h.kind }}>
-            <group position={[0, 0.0, 0.04]} rotation-x={ang}>
-              <Pier length={rampLen} />
-            </group>
+            {/* two gangways, one from each corner that trades here (was one ramp from the edge's middle) */}
+            {gangways.map((g, k) => (
+              <group key={k} position={[g.x, g.y, g.z]} rotation-y={g.yaw}>
+                <group rotation-x={g.pitch}>
+                  <Gangway length={g.len} posts={g.posts} />
+                </group>
+              </group>
+            ))}
             <group position={[0, DECK_Y, ramp + 0.04]}>
               <Pier length={pierLen} />
               <group position={[0.28, 0.0, pierLen * 0.35]} rotation-y={-(Math.PI / 2 - out)} scale={SIGN_SCALE}>
