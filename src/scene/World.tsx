@@ -1,8 +1,8 @@
 import { Suspense, useEffect, useLayoutEffect, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, Lightformer } from '@react-three/drei'
-import { EffectComposer, Bloom, N8AO, Vignette, ToneMapping, HueSaturation, BrightnessContrast, SMAA } from '@react-three/postprocessing'
-import { ToneMappingMode } from 'postprocessing'
+import { EffectComposer, Bloom, N8AO, Vignette, ToneMapping, SMAA } from '@react-three/postprocessing'
+import { BlendFunction, Effect, ToneMappingMode } from 'postprocessing'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Terrain } from './Terrain'
@@ -233,13 +233,33 @@ function Lights() {
 
 const off = new Set((qp.get('off') ?? '').split(','))
 
+/**
+ * Saturation +0.08 and contrast +0.1, the same maths and colour spaces as postprocessing's
+ * HueSaturation (linear) and BrightnessContrast (sRGB) at these settings, made safe. The saturation
+ * step pushed a near-zero channel below zero (the amber player's blue in tree shade), and the
+ * linear-to-sRGB conversion the effect pass inserts before the contrast takes pow() of it: NaN,
+ * shown as black patches and smeared by SMAA. Clamping before the conversion fixes that; every
+ * other pixel comes out as before.
+ */
+const GRADE = new Effect('Grade', `
+vec3 gradeToSRGB(vec3 v) { return mix(pow(v, vec3(0.41666)) * 1.055 - vec3(0.055), v * 12.92, vec3(lessThanEqual(v, vec3(0.0031308)))); }
+vec3 gradeToLinear(vec3 v) { return mix(pow(v * 0.9478672986 + vec3(0.0521327014), vec3(2.4)), v * 0.0773993808, vec3(lessThanEqual(v, vec3(0.04045)))); }
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  vec3 c = min(inputColor.rgb, vec3(60000.0));
+  float average = (c.r + c.g + c.b) / 3.0;
+  c += (average - c) * (1.0 - 1.0 / (1.001 - 0.08));
+  c = clamp(c, 0.0, 1.0);
+  c = gradeToSRGB(c);
+  c = (c - 0.5) / (1.0 - 0.1) + 0.5;
+  outputColor = vec4(gradeToLinear(max(c, vec3(0.0))), inputColor.a);
+}`, { blendFunction: BlendFunction.SRC })
+
 function Effects() {
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
       {off.has('ao') || !quality.ao ? <></> : <N8AO aoRadius={0.45} intensity={2.6} distanceFalloff={0.6} quality={quality.ao} halfRes />}
       {off.has('bloom') || !quality.bloom ? <></> : <Bloom luminanceThreshold={1.7} luminanceSmoothing={0.3} intensity={0.5} mipmapBlur radius={0.5} />}
-      <HueSaturation saturation={0.08} />
-      <BrightnessContrast brightness={0.0} contrast={0.1} />
+      <primitive object={GRADE} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette offset={0.32} darkness={0.5} />
       <SMAA />
