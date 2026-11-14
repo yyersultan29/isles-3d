@@ -148,7 +148,23 @@ function houseParts(w: number, d: number, wallH: number, roofH: number) {
     roofParts.push(slab.toNonIndexed())
   }
   const roof = mergeGeometries(roofParts)!
-  return { body, roof }
+  // light bargeboards along the eaves and both gable rakes, a little proud of the slabs, so the roof
+  // keeps a pale outline over clay, fields and forest whatever the player's colour
+  const trimParts: THREE.BufferGeometry[] = []
+  const board = (g: THREE.BoxGeometry, s: number) => { g.rotateZ(s * -ang); g.translate(0, wallH + roofH + 0.004, 0); trimParts.push(g.toNonIndexed()) }
+  for (const s of [-1, 1]) {
+    const eave = new THREE.BoxGeometry(0.014, 0.028, d + 0.062)
+    eave.translate(s * (slope + 0.03), 0.008, 0)
+    board(eave, s)
+    for (const sz of [-1, 1]) {
+      const rake = new THREE.BoxGeometry(slope + 0.03, 0.028, 0.01)
+      rake.translate((s * (slope + 0.03)) / 2, 0.008, (sz * (d + 0.05)) / 2)
+      board(rake, s)
+    }
+  }
+  for (const t of trimParts) t.deleteAttribute('uv')
+  const trim = mergeGeometries(trimParts)!
+  return { body, roof, trim }
 }
 
 function windowGeometry(w: number, d: number, wallH: number, sw = 0.03, sh = 0.04, inset = 0.002) {
@@ -256,6 +272,10 @@ const WOOD = new THREE.MeshStandardMaterial({ color: '#3b2a1c', roughness: 0.85 
 const STONE = new THREE.MeshStandardMaterial({ color: '#8d8478', roughness: 0.92 })
 const DOOR = new THREE.MeshStandardMaterial({ color: '#4a2e18', roughness: 0.8 })
 const GLOW = new THREE.MeshStandardMaterial({ color: '#ffd08a', emissive: '#ffa840', emissiveIntensity: 3.6 })
+// pale limewash for roof trim and the building base: one light tone that separates every player
+// colour from clay, wheat and forest without glowing
+const TRIM = new THREE.MeshStandardMaterial({ color: '#efe4cc', roughness: 0.7 })
+const BASE_EDGE = new THREE.MeshStandardMaterial({ color: '#2b211a', roughness: 0.9 })
 
 /** Soft warm pool of window light on the ground (additive decal, no real light cost). */
 const glowTex = (() => {
@@ -274,7 +294,7 @@ const glowTex = (() => {
 })()
 const GROUND_GLOW = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.45, toneMapped: false })
 
-function House({ w, d, wallH, roofH, wall, roof, ridge }: { w: number; d: number; wallH: number; roofH: number; wall: THREE.Material; roof: THREE.Material; ridge: THREE.Material }) {
+function House({ w, d, wallH, roofH, wall, roof }: { w: number; d: number; wallH: number; roofH: number; wall: THREE.Material; roof: THREE.Material }) {
   const g = useMemo(() => {
     const h = houseParts(w, d, wallH, roofH)
     return {
@@ -298,8 +318,9 @@ function House({ w, d, wallH, roofH, wall, roof, ridge }: { w: number; d: number
         <mesh geometry={g.body} material={wall} castShadow receiveShadow />
         <mesh geometry={g.timber} material={WOOD} castShadow />
         <mesh geometry={g.roof} material={roof} castShadow receiveShadow />
-        {/* ridge cap */}
-        <mesh position-y={wallH + roofH + 0.016} rotation-z={Math.PI / 4} material={ridge} castShadow>
+        <mesh geometry={g.trim} material={TRIM} castShadow />
+        {/* ridge cap: pale like the trim, so the roof line reads from the board camera */}
+        <mesh position-y={wallH + roofH + 0.016} rotation-z={Math.PI / 4} material={TRIM} castShadow>
           <boxGeometry args={[0.02, 0.02, d + 0.06]} />
         </mesh>
         <mesh geometry={g.frame} material={WOOD} />
@@ -329,10 +350,9 @@ function Chimney({ x, y, z }: { x: number; y: number; z: number }) {
   )
 }
 
-const PAD = new THREE.MeshStandardMaterial({ color: '#7d6a55', roughness: 0.95 })
 
 /** One material set per player, shared by every house and road of that colour (lets StaticBatch merge them). */
-const playerMatCache = new Map<Player, { wall: THREE.MeshStandardMaterial; roof: THREE.MeshStandardMaterial; ridge: THREE.MeshStandardMaterial; road: THREE.MeshStandardMaterial; roadEdge: THREE.MeshStandardMaterial }>()
+const playerMatCache = new Map<Player, { wall: THREE.MeshStandardMaterial; roof: THREE.MeshStandardMaterial; ring: THREE.MeshStandardMaterial; flag: THREE.MeshStandardMaterial; road: THREE.MeshStandardMaterial; roadEdge: THREE.MeshStandardMaterial }>()
 function playerMats(player: Player) {
   let m = playerMatCache.get(player)
   if (!m) {
@@ -340,7 +360,8 @@ function playerMats(player: Player) {
     m = {
       wall: new THREE.MeshStandardMaterial({ color: pc.wall, map: plasterTex, roughness: 0.7 }),
       roof: new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(1.12), map: shingleTex, roughness: 0.62 }),
-      ridge: new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(0.65), roughness: 0.6 }),
+      ring: new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.6 }),
+      flag: new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.75, side: THREE.DoubleSide }),
       road: new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.5, emissive: pc.wall, emissiveIntensity: 0.12 }),
       roadEdge: new THREE.MeshStandardMaterial({ color: pc.roof, roughness: 0.7 }),
     }
@@ -349,31 +370,56 @@ function playerMats(player: Player) {
   return m
 }
 
+/** Pennant: a swallow-tailed flag hanging off the pole top, double-sided. */
+const PENNANT = (() => {
+  const sh = new THREE.Shape()
+  sh.moveTo(0, 0); sh.lineTo(0.085, -0.004); sh.lineTo(0.06, -0.024); sh.lineTo(0.085, -0.044); sh.lineTo(0, -0.048); sh.closePath()
+  const g = new THREE.ExtrudeGeometry(sh, { depth: 0.004, bevelEnabled: false })
+  g.deleteAttribute('uv')
+  g.translate(0.004, 0.084, -0.002)
+  g.scale(1.25, 1.25, 1.25)
+  return g
+})()
+
 function Settlement({ player, city }: { player: Player; city: boolean }) {
-  const { wall, roof, ridge } = playerMats(player)
+  const { wall, roof, ring, flag } = playerMats(player)
   const pad = city ? 0.26 : 0.18
   return (
     <group>
-      {/* trodden earth pad + warm light pool */}
-      <mesh position-y={0.006} material={PAD} castShadow receiveShadow>
-        <cylinderGeometry args={[pad * 0.92, pad, 0.016, 10]} />
+      {/* base: a dark hairline, a ring in the owner's colour and a pale stone top, so the piece and
+          its owner read on any terrain; then the warm light pool */}
+      <mesh position-y={0.005} material={BASE_EDGE} receiveShadow>
+        <cylinderGeometry args={[pad + 0.012, pad + 0.016, 0.01, 24]} />
+      </mesh>
+      <mesh position-y={0.008} material={ring} castShadow receiveShadow>
+        <cylinderGeometry args={[pad, pad + 0.006, 0.014, 24]} />
+      </mesh>
+      <mesh position-y={0.011} material={TRIM} receiveShadow>
+        <cylinderGeometry args={[pad * 0.8, pad * 0.82, 0.014, 24]} />
       </mesh>
       <mesh position-y={0.016} rotation-x={-Math.PI / 2} material={GROUND_GLOW}>
         <planeGeometry args={[pad * 2.6, pad * 2.6]} />
       </mesh>
       {!city ? (
         <group position-y={0.012}>
-          <House w={0.15} d={0.2} wallH={0.11} roofH={0.08} wall={wall} roof={roof} ridge={ridge} />
+          <House w={0.15} d={0.2} wallH={0.11} roofH={0.08} wall={wall} roof={roof} />
           <Chimney x={0.035} y={0.016 + 0.11 + 0.035} z={-0.05} />
         </group>
       ) : (
         <group position-y={0.012}>
           <group position-x={-0.05}>
-            <House w={0.2} d={0.26} wallH={0.13} roofH={0.09} wall={wall} roof={roof} ridge={ridge} />
+            <House w={0.2} d={0.26} wallH={0.13} roofH={0.09} wall={wall} roof={roof} />
             <Chimney x={-0.045} y={0.016 + 0.13 + 0.04} z={0.06} />
           </group>
           <group position={[0.11, 0, -0.03]}>
-            <House w={0.12} d={0.12} wallH={0.26} roofH={0.11} wall={wall} roof={roof} ridge={ridge} />
+            <House w={0.12} d={0.12} wallH={0.26} roofH={0.11} wall={wall} roof={roof} />
+            {/* a small pennant in the owner's colour on the tower: tells a city from a settlement at a glance */}
+            <group position={[0, 0.016 + 0.26 + 0.11 + 0.012, 0.07]}>
+              <mesh position-y={0.054} material={WOOD} castShadow>
+                <cylinderGeometry args={[0.006, 0.007, 0.108, 6]} />
+              </mesh>
+              <mesh geometry={PENNANT} material={flag} castShadow />
+            </group>
           </group>
         </group>
       )}

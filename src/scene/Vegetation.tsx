@@ -7,6 +7,7 @@ import { pineGeometry, broadleafGeometry, bushGeometry, rockGeometry, wheatGeome
 import { addWind } from './shaders'
 import { oceanTime } from './Ocean'
 import { animTime } from './motion'
+import { usePieces } from './Pieces'
 
 export interface Inst { x: number; y: number; z: number; s: number; ry: number; sy?: number; rx?: number; rz?: number; tint?: THREE.Color }
 
@@ -155,19 +156,62 @@ function Pines() {
     }
     return b
   }, [])
+  const { buildings } = usePieces()
+  const shown = useMemo(() => clearRoofs(buckets, geos, buildings), [buckets, geos, buildings])
   return (
     <>
       {geos.map((g, i) => (
-        <InstGroup key={i} geo={g} mat={mat} items={buckets[i]} />
+        <InstGroup key={i} geo={g} mat={mat} items={shown[i]} capacity={buckets[i].length} />
       ))}
     </>
   )
 }
 
-function InstGroup({ geo, mat, items, shadow = true }: { geo: THREE.BufferGeometry; mat: THREE.Material; items: Inst[]; shadow?: boolean }) {
+// ---------- trees in front of built houses ----------
+// The board camera looks from +z, 43° above the horizon (World.tsx), so a tree at distance dz on the
+// camera side of a house hides what is lower than its top minus dz·tan 43° behind it.
+const SIGHT_SLOPE = Math.tan(THREE.MathUtils.degToRad(43))
+// mid-roof height of a settlement and of a city's hall (Pieces.tsx), above which roofs stay clear
+const ROOF_MID = 0.29
+/**
+ * Only the trees that would hide a built house's roof from the board camera are made shorter, or
+ * left out when they would have to shrink below about half; the rest of the forest is untouched.
+ * Runs when the pieces change (a build), never per frame.
+ */
+function clearRoofs(buckets: Inst[][], geos: THREE.BufferGeometry[], buildings: { tile: [number, number]; corner: number; city: boolean }[]) {
+  if (!buildings.length) return buckets
+  const spots = buildings.map((b) => { const [x, z] = corner(tileAt(...b.tile), b.corner); return { x, z, half: b.city ? 0.3 : 0.22 } })
+  let shrunk = 0, removed = 0
+  const out = buckets.map((items, i) => {
+    const g = geos[i]
+    if (!g.boundingBox) g.computeBoundingBox()
+    const top = g.boundingBox!.max.y, crown = Math.max(g.boundingBox!.max.x, -g.boundingBox!.min.x, g.boundingBox!.max.z, -g.boundingBox!.min.z)
+    const res: Inst[] = []
+    for (const it of items) {
+      const h = top * it.s * (it.sy ?? 1), r = crown * it.s
+      let limit = Infinity
+      for (const b of spots) {
+        const dx = it.x - b.x, dz = it.z - b.z
+        if (dz < -r * 0.5 || dz > 1.2 || Math.abs(dx) > b.half + r) continue
+        limit = Math.min(limit, ROOF_MID + Math.max(0, dz - r * 0.5) * SIGHT_SLOPE - (it.y - 0.02))
+      }
+      if (h <= limit) { res.push(it); continue }
+      const f = limit / h
+      if (f < 0.5) { removed++; continue }
+      shrunk++
+      res.push({ ...it, s: it.s * f })
+    }
+    return res
+  })
+  if (import.meta.env.DEV) (window as unknown as { __islesVeg?: object }).__islesVeg = { trees: buckets.reduce((n, b) => n + b.length, 0), shrunk, removed }
+  return out
+}
+
+function InstGroup({ geo, mat, items, shadow = true, capacity }: { geo: THREE.BufferGeometry; mat: THREE.Material; items: Inst[]; shadow?: boolean; capacity?: number }) {
   const ref = useRef<THREE.InstancedMesh>(null)
   useInstances(ref, items)
-  return <instancedMesh ref={ref} args={[geo, mat, Math.max(1, items.length)]} castShadow={shadow} receiveShadow frustumCulled={false} />
+  // a fixed capacity keeps the mesh when fewer items are shown (trees cleared after a build)
+  return <instancedMesh ref={ref} args={[geo, mat, Math.max(1, capacity ?? items.length)]} castShadow={shadow} receiveShadow frustumCulled={false} />
 }
 
 // ---------- Wheat ----------
