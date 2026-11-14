@@ -1,0 +1,32 @@
+{
+ "errors": [],
+ "hand": {
+  "seed": 1,
+  "step": 34,
+  "who": "p1",
+  "phase": "actions",
+  "res": {
+   "lumber": 3,
+   "brick": 0,
+   "wool": 1,
+   "grain": 3,
+   "ore": 1
+  }
+ },
+ "handAxe": [],
+ "tradeAxe": [],
+ "discard": {
+  "seed": 1,
+  "step": 75,
+  "who": "p1",
+  "phase": "discard",
+  "res": {
+   "lumber": 4,
+   "brick": 0,
+   "wool": 1,
+   "grain": 5,
+   "ore": 0
+  }
+ },
+ "discardAxe": []
+}

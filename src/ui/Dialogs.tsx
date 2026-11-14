@@ -5,6 +5,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
 import { RESOURCES, focusRing, panel } from './HUD'
+import { ART_SHADOW, ResourceBackdrop } from './cards/ResourceArt'
 import { SEATS, useGameView } from './gameView'
 import { useGameStore } from '../store/GameProvider'
 import { useDevOpen, useTradeOpen } from '../store/ui'
@@ -54,10 +55,11 @@ function DiscardDialog({ compact }: { compact: boolean }) {
         Rolled a seven. {discard.waiting.length > 1 ? `Then: ${discard.waiting.slice(1).map((p) => SEATS[p].name).join(', ')}.` : ''}
       </p>
       <ul className="flex gap-[8px]">
-        {RESOURCES.map(({ key, name, Icon, bg }) => (
+        {RESOURCES.map(({ key, name, Icon }) => (
           <li key={key} className={`flex flex-col items-center gap-[6px] ${card}`}>
-            <div className={`relative h-[64px] w-full overflow-hidden rounded-[8px] bg-gradient-to-b ${bg} ring-1 ring-[#f2cf84]/50 ${discard.hand[key] ? '' : 'opacity-40'}`}>
-              <Icon aria-hidden className="absolute left-1/2 top-1/2 w-[80%] -translate-x-1/2 -translate-y-1/2" />
+            <div className={`relative h-[64px] w-full overflow-hidden rounded-[8px] ring-1 ring-[#f2cf84]/50 ${discard.hand[key] ? '' : 'opacity-40'}`}>
+              <ResourceBackdrop res={key} />
+              <Icon aria-hidden className={`absolute left-1/2 top-1/2 w-[80%] -translate-x-1/2 -translate-y-1/2 ${ART_SHADOW}`} />
               <span aria-hidden className="absolute left-[3px] top-[3px] rounded-[4px] bg-[#1d1a16]/85 px-[5px] text-[12px] font-bold text-white">{discard.hand[key]}</span>
               {pick[key] > 0 && <span aria-hidden className="absolute bottom-[3px] right-[3px] rounded-[4px] bg-[#c8302a] px-[5px] text-[13px] font-bold text-white">−{pick[key]}</span>}
             </div>

@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import gsap from 'gsap'
 import { Avatar, Brick, HexLogo, Logs, Ore, SheepIcon, WheatIcon } from './icons'
+import { ART_SHADOW, PARCHMENT_FRAME, ResourceBackdrop } from './cards/ResourceArt'
 import { BRAND_NAME } from '../brand'
 import { motion } from '../scene/motion'
 import { useViewport } from './layout'
@@ -342,17 +343,18 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
   const draft = useTradeDraft()
   const can = bank.open && !covered
   const size = compact ? 'h-[72px] w-[62px] rounded-[8px] p-[2px] shadow-[0_6px_14px_rgba(0,0,0,0.55)]' : 'h-[96px] w-[88px] rounded-[9px] p-[3px] shadow-[0_10px_22px_rgba(0,0,0,0.6)]'
-  const frame = `relative block ${size} bg-[linear-gradient(180deg,#ffe2a0,#b98a3a_50%,#f2cf84)] transition-transform`
+  const frame = `relative block ${size} ${PARCHMENT_FRAME} transition-transform`
   return (
     <ul aria-label={`${ownerName}'s resources`} className={`relative flex ${compact ? 'gap-[6px]' : 'gap-[8px] pb-[12px]'} ${setBack(setup)}`}>
-      {RESOURCES.map(({ key, name, Icon, bg }) => {
+      {RESOURCES.map(({ key, name, Icon }) => {
         const n = counts[key]
         const chosen = can ? draft.give[key] ?? 0 : 0
         const word = name.toLowerCase()
         const face = (
-          <span className={`relative block h-full w-full overflow-hidden ${compact ? 'rounded-[6px] shadow-[inset_0_0_10px_rgba(0,0,0,0.45)]' : 'rounded-[7px] shadow-[inset_0_0_14px_rgba(0,0,0,0.45)]'} bg-gradient-to-b ${bg}`}>
-            {!compact && <span className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.28),transparent_60%)]" />}
-            <Icon aria-hidden className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 ${compact ? 'top-[56%] w-[54px] drop-shadow-[0_3px_2px_rgba(0,0,0,0.45)]' : 'top-[54%] w-[78px] drop-shadow-[0_4px_3px_rgba(0,0,0,0.45)]'}`} />
+          <span className={`relative block h-full w-full overflow-hidden ${compact ? 'rounded-[6px]' : 'rounded-[7px]'} shadow-[inset_0_0_0_1px_rgba(90,60,25,0.55)]`}>
+            {/* A3: a landscape of the resource's biome behind the item (src/ui/cards/ResourceArt.tsx) */}
+            <ResourceBackdrop res={key} />
+            <Icon aria-hidden className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 ${ART_SHADOW} ${compact ? 'top-[56%] w-[54px]' : 'top-[54%] w-[78px]'}`} />
             {/* G7.2: an empty pile dims only its art; the count and the name stay at full contrast */}
             {n === 0 && <span aria-hidden className="absolute inset-0 bg-black/50" />}
             <span aria-hidden className={`absolute grid place-items-center rounded-[5px] bg-[#1d1a16]/85 font-bold text-white ring-1 ring-[#f2cf84]/60 ${compact ? 'left-[3px] top-[3px] h-[20px] w-[20px] text-[13px]' : 'left-[4px] top-[4px] h-[22px] w-[22px] text-[14px]'}`}>{n}</span>
