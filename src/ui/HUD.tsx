@@ -157,11 +157,18 @@ const PIPS: Record<number, [number, number][]> = {
   5: [[26, 26], [74, 26], [50, 50], [26, 74], [74, 74]],
   6: [[28, 24], [72, 24], [28, 50], [72, 50], [28, 76], [72, 76]],
 }
-function Face({ n, style }: { n: number; style: React.CSSProperties }) {
+// A7: the second die is red with white pips (owner's choice), so the two dice read as a pair at a glance
+const DIE_LOOK = {
+  white: { face: 'bg-[radial-gradient(circle_at_35%_30%,#ffffff,#ece7dd_62%,#d3ccbf)]', pip: 'bg-[radial-gradient(circle_at_40%_35%,#3a3a3a,#050505)] shadow-[0_0.5px_0_rgba(255,255,255,0.7)]', core: '#cfc6b6' },
+  red: { face: 'bg-[radial-gradient(circle_at_35%_30%,#e2584a,#b8281f_62%,#8a1a14)]', pip: 'bg-[radial-gradient(circle_at_40%_35%,#ffffff,#e8e0d4)] shadow-[0_0.5px_0_rgba(0,0,0,0.35)]', core: '#7e1812' },
+} as const
+type DieColor = keyof typeof DIE_LOOK
+function Face({ n, style, color }: { n: number; style: React.CSSProperties; color: DieColor }) {
+  const look = DIE_LOOK[color]
   return (
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_30%,#ffffff,#ece7dd_62%,#d3ccbf)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.6),inset_0_-2px_5px_rgba(80,60,30,0.28)]" style={style}>
+    <div className={`absolute inset-0 ${look.face} shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45),inset_0_-2px_5px_rgba(60,30,10,0.3)]`} style={style}>
       {PIPS[n].map(([x, y], i) => (
-        <span key={i} className="absolute h-[16%] w-[16%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_40%_35%,#3a3a3a,#050505)] shadow-[0_0.5px_0_rgba(255,255,255,0.7)]" style={{ left: `${x}%`, top: `${y}%` }} />
+        <span key={i} className={`absolute h-[16%] w-[16%] -translate-x-1/2 -translate-y-1/2 rounded-full ${look.pip}`} style={{ left: `${x}%`, top: `${y}%` }} />
       ))}
     </div>
   )
@@ -170,10 +177,10 @@ function Face({ n, style }: { n: number; style: React.CSSProperties }) {
 // darker core behind the faces fills the cut corners, so the edges read as rounded instead of open.
 const DIE_R = 0.22
 const DIE_CORE = 0.1
-export function Die({ faces, rot, size = 54 }: { faces: [number, number, number]; rot: string; size?: number }) {
+export function Die({ faces, rot, size = 54, color = 'white' }: { faces: [number, number, number]; rot: string; size?: number; color?: DieColor }) {
   const S = size
   const face = (t: string): React.CSSProperties => ({ transform: t, borderRadius: S * DIE_R })
-  const core = (t: string): React.CSSProperties => ({ transform: t, background: '#cfc6b6' })
+  const core = (t: string): React.CSSProperties => ({ transform: t, background: DIE_LOOK[color].core })
   const z = S / 2, zc = S / 2 - S * DIE_CORE
   return (
     <div className="relative" style={{ width: S, height: S, perspective: 400 }}>
@@ -182,10 +189,10 @@ export function Die({ faces, rot, size = 54 }: { faces: [number, number, number]
         <div className="absolute inset-0" style={core(`rotateX(90deg) translateZ(${zc}px)`)} />
         <div className="absolute inset-0" style={core(`rotateY(90deg) translateZ(${zc}px)`)} />
         <div className="absolute inset-0" style={core(`rotateY(-90deg) translateZ(${zc}px)`)} />
-        <Face n={faces[0]} style={face(`translateZ(${z}px)`)} />
-        <Face n={faces[1]} style={face(`rotateX(90deg) translateZ(${z}px)`)} />
-        <Face n={faces[2]} style={face(`rotateY(90deg) translateZ(${z}px)`)} />
-        <Face n={7 - faces[2]} style={face(`rotateY(-90deg) translateZ(${z}px)`)} />
+        <Face color={color} n={faces[0]} style={face(`translateZ(${z}px)`)} />
+        <Face color={color} n={faces[1]} style={face(`rotateX(90deg) translateZ(${z}px)`)} />
+        <Face color={color} n={faces[2]} style={face(`rotateY(90deg) translateZ(${z}px)`)} />
+        <Face color={color} n={7 - faces[2]} style={face(`rotateY(-90deg) translateZ(${z}px)`)} />
       </div>
     </div>
   )
@@ -218,7 +225,7 @@ function DiceArea() {
     <div className="absolute right-[14px] top-[420px] w-[232px]">
       <div ref={ref} aria-label={rolled ? `Dice: ${a} and ${b}, total ${a + b}` : 'Dice not rolled yet'} role="img" className={`relative z-10 mx-auto flex w-[150px] justify-between drop-shadow-[0_10px_8px_rgba(0,0,0,0.55)] transition-opacity ${rolled ? '' : 'opacity-70'}`}>
         <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg) rotateZ(-4deg)" />
-        <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg) rotateZ(6deg)" />
+        <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg) rotateZ(6deg)" color="red" />
       </div>
       {/* wooden plinth */}
       <div className="relative -mt-[18px] h-[96px] rounded-[28px] bg-[linear-gradient(180deg,#6b4a2c,#3d2817_60%,#2a1b10)] shadow-[0_14px_30px_rgba(0,0,0,0.6),inset_0_2px_0_rgba(255,220,170,0.25),inset_0_-6px_12px_rgba(0,0,0,0.5)] ring-1 ring-black/40">

@@ -126,7 +126,7 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 **Objective:** refine the existing React overlay without sacrificing board visibility.
 
 - [x] Standardize spacing, typography, panel radii, border weights, and iconography. V6.1 adds shared tokens (`panel`, `focusRing`), sets panels to r-12 and controls/cards to r-8/9, and uses 14/15 px for UI text and 20 px for display text.
-- [ ] Improve resource-card illustration consistency and legibility. Deferred at the V6 sign-off; tracked as a follow-up.
+- [x] Improve resource-card illustration consistency and legibility. Deferred at the V6 sign-off; done in V9 A3 (`01c1e8d`): every card shows its biome's landscape behind the item, in one parchment frame.
 - [x] Refine player cards, dice tray, build menu, left navigation, and hover/focus states. Build rows are now real buttons with hover. Nav has `aria-current`, icon buttons have labels and hover, and every control has a gold `focus-visible` ring. Dice skip the bounce under reduced motion.
 - [x] Ensure sufficient contrast over bright/dark water. Panels are opaque (88–90%), and the focus ring uses an offset so it reads over water and over panels.
 - [x] Add responsive layouts for 1440×900, 1920×1080, tablet and narrow screens. V6.2 adds `CompactHUD` for narrow or portrait screens: a top bar with the menu, players and help, plus a bottom dock with Roll, Undo, Chat, a Build popover and the resource hand. Text is ≥ 12 px. Camera fitting keeps the whole board and every port between the bars, with the orbit limit and fog pushed out to match. Desktop framing is unchanged.
@@ -166,6 +166,23 @@ Create a polished, responsive, real-time 3D tabletop strategy experience inspire
 **Measured on the dev Mac:** 1080p at DPR 1 runs at 60 fps capped (105 uncapped) on `high`. A 1080p window at DPR 2 (a 4K buffer) runs at ~37 fps on `high` and 58 fps on `medium`. No real lower-tier devices have been tested yet.
 
 **Exit criteria:** measured performance and documented asset pipeline; no material visual regression.
+
+### V9 — Game pieces and cards
+
+**Objective:** bring the pieces, harbours, cards, tokens and dice up to the diorama's art level, in one style ("a painted wooden miniature on a diorama"). Plan, budgets and results: `docs/ASSET_DESIGN.md`. `references/card-ref.png` is a style direction only; all art is our own (procedural meshes and SVG), and no new binary assets ship.
+
+- [x] A0 — Asset plan, piece tags and a per-piece probe (`scripts/assets-probe.mjs`): triangles, meshes and materials per piece, frame draw calls and fps on a fixed position. `717da0c`
+- [x] A1 — Settlement with deep eaves, a chimney and a step; the city is a castle (curtain wall, towers, keep, hall) with a masonry texture. `717da0c`
+- [x] A2 — Roads are a bundle of three logs in the owner's colour. `4c8c75c`
+- [x] A3 — Resource cards show a landscape of their biome behind the item, in a parchment frame. `01c1e8d`
+- [x] A4 — Harbour signs use the resource-card icons; every pier carries cargo of its kind. `d0a7004`
+- [x] A5 — Development card faces and a card back. `312c119`
+- [x] A6 — The robber is a hooded, cloaked figure. `997dc36`
+- [x] A7 — Token rims, rounded dice with a red second die, build-menu icons after the new pieces. `a946264` and the red-die follow-up.
+
+**Budgets held** (positions and method in `docs/ASSET_DESIGN.md` §5, §9): +8 draw calls over A0 (limit +10), 4 of 4 new materials, every piece within its triangle budget, fps within the run-to-run noise. Placement rules, player colours and interaction logic are unchanged; 273 tests pass.
+
+**Exit criteria:** every piece, card and token reads at the V7 sizes and DPR 1–3; axe 0; no framing, blur or performance regression; owner review of the screenshots in `screenshots/milestones/assets-a0` … `assets-a7`.
 
 ---
 
@@ -1153,6 +1170,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | V6 — HUD polish | Done | V6 | `screenshots/milestones/v6/` | V6.1 a11y, focus and tokens; V6.2 compact HUD and camera fit for tablet/phone. Open: resource-card illustration pass, larger board on landscape phones |
 | V7 — Camera & visual QA | Done | V7 | `screenshots/milestones/v7/` | Pan clamp, reset (dbl-click/R), view presets, tile hover, QA at 10 viewports and DPR 1–3; docs in CAMERA.md |
 | V8 — Performance | Done | `bdc6ec0`, V8 | `screenshots/milestones/v8/` | Shadow-map throttling, quality presets, WebGL fallback, ASSETS.md, perf probe. 52.6 fps @1440×900 DPR2 (was 46.6); identical image on `high` |
+| V9 — Game pieces & cards | Done, owner review | `717da0c`, `4c8c75c`, `01c1e8d`, `d0a7004`, `312c119`, `997dc36`, `a946264`, red die | `screenshots/milestones/assets-a0` … `assets-a7` | Castle city, log-bundle roads, landscape resource cards, harbour cargo, dev card art, hooded robber, token rims, rounded dice (second red), new build icons. 301/462 calls (+8 over A0), 4 new materials, ~50 fps @1440×900 DPR2. Plan and results in `docs/ASSET_DESIGN.md` |
 | G1 — Engine foundation | Done | `861b562` | — | 65 tests; setup, dice, production, views, replay |
 | G2 — Construction & robber | Done | `40d5a8e` | — | 97 tests; builds, seven/discard/robber/steal, Friendly Robber, Longest Road, fuzzer |
 | G3 — Trades, dev cards, victory | Done | `e31e683` | — | 134 tests; bank/port and player trades, dev cards, victory, views, golden replays, 1,000-game bot playout (999 finished, 1 at the 2,000-turn cap) |

@@ -91,7 +91,7 @@ export function CompactHUD() {
           >
             <span ref={dice} aria-hidden className="flex gap-[6px] pl-[2px]">
               <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg)" size={24} />
-              <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg)" size={24} />
+              <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg)" size={24} color="red" />
             </span>
             <span className="whitespace-nowrap">{primary.short}</span>
           </button>
