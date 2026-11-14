@@ -420,19 +420,17 @@ export const Arrow = () => (
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
 )
-// A7: build-menu icons drawn after the 3D pieces (A1, A2): a bundle of three bound logs, a cottage with
+// A7: build-menu icons drawn after the 3D pieces: a paved road with kerbs, a cottage with
 // deep eaves, a chimney and a door step, and the castle (curtain wall, keep with a cone roof, gabled hall)
 const ICO_WALL = '#efdcae', ICO_ROOF = '#bf8d3c', ICO_LINE = '#6b4a22', ICO_DARK = '#7a4f22'
 const RoadIco = () => (
   <svg viewBox="0 0 24 24" className="h-[24px] w-[24px]">
-    <g transform="rotate(-38 12 12)" stroke={ICO_LINE} strokeWidth="0.8">
-      {[8.2, 12, 15.8].map((y) => (
-        <g key={y}>
-          <rect x="2.5" y={y - 1.9} width="18" height="3.8" rx="1.9" fill="#d3a666" />
-          <ellipse cx="20.3" cy={y} rx="1.3" ry="1.9" fill={ICO_WALL} />
-        </g>
+    {/* a paved road: grey kerbs, two rows of cobbles in a running bond */}
+    <g transform="rotate(-38 12 12)">
+      <rect x="1.5" y="7.6" width="21" height="8.8" rx="1.2" fill="#9a8f80" stroke={ICO_LINE} strokeWidth="0.8" />
+      {[[3, 9.3, 3.6], [7.2, 9.3, 3.6], [11.4, 9.3, 3.6], [15.6, 9.3, 3.6], [3, 12.3, 1.6], [5.2, 12.3, 3.6], [9.4, 12.3, 3.6], [13.6, 12.3, 3.6], [17.8, 12.3, 1.6]].map(([x, y, w]) => (
+        <rect key={`${x},${y}`} x={x} y={y} width={w} height="2.4" rx="0.5" fill={ICO_WALL} stroke={ICO_LINE} strokeWidth="0.45" />
       ))}
-      <path d="M7.5 6.3v11.4M15.5 6.3v11.4" stroke="#5a3a1c" strokeWidth="0.9" />
     </g>
   </svg>
 )

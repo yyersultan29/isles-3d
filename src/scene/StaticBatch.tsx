@@ -31,9 +31,11 @@ export function StaticBatch({ children }: { children: ReactNode }) {
     for (const { mat, cast, receive, items } of groups.values()) {
       if (items.length < 2) continue
       const withUv = items.every((m) => m.geometry.attributes.uv)
+      // vertex colours (e.g. the per-cobble shade of roads) survive when every item has them
+      const withColor = items.every((m) => m.geometry.attributes.color)
       const geos = items.map((m) => {
         let geo = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()
-        for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal' && !(k === 'uv' && withUv)) geo.deleteAttribute(k)
+        for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal' && !(k === 'uv' && withUv) && !(k === 'color' && withColor)) geo.deleteAttribute(k)
         if (!geo.attributes.normal) geo.computeVertexNormals()
         geo.applyMatrix4(mtx.multiplyMatrices(inv, m.matrixWorld))
         geo.clearGroups()

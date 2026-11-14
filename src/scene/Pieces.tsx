@@ -178,13 +178,15 @@ function houseParts(w: number, d: number, wallH: number, roofH: number, eave = 0
   // keeps a pale outline over clay, fields and forest whatever the player's colour
   const trimParts: THREE.BufferGeometry[] = []
   const board = (g: THREE.BoxGeometry, s: number) => { g.rotateZ(s * -ang); g.translate(0, wallH + roofH + 0.004, 0); trimParts.push(g.toNonIndexed()) }
+  // the boards' tops sit 2 mm above the slab's top (0.022): coplanar faces z-fought (flickering white
+  // stripes on the roof when zoomed in)
   for (const s of [-1, 1]) {
-    const eaveBoard = new THREE.BoxGeometry(0.014, 0.028, D + 0.012)
-    eaveBoard.translate(s * L, 0.008, 0)
+    const eaveBoard = new THREE.BoxGeometry(0.014, 0.03, D + 0.012)
+    eaveBoard.translate(s * L, 0.009, 0)
     board(eaveBoard, s)
     for (const sz of [-1, 1]) {
-      const rake = new THREE.BoxGeometry(L, 0.028, 0.01)
-      rake.translate((s * L) / 2, 0.008, (sz * D) / 2)
+      const rake = new THREE.BoxGeometry(L, 0.03, 0.01)
+      rake.translate((s * L) / 2, 0.009, (sz * D) / 2)
       board(rake, s)
     }
   }
@@ -394,7 +396,8 @@ function playerMats(player: Player) {
       roof: new THREE.MeshStandardMaterial({ color: new THREE.Color(pc.roof).multiplyScalar(1.12), map: shingleTex, roughness: 0.62 }),
       ring: new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.6 }),
       flag: new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.75, side: THREE.DoubleSide }),
-      road: new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.5, emissive: pc.wall, emissiveIntensity: 0.12 }),
+      // vertexColors: each cobble carries its own shade (pavedRoad)
+      road: new THREE.MeshStandardMaterial({ color: pc.wall, roughness: 0.55, emissive: pc.wall, emissiveIntensity: 0.12, vertexColors: true }),
       roadEdge: new THREE.MeshStandardMaterial({ color: pc.roof, roughness: 0.7 }),
     }
     playerMatCache.set(player, m)
@@ -680,48 +683,73 @@ export function chimneyTops(buildings: Building[]): [number, number, number][] {
   })
 }
 
-// ---------------- Roads: a bundle of three logs ----------------
-const LOG_R = 0.024
-const LOG_BASE = 0.027 // top of the dark plinth
+// ---------------- Roads: a paved road ----------------
+// A raised bed in the owner's darker tone, cobbles in the owner's colour (bevelled, so each stone
+// catches the light, with dark joints between them) and grey stone kerbs on both sides. Grey kerbs
+// rather than the pale trim, so a white player's road keeps its edges.
+const ROAD_W = 0.135 // bed width
+const BED_H = 0.05 // bed height (top at BED_TOP in the road's group); its side shows the owner's colour
+const BED_TOP = 0.012 + BED_H / 2
+const KERB_W = 0.012, KERB_H = 0.016
+const COBBLE_COLS = 3, COBBLE_GAP = 0.006, COBBLE_H = 0.012
 
 /**
- * Geometry of one road along +x, built once per edge length: three logs (two below, one on top,
- * ends a little staggered), their pale end grain, and two dark bindings. Logs end within ±0.36 of
- * the edge length, like the old blocks, so they never reach the corners where buildings stand.
+ * Geometry of one road along +x, built once per edge length: cobbles in a running bond (alternate
+ * columns offset by half a stone, ends cut square) and the two kerbs. The road ends within ±0.36 of
+ * the edge length, like the old pieces, so it never reaches the corners where buildings stand.
  */
-const bundleCache = new Map<string, { logs: THREE.BufferGeometry; ends: THREE.BufferGeometry; bands: THREE.BufferGeometry }>()
-function roadBundle(len: number) {
-  const key = len.toFixed(3)
-  let b = bundleCache.get(key)
-  if (b) return b
-  const yLow = LOG_BASE + LOG_R, yTop = yLow + LOG_R * 1.732
-  const logs: [number, number, number, number][] = [ // z, y, x offset, length factor
-    [-LOG_R * 1.02, yLow, -0.012, 0.7],
-    [LOG_R * 1.02, yLow, 0.01, 0.69],
-    [0, yTop, 0, 0.66],
-  ]
-  const logParts: THREE.BufferGeometry[] = [], endParts: THREE.BufferGeometry[] = [], bandParts: THREE.BufferGeometry[] = []
-  for (const [z, y, dx, f] of logs) {
-    const L = len * f, x0 = dx * len
-    const log = new THREE.CylinderGeometry(LOG_R, LOG_R, L, 8, 1, true)
-    log.rotateZ(Math.PI / 2); log.translate(x0, y, z)
-    logParts.push(log)
-    for (const sx of [-1, 1]) {
-      const end = new THREE.CircleGeometry(LOG_R * 0.98, 8)
-      end.rotateY(sx * Math.PI / 2); end.translate(x0 + (sx * L) / 2, y, z)
-      end.deleteAttribute('uv')
-      endParts.push(end)
-    }
-    for (const bx of [-0.2, 0.2]) {
-      const band = new THREE.CylinderGeometry(LOG_R * 1.1, LOG_R * 1.1, 0.012, 8, 1, true)
-      band.rotateZ(Math.PI / 2); band.translate(bx * len, y, z)
-      band.deleteAttribute('uv')
-      bandParts.push(band)
-    }
+const roadCache = new Map<string, { cobbles: THREE.BufferGeometry; kerbs: THREE.BufferGeometry; len: number }>()
+function pavedRoad(edge: number) {
+  const key = edge.toFixed(3)
+  let r = roadCache.get(key)
+  if (r) return r
+  const L = edge * 0.72
+  const inner = ROAD_W - 2 * KERB_W
+  const pitchZ = inner / COBBLE_COLS
+  const rows = Math.max(4, Math.round(L / 0.063))
+  const pitchX = L / rows
+  const rand = mulberry32(Math.round(edge * 1e4))
+  const pos: number[] = [], col: number[] = []
+  // one cobble: a bevelled block (top inset), slightly turned, with its own height and shade; 10 triangles
+  const stone = (x0: number, x1: number, z: number) => {
+    const sx = (x1 - x0 - COBBLE_GAP) * (0.88 + rand() * 0.12), sz = (pitchZ - COBBLE_GAP) * (0.86 + rand() * 0.14)
+    if (sx < 0.01) return
+    const h = COBBLE_H * (0.75 + rand() * 0.5), inset = 0.0035 + rand() * 0.002
+    const cx = (x0 + x1) / 2 + (rand() - 0.5) * 0.003, cz = z + (rand() - 0.5) * 0.003
+    const turn = (rand() - 0.5) * 0.22, c = Math.cos(turn), sn = Math.sin(turn)
+    const shade = 0.82 + rand() * 0.22
+    const P = (x: number, y: number, zz: number) => [cx + x * c - zz * sn, BED_TOP + y, cz + x * sn + zz * c]
+    const b0 = P(-sx / 2, 0, -sz / 2), b1 = P(sx / 2, 0, -sz / 2), b2 = P(sx / 2, 0, sz / 2), b3 = P(-sx / 2, 0, sz / 2)
+    const t0 = P(-sx / 2 + inset, h, -sz / 2 + inset), t1 = P(sx / 2 - inset, h, -sz / 2 + inset), t2 = P(sx / 2 - inset, h, sz / 2 - inset), t3 = P(-sx / 2 + inset, h, sz / 2 - inset)
+    const tri = (...v: number[][]) => { for (const q of v) { pos.push(...q); col.push(shade, shade, shade) } }
+    tri(t0, t2, t1); tri(t0, t3, t2) // top
+    tri(b0, t0, t1); tri(b0, t1, b1) // -z side
+    tri(b1, t1, t2); tri(b1, t2, b2) // +x
+    tri(b2, t2, t3); tri(b2, t3, b3) // +z
+    tri(b3, t3, t0); tri(b3, t0, b0) // -x
   }
-  b = { logs: mergeGeometries(logParts)!, ends: mergeGeometries(endParts)!, bands: mergeGeometries(bandParts)! }
-  bundleCache.set(key, b)
-  return b
+  for (let j = 0; j < COBBLE_COLS; j++) {
+    const z = -inner / 2 + pitchZ * (j + 0.5)
+    const off = j % 2 ? pitchX / 2 : 0
+    for (let x = -L / 2 - off; x < L / 2 - 1e-6; x += pitchX) stone(Math.max(x, -L / 2), Math.min(x + pitchX, L / 2), z)
+  }
+  const cobbleGeo = new THREE.BufferGeometry()
+  cobbleGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  cobbleGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+  cobbleGeo.computeVertexNormals()
+  const kerbs: THREE.BufferGeometry[] = []
+  for (const sz of [-1, 1]) {
+    // 2 mm proud of the bed's side: coplanar faces would z-fight
+    const k = new THREE.BoxGeometry(L, KERB_H, KERB_W)
+    k.translate(0, BED_TOP + KERB_H / 2 - 0.004, sz * (ROAD_W / 2 - KERB_W / 2 + 0.002))
+    k.deleteAttribute('uv')
+    const keep = k.toNonIndexed()
+    keep.deleteAttribute('color')
+    kerbs.push(keep)
+  }
+  r = { cobbles: cobbleGeo, kerbs: mergeGeometries(kerbs)!, len: L }
+  roadCache.set(key, r)
+  return r
 }
 
 export function Roads({ roads }: { roads: Road[] }) {
@@ -739,16 +767,15 @@ export function Roads({ roads }: { roads: Road[] }) {
       {items.map(({ a, b, mats }, i) => {
         const len = Math.hypot(b[0] - a[0], b[1] - a[1])
         const ang = -Math.atan2(b[1] - a[1], b[0] - a[0])
-        const g = roadBundle(len)
+        const g = pavedRoad(len)
         return (
           <group key={i} position={[(a[0] + b[0]) / 2, 0.03, (a[1] + b[1]) / 2]} rotation-y={ang} userData={{ piece: 'road' }}>
-            {/* darker plinth along the rail keeps the road's footprint readable on any terrain */}
+            {/* the bed, in the owner's darker tone: it shows in the joints and keeps the footprint readable */}
             <mesh position-y={0.012} material={mats.roadEdge} castShadow receiveShadow>
-              <boxGeometry args={[len * 0.74, 0.03, 0.135]} />
+              <boxGeometry args={[g.len + 0.01, BED_H, ROAD_W]} />
             </mesh>
-            <mesh geometry={g.logs} material={mats.road} castShadow receiveShadow />
-            <mesh geometry={g.ends} material={TRIM} />
-            <mesh geometry={g.bands} material={WOOD} castShadow />
+            <mesh geometry={g.cobbles} material={mats.road} castShadow receiveShadow />
+            <mesh geometry={g.kerbs} material={STONE} castShadow receiveShadow />
           </group>
         )
       })}
