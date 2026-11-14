@@ -12,13 +12,14 @@ import { SEATS, useGameView, type DevGroup, type DevKind, type DevRow } from './
 import { NAME, Tile, gold, plain, useAct } from './TradeDialog'
 import { setDevOpen } from '../store/ui'
 import { RESOURCE_ORDER, type Resource } from '../game'
+import { DEV_TINT, DevCard } from './cards/DevCardArt'
 
 const CARD: Record<DevKind, { name: string; blurb: string; tint: string }> = {
-  knight: { name: 'Knight', blurb: 'Move the robber and steal a card', tint: '#7a4bc2' },
-  roadBuilding: { name: 'Road Building', blurb: 'Build two free roads', tint: '#3f8a4a' },
-  yearOfPlenty: { name: 'Year of Plenty', blurb: 'Take any two resources from the bank', tint: '#c9902a' },
-  monopoly: { name: 'Monopoly', blurb: 'Take one resource from every player', tint: '#b8452f' },
-  victoryPoint: { name: 'Victory Point', blurb: '+1 VP, kept hidden', tint: '#2f6fb3' },
+  knight: { name: 'Knight', blurb: 'Move the robber and steal a card', tint: DEV_TINT.knight },
+  roadBuilding: { name: 'Road Building', blurb: 'Build two free roads', tint: DEV_TINT.roadBuilding },
+  yearOfPlenty: { name: 'Year of Plenty', blurb: 'Take any two resources from the bank', tint: DEV_TINT.yearOfPlenty },
+  monopoly: { name: 'Monopoly', blurb: 'Take one resource from every player', tint: DEV_TINT.monopoly },
+  victoryPoint: { name: 'Victory Point', blurb: '+1 VP, kept hidden', tint: DEV_TINT.victoryPoint },
 }
 
 const GROUP: Record<DevGroup, string> = {
@@ -27,19 +28,6 @@ const GROUP: Record<DevGroup, string> = {
   played: 'Already played a card this turn',
   wait: 'Not now',
   vp: 'Victory points',
-}
-
-export function DevGlyph({ type, className = '' }: { type: DevKind; className?: string }) {
-  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
-  return (
-    <svg aria-hidden viewBox="0 0 24 24" className={className}>
-      {type === 'knight' && <g {...p}><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" /><path d="M9 12l2 2 4-4" /></g>}
-      {type === 'roadBuilding' && <g {...p}><path d="M8 21L11 3M16 21L13 3" /><path d="M12 7v2M12 12v2M12 17v2" /></g>}
-      {type === 'yearOfPlenty' && <g {...p}><path d="M12 21c-4 0-7-3-7-7 0-3 2-5 4-6M12 21c4 0 7-3 7-7 0-3-2-5-4-6" /><path d="M12 3v10M8 9l4 4 4-4" /></g>}
-      {type === 'monopoly' && <g {...p}><path d="M4 18h16M5 18l-1-9 5 4 3-7 3 7 5-4-1 9" /></g>}
-      {type === 'victoryPoint' && <g {...p}><path d="M7 4h10v4a5 5 0 0 1-10 0z" /><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M9 17h6" /></g>}
-    </svg>
-  )
 }
 
 type PlayKind = Exclude<DevKind, 'victoryPoint'>
@@ -78,11 +66,15 @@ function CardSteps({ kind, compact, onDone, onBack }: { kind: PlayKind; compact:
   const firstRes = RESOURCE_ORDER.find((r) => !yop || dev.bank[r] > 0)
   return (
     <div className={compact ? 'w-[322px]' : 'w-[390px]'}>
-      <ol data-card-steps className="mb-[8px] flex flex-col gap-[3px] text-[13px] text-[#d6d2ca]">
-        {(yop && dev.yopTake === 1 ? ['Pick one resource here (the bank has only one left)', STEPS.yearOfPlenty[1]] : STEPS[kind]).map((t, i) => (
-          <li key={i} className="flex gap-[6px]"><span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-bold text-white">{i + 1}</span><span>{t}</span></li>
-        ))}
-      </ol>
+      {/* A5: the card being played, beside its steps (left out on very low screens, where height is short) */}
+      <div className="mb-[8px] flex items-start gap-[10px]">
+        <DevCard type={kind} name={CARD[kind].name} size="large" compact={compact} className="[@media(max-height:560px)]:hidden" />
+        <ol data-card-steps className="flex min-w-0 flex-1 flex-col gap-[3px] text-[13px] text-[#d6d2ca]">
+          {(yop && dev.yopTake === 1 ? ['Pick one resource here (the bank has only one left)', STEPS.yearOfPlenty[1]] : STEPS[kind]).map((t, i) => (
+            <li key={i} className="flex gap-[6px]"><span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-bold text-white">{i + 1}</span><span>{t}</span></li>
+          ))}
+        </ol>
+      </div>
       {!board && <>
         <p className="mb-[6px] text-[13px] text-[#d6d2ca]">{yop ? 'Take from the bank' : 'Name a resource'} {yop && <span className="text-[#a9a49b]">(bank has)</span>}</p>
         <div className="flex gap-[8px]">
@@ -155,14 +147,11 @@ function DevItem({ r, btnRef, onPlay }: { r: DevRow; btnRef?: React.Ref<HTMLButt
     : CARD[r.type].blurb
   return (
     <li aria-label={vp ? `${r.count} victory point${r.count > 1 ? 's' : ''}` : undefined} className="flex min-h-[50px] items-center gap-[10px] rounded-[10px] bg-white/[0.05] py-[4px] pl-[5px] pr-[6px]" style={{ boxShadow: `inset 3px 0 0 ${CARD[r.type].tint}` }}>
-      {vp ? (
-        <span className="grid h-[40px] w-[34px] shrink-0 place-items-center rounded-full font-display text-[15px] font-bold text-[#2a1a06]" style={{ background: 'radial-gradient(circle at 40% 35%, #ffe7a6, #f2b544 70%)' }}>+{r.count}</span>
-      ) : (
-        <span className={`relative grid h-[40px] w-[34px] shrink-0 place-items-center rounded-[6px] text-white ${r.group === 'play' ? '' : 'opacity-70'}`} style={{ background: `linear-gradient(180deg, ${CARD[r.type].tint}, ${CARD[r.type].tint}99)` }}>
-          <DevGlyph type={r.type} className="h-[22px] w-[22px]" />
-          {r.count > 1 && <span className="absolute -right-[6px] -top-[6px] rounded-full bg-[#1d1a16] px-[5px] text-[11px] font-bold text-white ring-1 ring-white/30">×{r.count}</span>}
-        </span>
-      )}
+      {/* A5: the card face (src/ui/cards/DevCardArt.tsx); a victory point keeps its "+N" as the badge */}
+      <span className="relative shrink-0">
+        <DevCard type={r.type} dim={!vp && r.group !== 'play'} />
+        {(vp || r.count > 1) && <span className="absolute -right-[6px] -top-[6px] rounded-full bg-[#1d1a16] px-[5px] text-[11px] font-bold text-white ring-1 ring-white/30">{vp ? `+${r.count}` : `×${r.count}`}</span>}
+      </span>
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block text-[15px] font-semibold text-white">{vp ? `Victory point${r.count > 1 ? 's' : ''}` : CARD[r.type].name}</span>
         <span className="block text-[12px] text-[#bdb8af]">{sub}</span>

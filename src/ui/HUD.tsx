@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'reac
 import gsap from 'gsap'
 import { Avatar, Brick, HexLogo, Logs, Ore, SheepIcon, WheatIcon } from './icons'
 import { ART_SHADOW, PARCHMENT_FRAME, ResourceBackdrop } from './cards/ResourceArt'
+import { DevCardBack } from './cards/DevCardArt'
 import { BRAND_NAME } from '../brand'
 import { motion } from '../scene/motion'
 import { useViewport } from './layout'
@@ -425,7 +426,7 @@ const BUILD_ICON: Record<BuildKind, ReactNode> = {
   road: <RoadIco />,
   settlement: <HouseIco />,
   city: <HouseIco city />,
-  dev: <span className="grid h-[26px] w-[24px] place-items-center rounded-[4px] border border-[#d9cbb0]/70 text-[14px] font-bold text-[#efe6d4]">?</span>,
+  dev: <DevCardBack className="h-[26px] w-[20px]" />, // A5: the card back
 }
 const BUILD_NAME: Record<BuildKind, string> = { road: 'Road', settlement: 'Settlement', city: 'City', dev: 'Development card' }
 
