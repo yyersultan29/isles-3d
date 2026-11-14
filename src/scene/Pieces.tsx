@@ -658,6 +658,50 @@ export function chimneyTops(buildings: Building[]): [number, number, number][] {
   })
 }
 
+// ---------------- Roads: a bundle of three logs ----------------
+const LOG_R = 0.024
+const LOG_BASE = 0.027 // top of the dark plinth
+
+/**
+ * Geometry of one road along +x, built once per edge length: three logs (two below, one on top,
+ * ends a little staggered), their pale end grain, and two dark bindings. Logs end within ±0.36 of
+ * the edge length, like the old blocks, so they never reach the corners where buildings stand.
+ */
+const bundleCache = new Map<string, { logs: THREE.BufferGeometry; ends: THREE.BufferGeometry; bands: THREE.BufferGeometry }>()
+function roadBundle(len: number) {
+  const key = len.toFixed(3)
+  let b = bundleCache.get(key)
+  if (b) return b
+  const yLow = LOG_BASE + LOG_R, yTop = yLow + LOG_R * 1.732
+  const logs: [number, number, number, number][] = [ // z, y, x offset, length factor
+    [-LOG_R * 1.02, yLow, -0.012, 0.7],
+    [LOG_R * 1.02, yLow, 0.01, 0.69],
+    [0, yTop, 0, 0.66],
+  ]
+  const logParts: THREE.BufferGeometry[] = [], endParts: THREE.BufferGeometry[] = [], bandParts: THREE.BufferGeometry[] = []
+  for (const [z, y, dx, f] of logs) {
+    const L = len * f, x0 = dx * len
+    const log = new THREE.CylinderGeometry(LOG_R, LOG_R, L, 8, 1, true)
+    log.rotateZ(Math.PI / 2); log.translate(x0, y, z)
+    logParts.push(log)
+    for (const sx of [-1, 1]) {
+      const end = new THREE.CircleGeometry(LOG_R * 0.98, 8)
+      end.rotateY(sx * Math.PI / 2); end.translate(x0 + (sx * L) / 2, y, z)
+      end.deleteAttribute('uv')
+      endParts.push(end)
+    }
+    for (const bx of [-0.2, 0.2]) {
+      const band = new THREE.CylinderGeometry(LOG_R * 1.1, LOG_R * 1.1, 0.012, 8, 1, true)
+      band.rotateZ(Math.PI / 2); band.translate(bx * len, y, z)
+      band.deleteAttribute('uv')
+      bandParts.push(band)
+    }
+  }
+  b = { logs: mergeGeometries(logParts)!, ends: mergeGeometries(endParts)!, bands: mergeGeometries(bandParts)! }
+  bundleCache.set(key, b)
+  return b
+}
+
 export function Roads({ roads }: { roads: Road[] }) {
   const items = useMemo(
     () =>
@@ -673,17 +717,16 @@ export function Roads({ roads }: { roads: Road[] }) {
       {items.map(({ a, b, mats }, i) => {
         const len = Math.hypot(b[0] - a[0], b[1] - a[1])
         const ang = -Math.atan2(b[1] - a[1], b[0] - a[0])
+        const g = roadBundle(len)
         return (
           <group key={i} position={[(a[0] + b[0]) / 2, 0.03, (a[1] + b[1]) / 2]} rotation-y={ang} userData={{ piece: 'road' }}>
-            {/* darker plinth along the rail, then two chunky painted blocks on top */}
+            {/* darker plinth along the rail keeps the road's footprint readable on any terrain */}
             <mesh position-y={0.012} material={mats.roadEdge} castShadow receiveShadow>
               <boxGeometry args={[len * 0.74, 0.03, 0.135]} />
             </mesh>
-            {[-0.19, 0.19].map((f, k) => (
-              <mesh key={k} position={[f * len, 0.05, 0]} material={mats.road} castShadow receiveShadow>
-                <boxGeometry args={[len * 0.355, 0.06, 0.11]} />
-              </mesh>
-            ))}
+            <mesh geometry={g.logs} material={mats.road} castShadow receiveShadow />
+            <mesh geometry={g.ends} material={TRIM} />
+            <mesh geometry={g.bands} material={WOOD} castShadow />
           </group>
         )
       })}
