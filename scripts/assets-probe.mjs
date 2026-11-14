@@ -2,7 +2,7 @@
 // triangles, steady FPS, and close-up shots of each player's city at the board camera's angle.
 // Runs on a fixed position: the replay that scripts/pieces-shot.mjs writes next to its screenshot.
 // Usage: node scripts/assets-probe.mjs replay.json outDir [w h dpr]   (needs the dev server on :5173)
-// env CLOSE=harbor: close-ups of the seven harbours instead of cities and a settlement
+// env CLOSE=harbor | robber: close-ups of every harbour, or of the robber, instead of cities and a settlement
 import { chromium } from 'playwright-core'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 const [REPLAY, OUT = 'shots/assets-probe', W = '1440', H = '900', DPR = '2'] = process.argv.slice(2)
@@ -65,7 +65,7 @@ await p.screenshot({ path: `${OUT}/board_${W}x${H}.png` })
 const spots = await p.evaluate(() => {
   const { scene } = window.__isles
   const out = []
-  scene.traverse((o) => { if (['city', 'settlement', 'harbor'].includes(o.userData?.piece)) { const v = o.userData.piece === 'harbor' ? o.localToWorld(o.position.clone().set(0.05, 0.1, 0.75)) : o.getWorldPosition(o.position.clone()); out.push({ kind: o.userData.kind ? `${o.userData.piece}-${o.userData.kind}` : o.userData.piece, x: v.x, y: v.y, z: v.z }) } })
+  scene.traverse((o) => { if (['city', 'settlement', 'harbor', 'robber'].includes(o.userData?.piece)) { const v = o.userData.piece === 'harbor' ? o.localToWorld(o.position.clone().set(0.05, 0.1, 0.75)) : o.getWorldPosition(o.position.clone()); out.push({ kind: o.userData.kind ? `${o.userData.piece}-${o.userData.kind}` : o.userData.piece, x: v.x, y: v.y, z: v.z }) } })
   return out
 })
 // close-ups show the scene only: hide the HUD (visibility is inherited, so the canvas can opt back in)
@@ -74,6 +74,7 @@ const cities = spots.filter((s) => s.kind === 'city').sort((a, b) => a.x - b.x)
 // CLOSE=harbor: one close-up per harbour (pier, cargo and sign) instead of the pieces
 const picks = process.env.CLOSE === 'harbor'
   ? spots.filter((s) => s.kind.startsWith('harbor')).sort((a, b) => Math.atan2(a.z, a.x) - Math.atan2(b.z, b.x))
+  : process.env.CLOSE === 'robber' ? spots.filter((s) => s.kind === 'robber')
   : [...cities.slice(0, 3), ...spots.filter((s) => s.kind === 'settlement').sort((a, b) => a.z - b.z).slice(0, 1)]
 for (const [i, s] of picks.entries()) {
   await p.evaluate(({ x, y, z }) => {

@@ -64,23 +64,45 @@ export function Tokens() {
 const BASE_H = 0.035
 const MOVE_S = 0.75 // seconds for the hop to a new tile
 const HOP = 0.55 // arc height
-const robberMat = new THREE.MeshPhysicalMaterial({ color: '#1b1a1c', roughness: 0.32, metalness: 0.15, clearcoat: 0.6, clearcoatRoughness: 0.3 })
+// A6: a hooded figure in a heavy cloak instead of a pawn; dark charcoal, less lacquer than before
+const robberMat = new THREE.MeshPhysicalMaterial({ color: '#2c2b31', roughness: 0.5, metalness: 0.05, clearcoat: 0.3, clearcoatRoughness: 0.5 })
 // a pale stone base, like a board-game piece, so the dark figure reads on forest and grass (G4.5b)
 const baseMat = new THREE.MeshStandardMaterial({ color: '#e4d9c1', roughness: 0.75 })
+/** Cloak profile (radius, height) before the 1.25 scale: flared hem, shoulders, a peaked hood. */
+const CLOAK: [number, number][] = [
+  [0, 0], [0.128, 0], [0.133, 0.012], [0.12, 0.03], [0.102, 0.08], [0.09, 0.14], [0.084, 0.19], [0.09, 0.218],
+  [0.092, 0.24], [0.08, 0.265], [0.074, 0.285], [0.08, 0.315], [0.077, 0.355], [0.061, 0.39], [0.038, 0.418], [0.014, 0.44], [0, 0.446],
+]
+const FOLD_TOP = 0.26 // folds fade out at the shoulders
+const HOOD = { y: 0.33, z: 0.07, rx: 0.042, ry: 0.05, rz: 0.03 } // face opening, front (+z, toward the camera)
+
+function robberGeometry() {
+  // phiStart = PI puts the lathe seam at the back, away from the camera
+  const body = new THREE.LatheGeometry(CLOAK.map(([x, y]) => new THREE.Vector2(x, y)), 48, Math.PI)
+  const pos = body.attributes.position
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
+    const a = Math.atan2(x, z)
+    // cloak folds: deepest at the hem, gone at the shoulders
+    const k = y < FOLD_TOP ? 1 + 0.1 * Math.sin(a * 7) * (1 - y / FOLD_TOP) : 1
+    // the hood's peak leans back a little
+    const lean = y > 0.35 ? -(y - 0.35) * 0.35 : 0
+    pos.setXYZ(i, x * k, y, z * k + lean)
+  }
+  body.computeVertexNormals()
+  const face = new THREE.SphereGeometry(1, 20, 14)
+  face.scale(HOOD.rx, HOOD.ry, HOOD.rz)
+  face.translate(0, HOOD.y, HOOD.z)
+  // two faint eye glints inside the hood
+  const eyes = mergeGeometries([-1, 1].map((s) => new THREE.SphereGeometry(0.0065, 8, 6).translate(s * 0.014, HOOD.y + 0.004, HOOD.z + HOOD.rz * 0.8)))!
+  for (const g of [body, face, eyes]) { g.scale(1.25, 1.25, 1.25); g.translate(0, BASE_H, 0) }
+  const base = new THREE.CylinderGeometry(0.2, 0.215, BASE_H, 40)
+  base.translate(0, BASE_H / 2, 0)
+  return { body, face, eyes, base }
+}
 
 export function Robber() {
-  const geo = useMemo(() => {
-    const p = [
-      [0, 0], [0.13, 0], [0.135, 0.02], [0.11, 0.04], [0.085, 0.07], [0.07, 0.14], [0.065, 0.2],
-      [0.09, 0.225], [0.095, 0.24], [0.06, 0.255], [0.075, 0.29], [0.09, 0.33], [0.085, 0.37], [0.06, 0.4], [0.02, 0.415], [0, 0.415],
-    ].map(([x, y]) => new THREE.Vector2(x, y))
-    const body = new THREE.LatheGeometry(p, 40)
-    body.scale(1.25, 1.25, 1.25)
-    body.translate(0, BASE_H, 0)
-    const base = new THREE.CylinderGeometry(0.2, 0.215, BASE_H, 40)
-    base.translate(0, BASE_H / 2, 0)
-    return { body, base }
-  }, [])
+  const geo = useMemo(robberGeometry, [])
   // G4.2: the engine decides where the robber stands; the demo board keeps it on the desert
   const robberTile = useGame((s) => s.robber)
   const t = (BOARD_MODE === 'game' && tileByAxial(robberTile)) || TILES.find((x) => x.biome === 'desert')!
@@ -112,12 +134,14 @@ export function Robber() {
     g.position.y += Math.sin(Math.PI * e) * HOP
     if (k >= 1) { g.position.copy(h.to); hop.current = null }
   })
-  useEffect(() => () => { geo.body.dispose(); geo.base.dispose() }, [geo])
+  useEffect(() => () => { for (const g of Object.values(geo)) g.dispose() }, [geo])
 
   return (
     <group ref={ref} userData={{ piece: 'robber' }}>
       <mesh geometry={geo.base} material={baseMat} castShadow receiveShadow />
       <mesh geometry={geo.body} material={robberMat} castShadow receiveShadow />
+      <mesh geometry={geo.face} material={BASE_EDGE} />
+      <mesh geometry={geo.eyes} material={GLOW} />
     </group>
   )
 }
