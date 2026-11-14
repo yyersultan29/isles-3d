@@ -337,7 +337,7 @@ export const PLAYER_COLORS: Record<Player, { wall: string; roof: string }> = {
   red: { wall: '#c8302a', roof: '#8e1b17' },
   blue: { wall: '#2850c8', roof: '#1a318a' },
   white: { wall: '#eef0f2', roof: '#b8bec6' },
-  orange: { wall: '#e0782a', roof: '#a8501a' },
+  orange: { wall: '#f5a524', roof: '#c97a12' }, // amber, so it keeps apart from red under the warm light
 }
 
 // ---------- harbours ----------

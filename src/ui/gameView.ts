@@ -19,7 +19,7 @@ export const SEATS: Record<PlayerId, { name: string; color: string; avatar: numb
   p1: { name: 'Red', color: '#d23a2e', avatar: 0 },
   p2: { name: 'Blue', color: '#2f5fe0', avatar: 1 },
   p3: { name: 'White', color: '#c9ccd2', avatar: 3 },
-  p4: { name: 'Orange', color: '#e0812f', avatar: 2 },
+  p4: { name: 'Orange', color: '#f0a030', avatar: 2 },
 }
 
 export interface SeatView {
