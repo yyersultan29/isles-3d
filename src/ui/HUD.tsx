@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import gsap from 'gsap'
 import { Avatar, Brick, HexLogo, Logs, Ore, SheepIcon, WheatIcon } from './icons'
-import { ART_SHADOW, PARCHMENT_FRAME, ResourceBackdrop } from './cards/ResourceArt'
+import { RES_CARD, RES_CARD_FRAME, ResourceCardFace } from './cards/ResourceCard'
 import { DevCardBack } from './cards/DevCardArt'
 import { BRAND_NAME } from '../brand'
 import { motion } from '../scene/motion'
@@ -361,28 +361,20 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
   const covered = usePrivacy().covered
   const draft = useTradeDraft()
   const can = bank.open && !covered
-  const size = compact ? 'h-[72px] w-[62px] rounded-[8px] p-[2px] shadow-[0_6px_14px_rgba(0,0,0,0.55)]' : 'h-[96px] w-[88px] rounded-[9px] p-[3px] shadow-[0_10px_22px_rgba(0,0,0,0.6)]'
-  const frame = `relative block ${size} ${PARCHMENT_FRAME} transition-transform`
+  // cards: a portrait parchment card with the biome and the item (src/ui/cards/ResourceCard.tsx)
+  const frame = `${RES_CARD_FRAME} ${compact ? RES_CARD.compact : RES_CARD.full} transition-transform`
+  // only the resources in hand are shown; a pile that just ran out stays while its "−n" shows
+  const shown = RESOURCES.filter(({ key }) => counts[key] > 0 || (can && (draft.give[key] ?? 0) > 0) || (delta?.d[key] ?? 0) < 0)
   return (
-    <ul aria-label={`${ownerName}'s resources`} className={`relative flex ${compact ? 'gap-[6px]' : 'gap-[8px] pb-[12px]'} ${setBack(setup)}`}>
-      {RESOURCES.map(({ key, name, Icon }) => {
+    <ul aria-label={`${ownerName}'s resources`} className={`relative flex items-end ${compact ? 'gap-[6px]' : 'gap-[8px] pb-[12px]'} ${setBack(setup)}`}>
+      {!shown.length && owner && (
+        <li className={`rounded-full bg-[#1d1a16]/80 font-semibold text-[#d6d2ca] ring-1 ring-white/10 ${compact ? 'px-[10px] py-[4px] text-[12px]' : 'px-[14px] py-[6px] text-[13px]'}`}>No resource cards</li>
+      )}
+      {shown.map(({ key, name }) => {
         const n = counts[key]
         const chosen = can ? draft.give[key] ?? 0 : 0
         const word = name.toLowerCase()
-        const face = (
-          <span className={`relative block h-full w-full overflow-hidden ${compact ? 'rounded-[6px]' : 'rounded-[7px]'} shadow-[inset_0_0_0_1px_rgba(90,60,25,0.55)]`}>
-            {/* A3: a landscape of the resource's biome behind the item (src/ui/cards/ResourceArt.tsx) */}
-            <ResourceBackdrop res={key} />
-            <Icon aria-hidden className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 ${ART_SHADOW} ${compact ? 'top-[56%] w-[54px]' : 'top-[54%] w-[78px]'}`} />
-            {/* G7.2: an empty pile dims only its art; the count and the name stay at full contrast */}
-            {n === 0 && <span aria-hidden className="absolute inset-0 bg-black/50" />}
-            <span aria-hidden className={`absolute grid place-items-center rounded-[5px] bg-[#1d1a16]/85 font-bold text-white ring-1 ring-[#f2cf84]/60 ${compact ? 'left-[3px] top-[3px] h-[20px] w-[20px] text-[13px]' : 'left-[4px] top-[4px] h-[22px] w-[22px] text-[14px]'}`}>{n}</span>
-            <span aria-hidden className={`absolute inset-x-0 bottom-0 flex items-center justify-between bg-[#1d1a16]/70 font-semibold leading-none text-white ${compact ? 'h-[17px] px-[4px] text-[10.5px]' : 'h-[20px] px-[6px] text-[12px]'}`}>
-              <span>{name}</span>
-              {chosen > 0 && <span className={`rounded-[3px] bg-[#f2b544] px-[3px] py-[1px] font-bold text-[#2a1a06] ${compact ? 'text-[10.5px]' : 'text-[12px]'}`}>×{chosen}</span>}
-            </span>
-          </span>
-        )
+        const face = <ResourceCardFace res={key} name={name} count={n} chosen={chosen} compact={compact} />
         const d = delta?.d[key]
         const badge = d ? (
           <span key={delta!.seq} aria-hidden data-hand-delta className={`pointer-events-none absolute inset-x-0 z-[1] mx-auto w-fit rounded-full px-[7px] py-[1px] font-bold leading-[1.25] text-white shadow-[0_2px_6px_rgba(0,0,0,.55)] ring-1 ring-white/40 animate-[delta-pop_2.5s_ease-out] ${d > 0 ? 'bg-[#2f8a3a]' : 'bg-[#b8322b]'} ${compact ? '-top-[11px] text-[13px]' : '-top-[13px] text-[15px]'}`}>{deltaText(d)}</span>

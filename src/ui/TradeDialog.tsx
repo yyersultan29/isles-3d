@@ -14,7 +14,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
 import { RESOURCES, focusRing, panel } from './HUD'
-import { ART_SHADOW, ResourceBackdrop } from './cards/ResourceArt'
+import { ResourceBackdrop } from './cards/ResourceArt'
+import { ResourceItem } from './cards/ResourceItems'
 import { SEATS, proposeCheck, useGameView, type Counts } from './gameView'
 import { bankQuote, noPayReason, payOptions, sameDraft, shortfall, tradesText } from './tradePlan'
 import { useGame, useGameStore } from '../store/GameProvider'
@@ -41,12 +42,11 @@ export function Tile({ res, top, corner, selected, disabled, label, onClick, com
   res: Resource; top: string; corner: string; selected: boolean; disabled: boolean; label: string; onClick: () => void; compact: boolean
   btnRef?: React.Ref<HTMLButtonElement>
 }) {
-  const r = RESOURCES.find((x) => x.key === res)!
   return (
     <button ref={btnRef} data-tile aria-label={label} title={label} aria-pressed={selected} disabled={disabled} onClick={onClick}
       className={`relative h-[60px] [@media(max-height:560px)]:h-[46px] ${tileW(compact)} overflow-hidden rounded-[8px] transition-[transform,opacity] disabled:cursor-not-allowed ${selected ? '' : 'disabled:opacity-35'} ${selected ? 'ring-[3px] ring-[#ffd76a] -translate-y-[2px]' : 'ring-1 ring-[#f2cf84]/50 hover:-translate-y-[1px]'} ${focusRing}`}>
       <ResourceBackdrop res={res} />
-      <r.Icon aria-hidden className={`absolute left-1/2 top-[55%] w-[70%] -translate-x-1/2 [@media(max-height:560px)]:w-[52%] -translate-y-1/2 ${ART_SHADOW}`} />
+      <ResourceItem res={res} className="absolute left-1/2 top-[52%] h-[100%] -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_2px_1.5px_rgba(0,0,0,0.4)]" />
       {top && <span aria-hidden className="absolute left-[3px] top-[3px] rounded-[4px] bg-[#1d1a16]/85 px-[4px] text-[12px] font-bold text-white">{top}</span>}
       {corner && <span aria-hidden className="absolute bottom-[3px] right-[3px] rounded-[4px] bg-[#1d1a16]/85 px-[4px] text-[11px] font-semibold text-[#f2cf84]">{corner}</span>}
     </button>
