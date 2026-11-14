@@ -1,5 +1,9 @@
 import * as THREE from 'three'
+import { createElement, type ComponentType, type SVGProps } from 'react'
+import { createRoot } from 'react-dom/client'
+import { flushSync } from 'react-dom'
 import type { HarborKind } from './board'
+import { Brick, Logs, Ore, SheepIcon, WheatIcon } from '../ui/icons'
 
 function canvasTex(w: number, h: number, draw: (g: CanvasRenderingContext2D) => void) {
   const c = document.createElement('canvas')
@@ -63,88 +67,6 @@ export function tokenTexture(n: number) {
   return t
 }
 
-// ---------- resource icons drawn with canvas paths (shared by signs) ----------
-function drawSheep(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  g.save()
-  g.translate(x, y)
-  g.scale(s, s)
-  g.fillStyle = '#2a2420'
-  for (const lx of [-22, -8, 10, 22]) g.fillRect(lx - 3, 10, 6, 22)
-  g.fillStyle = '#f6f2ea'
-  g.strokeStyle = '#8f8678'
-  g.lineWidth = 2
-  for (const [cx, cy, r] of [[-18, -2, 16], [0, -10, 18], [16, -2, 16], [-8, 8, 16], [10, 8, 16], [0, 0, 18]] as const) {
-    g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill(); g.stroke()
-  }
-  g.fillStyle = '#2a2420'
-  g.beginPath(); g.ellipse(-34, -6, 11, 14, -0.3, 0, Math.PI * 2); g.fill()
-  g.restore()
-}
-function drawLogs(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  g.save()
-  g.translate(x, y)
-  g.scale(s, s)
-  for (const [ox, oy] of [[-14, 10], [14, 10], [0, -12]] as const) {
-    g.fillStyle = '#8a4d22'
-    g.beginPath()
-    g.moveTo(ox - 34, oy - 11)
-    g.lineTo(ox + 26, oy - 11)
-    g.lineTo(ox + 26, oy + 11)
-    g.lineTo(ox - 34, oy + 11)
-    g.fill()
-    g.fillStyle = '#d9a466'
-    g.beginPath(); g.ellipse(ox + 26, oy, 8, 11, 0, 0, Math.PI * 2); g.fill()
-    g.strokeStyle = '#8a4d22'; g.lineWidth = 2
-    g.beginPath(); g.ellipse(ox + 26, oy, 4, 6, 0, 0, Math.PI * 2); g.stroke()
-  }
-  g.restore()
-}
-function drawBrick(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  g.save()
-  g.translate(x, y)
-  g.scale(s, s)
-  const brick = (bx: number, by: number) => {
-    g.fillStyle = '#b8432a'; g.fillRect(bx, by, 40, 18)
-    g.fillStyle = '#e06b47'; g.fillRect(bx, by, 40, 5)
-    g.strokeStyle = '#6e2414'; g.lineWidth = 2; g.strokeRect(bx, by, 40, 18)
-  }
-  brick(-42, 6); brick(0, 6); brick(-21, -14)
-  g.restore()
-}
-function drawWheat(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  g.save()
-  g.translate(x, y)
-  g.scale(s, s)
-  g.strokeStyle = '#a8761e'; g.lineWidth = 4
-  g.beginPath(); g.moveTo(0, 36); g.quadraticCurveTo(4, 0, -6, -36); g.stroke()
-  g.fillStyle = '#e8b53e'
-  for (let i = 0; i < 6; i++) {
-    const yy = 20 - i * 10
-    for (const sgn of [-1, 1]) {
-      g.save(); g.translate(-i * 1.2, yy); g.rotate(sgn * 0.6)
-      g.beginPath(); g.ellipse(sgn * 8, 0, 9, 4.5, 0, 0, Math.PI * 2); g.fill()
-      g.restore()
-    }
-  }
-  g.restore()
-}
-
-function drawOre(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
-  g.save()
-  g.translate(x, y)
-  g.scale(s, s)
-  const rock = (pts: [number, number][], fill: string, hi: string) => {
-    g.fillStyle = fill
-    g.beginPath(); pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.closePath(); g.fill()
-    g.strokeStyle = '#3f444c'; g.lineWidth = 2; g.stroke()
-    g.fillStyle = hi
-    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); g.lineTo(pts[1][0], pts[1][1]); g.lineTo((pts[0][0] + pts[2][0]) / 2, (pts[0][1] + pts[2][1]) / 2); g.closePath(); g.fill()
-  }
-  rock([[-40, 26], [-30, -4], [-8, -12], [4, 10], [-6, 28]], '#7d848e', '#b9c0c9')
-  rock([[-2, 28], [8, -18], [28, -26], [40, 4], [32, 28]], '#8a919b', '#c8ced6')
-  rock([[-20, 30], [-14, 12], [4, 8], [10, 30]], '#6b727c', '#a4abb4')
-  g.restore()
-}
 /** Generic 3:1 port: a neutral "any resource" mark (question mark in a coin). */
 function drawAny(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
   g.save()
@@ -159,18 +81,41 @@ function drawAny(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
   g.restore()
 }
 
-export const ICONS: Record<HarborKind, (g: CanvasRenderingContext2D, x: number, y: number, s: number) => void> = {
-  sheep3: drawSheep,
-  generic: drawAny,
-  sheep: drawSheep,
-  ore: drawOre,
-  wood: drawLogs,
-  brick: drawBrick,
-  wheat: drawWheat,
+// ---------- harbour sign icons ----------
+// A3/A4: a resource sign shows the same SVG illustration as the resource card (src/ui/icons.tsx),
+// rasterised into the sign's canvas, so each resource has one picture everywhere. Only the 3:1 "?"
+// coin is drawn here. React renders the icon to markup outside any render pass (a timeout), then an
+// <img> decodes it and the canvas texture updates.
+const ICON_OF: Partial<Record<HarborKind, ComponentType<SVGProps<SVGSVGElement>>>> = {
+  sheep3: SheepIcon, sheep: SheepIcon, wood: Logs, brick: Brick, wheat: WheatIcon, ore: Ore,
+}
+/** Drawn width per kind: the SVGs leave different margins in their 5:4 box (the sheaf is narrow). */
+const ICON_W: Partial<Record<HarborKind, number>> = { generic: 190, wheat: 320, sheep: 280, sheep3: 280 }
+const markupCache = new Map<HarborKind, string>()
+function iconMarkup(kind: HarborKind) {
+  let m = markupCache.get(kind)
+  if (m !== undefined) return m
+  const C = ICON_OF[kind]!
+  const div = document.createElement('div')
+  const root = createRoot(div)
+  flushSync(() => root.render(createElement(C, { xmlns: 'http://www.w3.org/2000/svg', width: 400, height: 320 })))
+  m = div.innerHTML
+  root.unmount()
+  markupCache.set(kind, m)
+  return m
+}
+/** Draws the kind's icon centred at (x, y), `w` wide (icons are 5:4); an SVG icon arrives later and calls `done`. */
+function drawIcon(g: CanvasRenderingContext2D, kind: HarborKind, x: number, y: number, w: number, done: () => void) {
+  if (!ICON_OF[kind]) { drawAny(g, x, y, w / 80); return } // drawn now, before the texture exists
+  setTimeout(() => {
+    const img = new Image()
+    img.onload = () => { g.drawImage(img, x - w / 2, y - (w * 0.8) / 2, w, w * 0.8); done() }
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(iconMarkup(kind))
+  }, 0)
 }
 
 export function signTexture(kind: HarborKind, ratio: string) {
-  return canvasTex(512, 300, (g) => {
+  const tex: THREE.CanvasTexture = canvasTex(512, 300, (g) => {
     const grd = g.createLinearGradient(0, 0, 0, 300)
     grd.addColorStop(0, '#f4e7c8')
     grd.addColorStop(1, '#dcc597')
@@ -187,10 +132,11 @@ export function signTexture(kind: HarborKind, ratio: string) {
     g.strokeStyle = 'rgba(80,50,20,0.35)'
     g.lineWidth = 3
     g.strokeRect(30, 30, 452, 240)
-    ICONS[kind](g, 175, 150, 2.4)
+    drawIcon(g, kind, 158, 150, ICON_W[kind] ?? 260, () => { tex.needsUpdate = true })
     g.fillStyle = '#2b2118'
     g.font = '700 118px Fredoka, "Trebuchet MS", sans-serif'
     g.textBaseline = 'middle'
     g.fillText(ratio, 290, 156)
   })
+  return tex
 }

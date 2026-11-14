@@ -2,13 +2,60 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { animTime } from './motion'
 import * as THREE from 'three'
-import { HARBORS, corner, tileAt, WATER_Y, islandRadius } from './board'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { HARBORS, corner, tileAt, WATER_Y, islandRadius, type HarborKind } from './board'
 import { signTexture } from './textures'
 import { StaticBatch } from './StaticBatch'
 
 const wood = new THREE.MeshStandardMaterial({ color: '#8b5a32', roughness: 0.85 })
 const woodDark = new THREE.MeshStandardMaterial({ color: '#5a3a20', roughness: 0.9 })
 const rope = new THREE.MeshStandardMaterial({ color: '#c9a66b', roughness: 1 })
+
+// ---------- cargo on the pier (ASSET_DESIGN A4) ----------
+// Crates are pale planed wood and logs dark, so neither melts into the brown deck.
+// A small load that says what the harbour trades, readable from the board camera: logs, bricks,
+// grain sacks, wool bales, a crate of ore, or crates and a barrel at a 3:1 harbour. Drawn at ×1.5 and
+// kept low (about 0.1), on the shore end of the deck opposite the sign. On harbours whose sign stands
+// between the camera and the pier (west and south-west) the sign still covers it; the sign says the type.
+const brickMat = new THREE.MeshStandardMaterial({ color: '#b5492c', roughness: 0.85 })
+const woolMat = new THREE.MeshStandardMaterial({ color: '#f1ebdd', roughness: 1 })
+const oreMat = new THREE.MeshStandardMaterial({ color: '#8b9097', roughness: 0.75, flatShading: true })
+
+type Part = [THREE.BufferGeometry, THREE.Material]
+const at = (g: THREE.BufferGeometry, x: number, y: number, z: number, ry = 0) => { g.rotateY(ry); g.translate(x, y, z); return g }
+const merged = (gs: THREE.BufferGeometry[]) => {
+  const ns = gs.map((g) => { const n = g.index ? g.toNonIndexed() : g; n.deleteAttribute('uv'); return n })
+  return mergeGeometries(ns)!
+}
+const log = (x: number, y: number, z: number) => { const g = new THREE.CylinderGeometry(0.02, 0.02, 0.14, 7); g.rotateZ(Math.PI / 2); return at(g, x, y, z) }
+const logEnd = (x: number, y: number, z: number, sx: number) => { const g = new THREE.CircleGeometry(0.019, 7); g.rotateY(sx * Math.PI / 2); return at(g, x + sx * 0.0701, y, z) }
+const box = (w: number, h: number, d: number, x: number, z: number, y = h / 2, ry = 0) => at(new THREE.BoxGeometry(w, h, d), x, y, z, ry)
+const sack = (x: number, z: number, ry: number) => { const g = new THREE.SphereGeometry(0.04, 9, 6); g.scale(1, 1.15, 0.85); return at(g, x, 0.044, z, ry) }
+
+const CARGO: Record<'wood' | 'brick' | 'wheat' | 'sheep' | 'ore' | 'generic', Part[]> = {
+  wood: [
+    [merged([log(0, 0.02, -0.022), log(0, 0.02, 0.022), log(0.006, 0.055, 0)]), woodDark],
+    [merged([-1, 1].flatMap((sx) => [logEnd(0, 0.02, -0.022, sx), logEnd(0, 0.02, 0.022, sx), logEnd(0.006, 0.055, 0, sx)])), rope],
+  ],
+  brick: [
+    [merged([...[-0.054, 0, 0.054].map((x) => box(0.05, 0.026, 0.07, x, 0, 0.013)), ...[-0.027, 0.027].map((x) => box(0.05, 0.026, 0.07, x, 0.004, 0.04, 0.06))]), brickMat],
+  ],
+  wheat: [[merged([sack(-0.03, 0, 0.3), sack(0.04, 0.012, -0.4)]), rope]],
+  sheep: [[merged([0, 1].map((i) => { const g = new THREE.SphereGeometry(0.05, 8, 6); g.scale(1.2, 0.8, 0.9); return at(g, i ? 0.05 : -0.04, 0.04, i ? 0.01 : -0.006, i * 0.5) })), woolMat]],
+  ore: [
+    [box(0.11, 0.045, 0.08, 0, 0), rope],
+    [merged([[-0.03, -0.012], [0.02, 0.014], [0.034, -0.018], [-0.006, 0.02]].map(([x, z], i) => at(new THREE.DodecahedronGeometry(0.024 - i * 0.002), x, 0.05, z, i))), oreMat],
+  ],
+  generic: [
+    [merged([box(0.075, 0.07, 0.075, -0.03, 0, 0.035, 0.2), box(0.06, 0.05, 0.06, 0.05, 0.02, 0.025, -0.3)]), rope],
+    [merged([at(new THREE.CylinderGeometry(0.03, 0.026, 0.075, 10), 0.012, 0.0375, -0.065)]), woodDark],
+  ],
+}
+const cargoOf = (k: HarborKind) => CARGO[k === 'sheep3' ? 'generic' : k]
+
+function Cargo({ kind }: { kind: HarborKind }) {
+  return <group>{cargoOf(kind).map(([g, m], i) => <mesh key={i} geometry={g} material={m} castShadow receiveShadow />)}</group>
+}
 
 function Pier({ length }: { length: number }) {
   // planks run across the pier; pier extends along +z (outward)
@@ -155,7 +202,7 @@ export function Harbors() {
         const rampLen = Math.hypot(drop, ramp)
         const pierLen = PIER_LEN
         return (
-          <group key={i} position={[mx, 0, mz]} rotation-y={Math.PI / 2 - out}>
+          <group key={i} position={[mx, 0, mz]} rotation-y={Math.PI / 2 - out} userData={{ piece: 'harbor', kind: h.kind }}>
             <group position={[0, 0.0, 0.04]} rotation-x={ang}>
               <Pier length={rampLen} />
             </group>
@@ -166,6 +213,10 @@ export function Harbors() {
               </group>
               <group position={[-0.17, 0, pierLen * 0.9]}>
                 <Lantern phase={i * 1.7} />
+              </group>
+              {/* the cargo sits on the shore end of the deck, opposite the sign */}
+              <group position={[-0.06, 0.009, 0.1]} scale={1.5}>
+                <Cargo kind={h.kind} />
               </group>
               <mesh position={[0.1, 0.04, pierLen * 0.95]} material={woodDark} castShadow>
                 <cylinderGeometry args={[0.035, 0.035, 0.07, 10]} />
