@@ -14,14 +14,12 @@ import { buildingKey, roadKey, useArrivals } from './arrivals'
 const TOKEN_R = 0.27
 
 function tokenSideGeometry() {
+  // A7: a raised, rounded rim around the face and a soft chamfer at the foot; the face (the number's
+  // circle, TOKEN_R × 0.935) keeps its size, the rim sits outside it
   const pts = [
-    new THREE.Vector2(0, -0.02),
-    new THREE.Vector2(TOKEN_R * 0.96, -0.02),
-    new THREE.Vector2(TOKEN_R, 0.0),
-    new THREE.Vector2(TOKEN_R, 0.035),
-    new THREE.Vector2(TOKEN_R * 0.97, 0.05),
-    new THREE.Vector2(TOKEN_R * 0.93, 0.052),
-  ]
+    [0, -0.02], [0.955, -0.02], [0.985, -0.012], [1, 0.004], [1, 0.04], [0.996, 0.05], [0.986, 0.0565],
+    [0.97, 0.0592], [0.954, 0.0582], [0.94, 0.0548], [0.928, 0.0522],
+  ].map(([r, y]) => new THREE.Vector2(r * TOKEN_R, y))
   return new THREE.LatheGeometry(pts, 48)
 }
 

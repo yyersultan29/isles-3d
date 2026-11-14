@@ -1,0 +1,55 @@
+{
+ "pieces": {
+  "token": {
+   "count": 18,
+   "tris": 1008,
+   "meshes": 2,
+   "materials": 2
+  },
+  "robber": {
+   "count": 1,
+   "tris": 2376,
+   "meshes": 4,
+   "materials": 4
+  },
+  "settlement": {
+   "count": 10,
+   "tris": 706,
+   "meshes": 17,
+   "materials": 10
+  },
+  "city": {
+   "count": 4,
+   "tris": 1480,
+   "meshes": 37,
+   "materials": 12
+  },
+  "road": {
+   "count": 31,
+   "tris": 204,
+   "meshes": 4,
+   "materials": 4
+  },
+  "harbor": {
+   "count": 9,
+   "tris": 1410,
+   "meshes": 72,
+   "materials": 7
+  }
+ },
+ "frame": {
+  "callsMin": 301,
+  "callsMax": 462,
+  "trisMin": 1205044,
+  "trisMax": 2205152,
+  "fps": 50.5
+ },
+ "veg": {
+  "trees": 277,
+  "shrunk": 14,
+  "removed": 0
+ },
+ "viewport": "1440x900@2",
+ "closeups": 4,
+ "errors": []
+}

@@ -159,22 +159,33 @@ const PIPS: Record<number, [number, number][]> = {
 }
 function Face({ n, style }: { n: number; style: React.CSSProperties }) {
   return (
-    <div className="absolute inset-0 rounded-[9px] bg-[radial-gradient(circle_at_35%_30%,#ffffff,#e9e4da_70%,#cfc8bb)] shadow-[inset_0_0_6px_rgba(0,0,0,0.25)]" style={style}>
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_30%,#ffffff,#ece7dd_62%,#d3ccbf)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.6),inset_0_-2px_5px_rgba(80,60,30,0.28)]" style={style}>
       {PIPS[n].map(([x, y], i) => (
-        <span key={i} className="absolute h-[16%] w-[16%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_40%_35%,#3a3a3a,#050505)]" style={{ left: `${x}%`, top: `${y}%` }} />
+        <span key={i} className="absolute h-[16%] w-[16%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_40%_35%,#3a3a3a,#050505)] shadow-[0_0.5px_0_rgba(255,255,255,0.7)]" style={{ left: `${x}%`, top: `${y}%` }} />
       ))}
     </div>
   )
 }
+// A7: rounded edges. Each face's corners are cut (radius = 22% of the die); a slightly inset, square,
+// darker core behind the faces fills the cut corners, so the edges read as rounded instead of open.
+const DIE_R = 0.22
+const DIE_CORE = 0.1
 export function Die({ faces, rot, size = 54 }: { faces: [number, number, number]; rot: string; size?: number }) {
   const S = size
+  const face = (t: string): React.CSSProperties => ({ transform: t, borderRadius: S * DIE_R })
+  const core = (t: string): React.CSSProperties => ({ transform: t, background: '#cfc6b6' })
+  const z = S / 2, zc = S / 2 - S * DIE_CORE
   return (
     <div className="relative" style={{ width: S, height: S, perspective: 400 }}>
       <div className="absolute inset-0" style={{ transformStyle: 'preserve-3d', transform: rot }}>
-        <Face n={faces[0]} style={{ transform: `translateZ(${S / 2}px)` }} />
-        <Face n={faces[1]} style={{ transform: `rotateX(90deg) translateZ(${S / 2}px)` }} />
-        <Face n={faces[2]} style={{ transform: `rotateY(90deg) translateZ(${S / 2}px)` }} />
-        <Face n={7 - faces[2]} style={{ transform: `rotateY(-90deg) translateZ(${S / 2}px)` }} />
+        <div className="absolute inset-0" style={core(`translateZ(${zc}px)`)} />
+        <div className="absolute inset-0" style={core(`rotateX(90deg) translateZ(${zc}px)`)} />
+        <div className="absolute inset-0" style={core(`rotateY(90deg) translateZ(${zc}px)`)} />
+        <div className="absolute inset-0" style={core(`rotateY(-90deg) translateZ(${zc}px)`)} />
+        <Face n={faces[0]} style={face(`translateZ(${z}px)`)} />
+        <Face n={faces[1]} style={face(`rotateX(90deg) translateZ(${z}px)`)} />
+        <Face n={faces[2]} style={face(`rotateY(90deg) translateZ(${z}px)`)} />
+        <Face n={7 - faces[2]} style={face(`rotateY(-90deg) translateZ(${z}px)`)} />
       </div>
     </div>
   )
@@ -410,15 +421,42 @@ export const Arrow = () => (
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
 )
+// A7: build-menu icons drawn after the 3D pieces (A1, A2): a bundle of three bound logs, a cottage with
+// deep eaves, a chimney and a door step, and the castle (curtain wall, keep with a cone roof, gabled hall)
+const ICO_WALL = '#efdcae', ICO_ROOF = '#bf8d3c', ICO_LINE = '#6b4a22', ICO_DARK = '#7a4f22'
 const RoadIco = () => (
-  <svg viewBox="0 0 24 24" className="h-[24px] w-[24px]"><path d="M4 20 20 4" stroke="#d9cbb0" strokeWidth="3.4" strokeLinecap="round" /><path d="M4 20 20 4" stroke="#7a6a52" strokeWidth="1" strokeDasharray="2 3" /></svg>
+  <svg viewBox="0 0 24 24" className="h-[24px] w-[24px]">
+    <g transform="rotate(-38 12 12)" stroke={ICO_LINE} strokeWidth="0.8">
+      {[8.2, 12, 15.8].map((y) => (
+        <g key={y}>
+          <rect x="2.5" y={y - 1.9} width="18" height="3.8" rx="1.9" fill="#d3a666" />
+          <ellipse cx="20.3" cy={y} rx="1.3" ry="1.9" fill={ICO_WALL} />
+        </g>
+      ))}
+      <path d="M7.5 6.3v11.4M15.5 6.3v11.4" stroke="#5a3a1c" strokeWidth="0.9" />
+    </g>
+  </svg>
 )
-const HouseIco = ({ city }: { city?: boolean }) => (
-  <svg viewBox="0 0 24 24" className="h-[26px] w-[26px]">
-    <path d="M4 11 10 6l6 5v9H4z" fill="#f2deb0" />
-    <path d="M3 11.5 10 5.5l7 6" stroke="#b98a3a" strokeWidth="1.6" fill="none" />
-    {city && <path d="M14 8 18.5 4 23 8v12h-9z" fill="#e6c98c" />}
-    <rect x="8.5" y="14" width="3" height="6" fill="#9a6b2a" />
+const HouseIco = ({ city }: { city?: boolean }) => city ? (
+  <svg viewBox="0 0 24 24" className="h-[26px] w-[26px]" strokeLinejoin="round">
+    {/* keep: round tower with a cone roof */}
+    <rect x="3.5" y="6.5" width="6" height="8" fill={ICO_WALL} stroke={ICO_LINE} strokeWidth="0.7" />
+    <path d="M2.6 7 6.5 1 10.4 7Z" fill={ICO_ROOF} stroke={ICO_LINE} strokeWidth="0.7" />
+    {/* hall with a gable roof */}
+    <rect x="12" y="9" width="9" height="5" fill={ICO_WALL} stroke={ICO_LINE} strokeWidth="0.7" />
+    <path d="M11 9.6 16.5 5 22 9.6Z" fill={ICO_ROOF} stroke={ICO_LINE} strokeWidth="0.7" />
+    {/* curtain wall with merlons and a gate */}
+    <path d="M1.5 13h2v-1.4h2V13h2.5v-1.4h2V13h3v-1.4h2V13h2.5v-1.4h2V13h2v8h-21Z" fill={ICO_WALL} stroke={ICO_LINE} strokeWidth="0.7" />
+    <path d="M10 21v-3.2a2 2 0 0 1 4 0V21Z" fill={ICO_DARK} />
+  </svg>
+) : (
+  <svg viewBox="0 0 24 24" className="h-[26px] w-[26px]" strokeLinejoin="round">
+    <rect x="14.6" y="4.6" width="2.6" height="5" fill="#d9c49a" stroke={ICO_LINE} strokeWidth="0.7" />
+    <rect x="5.5" y="11" width="13" height="8.6" fill={ICO_WALL} stroke={ICO_LINE} strokeWidth="0.7" />
+    {/* deep eaves: the roof overhangs the walls on both sides */}
+    <path d="M2.2 12.2 12 4 21.8 12.2Z" fill={ICO_ROOF} stroke={ICO_LINE} strokeWidth="0.7" />
+    <rect x="10.4" y="14.6" width="3.2" height="5" fill={ICO_DARK} />
+    <rect x="9.4" y="19.6" width="5.2" height="1.4" fill="#cdbb95" stroke={ICO_LINE} strokeWidth="0.5" />
   </svg>
 )
 
