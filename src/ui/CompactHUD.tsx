@@ -6,6 +6,7 @@ import { useGameView } from './gameView'
 import { HelpButton } from './shortcuts'
 import { GameDialogs } from './Dialogs'
 import { Notices } from './Notices'
+import { CompactLogButton } from './LogPanel'
 import { Victory } from './Victory'
 import { BoardPicker } from './BoardPicker'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
@@ -68,6 +69,7 @@ export function CompactHUD() {
           ))}
         </ul>
 
+        <CompactLogButton className="!h-[46px] !w-[40px]" sheetTop={COMPACT_SAFE.top + 4} />
         <HelpButton className="!h-[46px] !w-[40px]" />
       </div>
 

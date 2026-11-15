@@ -9,6 +9,7 @@ import { useViewport } from './layout'
 import { CompactHUD } from './CompactHUD'
 import { GameDialogs } from './Dialogs'
 import { Notices } from './Notices'
+import { GameLog } from './LogPanel'
 import { Victory } from './Victory'
 import { usePrivacy } from './PassDevice'
 import { TurnClock } from './TurnClock'
@@ -647,8 +648,12 @@ export const HUD = memo(function HUD() {
           <HelpButton />
         </div>
         <PhaseBanner className="absolute left-1/2 top-[14px] -translate-x-1/2 whitespace-nowrap" />
-        {/* bottom-left corner above the action buttons: notices never cover tokens, ports or the HUD */}
-        <Notices align="start" className="absolute bottom-[84px] left-[22px] w-[250px] justify-end" />
+        {/* bottom-left corner above the action buttons: the game log (G9.1) with the remaining notices
+            above it; neither covers tokens, ports or the HUD */}
+        <div className="absolute bottom-[84px] left-[22px] flex w-[272px] flex-col items-stretch justify-end gap-[8px]">
+          <Notices align="start" events={false} max={1} className="w-full" />
+          <GameLog />
+        </div>
         <Players />
         <DiceArea />
         <ResourceCards />

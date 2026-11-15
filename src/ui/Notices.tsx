@@ -12,14 +12,19 @@ import { panel } from './HUD'
 
 const RING: Record<NoticeKind, string> = { info: 'ring-white/15', good: 'ring-[#f2b544]/70', warn: 'ring-[#e0812f]/70', error: 'ring-[#e0483a]/80' }
 
-export function Notices({ className = '', style, align = 'center' }: { className?: string; style?: React.CSSProperties; align?: 'center' | 'start' }) {
+/**
+ * `events={false}` (desktop, G9.1): game events go to the game log instead, so only rejected actions
+ * and the viewer's own notices (a roll that paid nothing, the card they bought) appear here.
+ */
+export function Notices({ className = '', style, align = 'center', events: showEvents = true, max }: { className?: string; style?: React.CSSProperties; align?: 'center' | 'start'; events?: boolean; max?: number }) {
   const store = useGameStore()
-  const list = useNotices()
+  const all = useNotices()
+  const list = max ? all.slice(-max) : all // desktop above the log: only the newest, so the stack never climbs onto the board
   const { me } = useGameView()
   const covered = usePrivacy().covered
   useGameEvents((events, state) => {
     if (events.some((e) => e.type === 'GAME_STARTED')) clearNotices()
-    for (const n of eventNotices(events)) pushNotice(n)
+    if (showEvents) for (const n of eventNotices(events)) pushNotice(n)
     // G7.2: the viewer's own roll that paid nothing (never for a spectator or behind the pass screen)
     const viewer = me === 'spectator' || covered ? null : handOf(state, me).owner
     const own = ownRollNotice(events, viewer)

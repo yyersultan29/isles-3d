@@ -1124,6 +1124,31 @@ From `UX_PRODUCT_SPEC.md` UX-5 and the G6 open item:
 - trade and dev panels that never cover their own buttons;
 - bank-then-road in 3 taps.
 
+### G9 — Easy for a new player (UX)
+
+Approved by the owner on 2026-11-15 after a fresh UX pass. Business and system analysis, risks and the
+design of each step: `docs/G9_PLAN.md`. One step at a time, each reviewed before the next; no camera,
+engine or protocol changes.
+
+- [x] **G9.1 Game log.** Every public event (turns, rolls with both dice, production with resource icons,
+  discards, the robber's tile by terrain and number, steals, builds, cards, trades, awards, victory) as a
+  line, kept for the whole game. Desktop: a panel in the bottom-left corner (last 5 lines, "Show all"
+  expands to a 260 px scroller, remembered per device); game-event toasts move into it and only the newest
+  personal or error notice stays above it. Compact: a log button in the top bar opens the list as a sheet
+  (toasts unchanged). A resumed save rebuilds the log by re-running the engine over the saved actions; online,
+  the log starts at join and a reconnect adds a "missed" line. A stolen resource and a bought card's type are
+  never written (the device may be shared). `role="log"` without live announcements.
+  Checks: 276 tests (3 new), build; g6-audit axe 0 and every panel fits at 1440×900, 390×844, 844×390;
+  ux-flows 3/3/3/4 (= G6.7); g7-baseline hover-only 0 and placeholders 0; g7-dev, g7-hand, g7-refusals,
+  hand-trade clean; reload keeps all 200 lines at three sizes; no console errors. Screenshots:
+  `screenshots/milestones/g9.1/` (`before-1440.jpg` is the same position type before the change).
+- [ ] **G9.2 Labelled core actions and the dice sum.** Trade and development cards as labelled buttons by the hand; the last roll's sum as a number.
+- [ ] **G9.3 Start menu.** Play on this device (names), Play online (room + copyable link), Continue.
+- [ ] **G9.4 Russian language.** All visible strings in `en`/`ru` tables, a language switch, by area.
+- [ ] **G9.5 Setup clarity.** Corner values during setup, plain phase text, build panel and empty hand tidied.
+- [ ] **G9.6 Player cards.** Awards spelled out, played knights shown.
+- [ ] **G9.7 Exit check.** All drivers, both languages, desktop and compact, owner review.
+
 ## 6. Suggested code organization (adapt to actual repo)
 
 ```text
@@ -1178,6 +1203,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
 | G7 — Clear state and next step | Exit check passed, owner review | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, `038247e`, `fca18b0`, `441e7c3`, G7.8 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
+| G9 — Easy for a new player | In progress | G9.1 | `screenshots/milestones/g9.1/` | Plan `docs/G9_PLAN.md` (2026-11-15). G9.1 game log done; next G9.2 labelled trade/cards buttons and the dice sum |
 
 ## 9. How to instruct Claude Code
 
@@ -1185,4 +1211,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** the owner reviews G7 on the deployed site (and checks Fullscreen in a real browser). G8 (phone play) starts only when the owner asks.
+**Recommended next action:** the owner reviews G9.1 (game log); then G9.2. G8 (phone play) starts only when the owner asks.
