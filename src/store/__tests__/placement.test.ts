@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest'
 import { legalActions, type Action } from '../../game'
 import { act, fixture, newGame } from '../../game/__tests__/helpers'
-import { placementTargets } from '../placement'
+import { cornerBand, cornerPips, placementTargets } from '../placement'
+import { pips } from '../../game'
 
 describe('G4.3 placement targets', () => {
   it('setup: settlement spots first, then roads touching the new settlement', () => {
@@ -45,5 +46,18 @@ describe('G4.3 placement targets', () => {
     expect(placementTargets(rb, null).edges.length).toBeGreaterThan(0)
     expect(placementTargets(fixture({ phase: { kind: 'preRoll' } }), 'road').edges).toHaveLength(0)
     expect(placementTargets(fixture({ hands: { p2: { ore: 8 } }, phase: { kind: 'discard', pending: { p2: 4 } } }), null).player).toBeNull()
+  })
+})
+
+describe('G9.5 corner value', () => {
+  it('sums the dots of the tokens around a corner; bands split low, mid and high', () => {
+    const s = newGame(3)
+    for (const v of s.board.topo.vertices) {
+      const want = s.board.topo.vertexTiles[v].reduce((n, t) => n + pips(s.board.tiles[t].token), 0)
+      expect(cornerPips(s, v)).toBe(want)
+    }
+    const all = s.board.topo.vertices.map((v) => cornerPips(s, v))
+    expect(Math.max(...all)).toBeGreaterThanOrEqual(10) // the standard board has gold corners
+    expect([cornerBand(0), cornerBand(4), cornerBand(5), cornerBand(9), cornerBand(10)]).toEqual(['low', 'low', 'mid', 'mid', 'high'])
   })
 })

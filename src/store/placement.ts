@@ -1,7 +1,7 @@
 // Which board spots are clickable right now (ROADMAP G4.3). Pure: derived from the engine's
 // legalActions, never from scene geometry, so the highlights can't disagree with the rules.
 
-import { apply, legalActions } from '../game'
+import { apply, legalActions, pips } from '../game'
 import type { Action, EdgeId, GameState, PlayerId, TileId, VertexId, Viewer } from '../game'
 import type { PlacementMode } from './ui'
 
@@ -45,3 +45,14 @@ export function keepsPlacing(s: GameState, player: PlayerId, action: Action): bo
   const r = apply(s, player, action)
   return r.ok && r.state.phase.kind === 'actions' && legalActions(r.state, player).some((a) => a.type === action.type)
 }
+
+// ---------------------------------------------------------------- corner value (G9.5)
+
+/** How much a corner produces: the dots ("pips") of the tokens around it (2 and 12 have 1, 6 and 8 have 5). */
+export function cornerPips(s: GameState, v: VertexId): number {
+  return (s.board.topo.vertexTiles[v] ?? []).reduce((n, t) => n + pips(s.board.tiles[t]?.token ?? null), 0)
+}
+
+/** Corner value bands for the setup markers: a small dim ring, a plain ring, a large gold ring. */
+export type CornerBand = 'low' | 'mid' | 'high'
+export const cornerBand = (p: number): CornerBand => (p >= 10 ? 'high' : p <= 4 ? 'low' : 'mid')

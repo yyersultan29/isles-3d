@@ -6,7 +6,8 @@
 import { useSyncExternalStore } from 'react'
 import { resourceOf } from '../game'
 import type { Action, GameState, PlayerId, TileId, VertexId } from '../game'
-import { L } from '../ui/locale'
+import { L, count } from '../ui/locale'
+import { cornerPips } from './placement'
 import { resName } from '../ui/words'
 import { SEATS } from '../ui/gameView'
 
@@ -22,7 +23,7 @@ const NAMES = new Proxy({} as Record<PlayerId, string>, { get: (_, p: string) =>
 export function tileText(s: GameState, t: TileId): string {
   const tile = s.board.tiles[t]
   const r = resourceOf(tile.terrain)
-  return r ? `${tile.token} ${resName(r)}` : L('desert', 'пустыня')
+  return r ? L(`${tile.token} ${resName(r)}`, `${resName(r)} ${tile.token}`) : L('desert', 'пустыня')
 }
 
 function portText(s: GameState, v: VertexId): string | null {
@@ -44,7 +45,9 @@ export function spotLabel(s: GameState, action: Action): string {
       const tiles = byBoard(s, topo.vertexTiles[v]).map((t) => tileText(s, t))
       const port = portText(s, v)
       const what = action.type === 'BUILD_CITY' ? L('City', 'Город') : L('Settlement', 'Поселение')
-      return `${what}: ${[...tiles, ...(port ? [port] : [])].join(', ')}`
+      // G9.5: a new settlement's corner says its value, as the ring size shows it
+      const value = action.type === 'BUILD_CITY' ? '' : ` · ${count(cornerPips(s, v), 'dot', 'dots', 'точка', 'точки', 'точек')}`
+      return `${what}: ${[...tiles, ...(port ? [port] : [])].join(', ')}${value}`
     }
     case 'PLACE_ROAD':
     case 'BUILD_ROAD': {

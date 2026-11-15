@@ -327,7 +327,21 @@ export const setBack = (on: boolean) => `transition-[filter] duration-300 ${on ?
 export function SetupNote({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
   const setup = useSetup()
   const covered = usePrivacy().covered // hooks before any early return
+  const step = useGame((s) => (s.phase.kind === 'setup' ? s.phase.step : null))
   if (!setup || covered) return null
+  // G9.5: while a settlement is placed, the note says what the rings mean (a value legend)
+  if (step === 'settlement') return (
+    <p id={SETUP_NOTE_ID} data-setup-note className={`pointer-events-none flex items-center gap-[8px] whitespace-nowrap rounded-full px-[12px] py-[5px] text-[13px] font-medium text-[#f4efe6] ring-1 ring-white/15 ${panel} ${className}`}>
+      <span aria-hidden className="flex items-center gap-[3px]">
+        <span className="h-[8px] w-[8px] rounded-full border-2 border-[#9a958c]" />
+        <span className="h-[11px] w-[11px] rounded-full border-2 border-[#fff6dc]" />
+        <span className="h-[15px] w-[15px] rounded-full border-[3px] border-[#ffc23d]" />
+      </span>
+      {compact
+        ? L('Bigger ring, richer corner', 'Крупнее кольцо — богаче угол')
+        : L('Bigger ring, more resources; gold rings are the best corners. Building and trading start after setup.', 'Чем больше кольцо, тем больше ресурсов; золотые — лучшие углы. Стройка и торговля — после расстановки.')}
+    </p>
+  )
   return (
     <p id={SETUP_NOTE_ID} data-setup-note className={`pointer-events-none whitespace-nowrap rounded-full px-[12px] py-[5px] text-[13px] font-medium text-[#f4efe6] ring-1 ring-white/15 ${panel} ${className}`}>
       {compact
@@ -397,7 +411,7 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
   const shown = RESOURCES.filter(({ key }) => counts[key] > 0 || (can && (draft.give[key] ?? 0) > 0) || (delta?.d[key] ?? 0) < 0)
   return (
     <ul aria-label={`${ownerName}'s resources`} className={`relative flex items-end ${compact ? 'gap-[6px]' : 'gap-[8px] pb-[12px]'} ${setBack(setup)}`}>
-      {!shown.length && owner && (
+      {!shown.length && owner && !setup && (
         <li className={`rounded-full bg-[#1d1a16]/80 font-semibold text-[#d6d2ca] ring-1 ring-white/10 ${compact ? 'px-[10px] py-[4px] text-[12px]' : 'px-[14px] py-[6px] text-[13px]'}`}>{L('No resource cards', 'Нет карт ресурсов')}</li>
       )}
       {shown.map(({ key }) => {
@@ -617,8 +631,15 @@ export function FullscreenButton({ className = '' }: { className?: string }) {
 
 function BuildPanel() {
   const setup = useSetup()
+  // G9.5: during setup the panel is one line; the costs come back with the first turn
+  if (setup) return (
+    <section aria-labelledby="build-title" className={`absolute bottom-[42px] right-[16px] flex w-[246px] items-baseline justify-between rounded-[12px] px-[16px] py-[10px] ${panel} ${setBack(setup)}`}>
+      <h2 id="build-title" className="font-display text-[20px] font-medium text-[#f4efe6]">{L('Build', 'Стройка')}</h2>
+      <span className="text-[13px] text-[#d6d2ca]">{L('after setup', 'после расстановки')}</span>
+    </section>
+  )
   return (
-    <section aria-labelledby="build-title" className={`absolute bottom-[42px] right-[16px] w-[246px] rounded-[12px] px-[10px] pb-[8px] pt-[12px] ${panel} ${setBack(setup)}`}>
+    <section aria-labelledby="build-title" className={`absolute bottom-[42px] right-[16px] w-[246px] rounded-[12px] px-[10px] pb-[8px] pt-[12px] ${panel}`}>
       <h2 id="build-title" className="mb-[8px] px-[6px] font-display text-[20px] font-medium text-[#f4efe6]">{L('Build', 'Стройка')}</h2>
       <BuildRows />
     </section>
@@ -687,7 +708,7 @@ function BottomLeft() {
   const tradeOpen = useTradeOpen()
   const devOpen = useDevOpen()
   const setup = useSetup()
-  const after = L('After setup', 'После расстановки')
+  const after = L('After setup', 'Позже')
   const tradeSub = setup ? after : bank.open ? L('Key: T', 'Клавиша T') : bank.reason ?? L('Not now', 'Не сейчас')
   const devSub = setup ? after : dev.total === 0 ? L('None yet', 'Пока нет') : L(`${dev.total} in hand${dev.canOpen ? '' : ' · not now'}`, `${dev.total} на руке${dev.canOpen ? '' : ' · не сейчас'}`)
   return (

@@ -9,12 +9,12 @@ describe('G4.6a board cursor', () => {
   const s = newGame(1, { boardPreset: 'standard-fixed' })
 
   it('describes settlement, road and robber spots from the board', () => {
-    expect(spotLabel(s, { type: 'PLACE_SETTLEMENT', vertex: '0,0,N' })).toBe('Settlement: 11 wood, 9 brick, desert')
+    expect(spotLabel(s, { type: 'PLACE_SETTLEMENT', vertex: '0,0,N' })).toBe('Settlement: 11 wood, 9 brick, desert · 6 dots')
     expect(spotLabel(s, { type: 'BUILD_CITY', vertex: '0,0,N' })).toMatch(/^City: /)
     expect(spotLabel(s, { type: 'PLACE_ROAD', edge: '0,0,NE' })).toBe('Road between 9 brick and desert')
     // a coastal corner with a port names the port
     const port = s.board.ports[0]
-    expect(spotLabel(s, { type: 'PLACE_SETTLEMENT', vertex: port.vertices[0] })).toMatch(/port$/)
+    expect(spotLabel(s, { type: 'PLACE_SETTLEMENT', vertex: port.vertices[0] })).toMatch(/port · \d+ dots?$/)
     expect(spotLabel(s, { type: 'BUILD_ROAD', edge: port.edge })).toMatch(/^Road on the coast of \d+ \w+$/)
   })
 

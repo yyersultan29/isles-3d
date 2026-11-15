@@ -98,9 +98,9 @@ export function phaseText(s: GameState): string {
   switch (s.phase.kind) {
     case 'setup': {
       const first = s.phase.round === 1
-      // G7.6: a command, naming what to look for on the board (G9.4: "a highlighted corner", was "a light spot")
+      // G7.6: a command naming what to do; G9.5: plain words (the rings' meaning is in the setup note)
       return s.phase.step === 'settlement'
-        ? L(`${who}: choose a highlighted corner for your ${first ? 'first' : 'second'} settlement`, `${who}: выберите подсвеченный угол для ${first ? 'первого' : 'второго'} поселения`)
+        ? L(`${who}: put your ${first ? 'first' : 'second'} settlement on a free corner`, `${who}: ${first ? 'первое' : 'второе'} поселение — на свободный угол`)
         : L(`${who}: place a road next to your settlement`, `${who}: поставьте дорогу рядом с поселением`)
     }
     case 'preRoll': return L(`${who}: roll the dice`, `${who}: бросьте кубики`)

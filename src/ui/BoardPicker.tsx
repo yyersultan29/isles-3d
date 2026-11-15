@@ -148,7 +148,7 @@ export function BoardPicker({ className = '', style }: { className?: string; sty
         className={`sr-only rounded-full text-[14px] font-semibold text-[#f4efe6] outline-none ring-2 ring-[#f2b544] focus-visible:not-sr-only focus-visible:px-[16px] focus-visible:py-[8px] focus-visible:pointer-events-auto ${panel}`}>
         <span aria-hidden>
           {idx >= 0 ? label : L(`Choose a ${kind}`, `Выберите: ${KIND_RU[kind] ?? kind}`)}
-          <span className="ml-[10px] font-normal text-[#bdb8af]">{idx >= 0 ? `${idx + 1}/${n} · ` : ''}←↑↓→ move · Enter place{mode ? ' · Esc cancel' : ''}</span>
+          <span className="ml-[10px] font-normal text-[#bdb8af]">{idx >= 0 ? `${idx + 1}/${n} · ` : ''}{L('←↑↓→ move · Enter place', '←↑↓→ выбор · Enter — поставить')}{mode ? L(' · Esc cancel', ' · Esc — отмена') : ''}</span>
         </span>
       </button>
       <span className="sr-only" aria-live="polite">{idx >= 0 ? label : ''}</span>

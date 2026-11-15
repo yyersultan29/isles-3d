@@ -9,7 +9,7 @@ import * as THREE from 'three'
 import { corner, edgeToScene, PLAYER_COLOR_OF, PLAYER_COLORS, tileAt, tileByAxial, vertexToScene } from './board'
 import { animTime, motion } from './motion'
 import { useGame, useGameStore, useSeat } from '../store/GameProvider'
-import { keepsPlacing, placementTargets } from '../store/placement'
+import { cornerBand, cornerPips, keepsPlacing, placementTargets } from '../store/placement'
 import { setPlacementMode, usePlacementMode } from '../store/ui'
 import { getCursor, setProjector } from '../store/boardCursor'
 import type { Action } from '../game'
@@ -21,7 +21,7 @@ const PICK_VERTEX = 0.3
 const PICK_EDGE = 0.22
 const CLICK_SLOP_PX = 6
 
-interface Spot { x: number; z: number; action: Action; at: string }
+interface Spot { x: number; z: number; action: Action; at: string; pips?: number }
 interface EdgeSpot extends Spot { ang: number; len: number; a: [number, number]; b: [number, number] }
 
 const vertexPos = (v: Parameters<typeof vertexToScene>[0]) => { const s = vertexToScene(v); return corner(tileAt(...s.tile), s.corner) }
@@ -31,6 +31,10 @@ function distToSegment(px: number, pz: number, a: [number, number], b: [number, 
   const t = Math.max(0, Math.min(1, ((px - a[0]) * dx + (pz - a[1]) * dz) / (dx * dx + dz * dz)))
   return Math.hypot(px - (a[0] + t * dx), pz - (a[1] + t * dz))
 }
+
+// G9.5 corner value: 0 dots → 0.7, 12+ dots → 1.42 of the plain ring; band colours multiply the marker colour
+const ringScale = (p: number) => 0.7 + 0.06 * Math.min(p, 12)
+const BAND_COLOR = { low: new THREE.Color('#9a958c'), mid: new THREE.Color('#ffffff'), high: new THREE.Color('#ffc23d') }
 
 const markMat = (color: string, opacity: number) =>
   new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: false, side: THREE.DoubleSide, toneMapped: false })
@@ -45,7 +49,13 @@ export function Placement() {
   const me = useSeat()
   const targets = useMemo(() => placementTargets(state, mode, me), [state, mode, me])
   const spots = useMemo(() => {
-    const vertices: Spot[] = targets.vertices.map(({ at, action }) => { const [x, z] = vertexPos(at); return { x, z, action, at } })
+    // G9.5: a new settlement's corner shows its value: ring size grows with the dots around it, the
+    // best corners are gold and the poorest dim (cities keep plain rings: the corner is already chosen)
+    const vertices: Spot[] = targets.vertices.map(({ at, action }) => {
+      const [x, z] = vertexPos(at)
+      const valued = action.type === 'PLACE_SETTLEMENT' || action.type === 'BUILD_SETTLEMENT'
+      return { x, z, action, at, pips: valued ? cornerPips(state, at) : undefined }
+    })
     const edges: EdgeSpot[] = targets.edges.map(({ at, action }) => {
       const s = edgeToScene(at)
       const t = tileAt(...s.tile)
@@ -54,7 +64,7 @@ export function Placement() {
     })
     const tiles: Spot[] = targets.tiles.flatMap(({ at, action }) => { const t = tileByAxial(at); return t ? [{ x: t.x, z: t.z, action, at }] : [] })
     return { vertices, edges, tiles }
-  }, [targets])
+  }, [targets, state])
 
   const colour = targets.player ? PLAYER_COLORS[PLAYER_COLOR_OF[targets.player]].wall : '#ffffff'
 
@@ -89,7 +99,12 @@ export function Placement() {
       m.count = list.length
       m.instanceMatrix.needsUpdate = true
     }
-    fill(ringRef.current, spots.vertices, (s) => o.position.set(s.x, MARK_Y, s.z))
+    fill(ringRef.current, spots.vertices, (s) => { o.position.set(s.x, MARK_Y, s.z); if (s.pips !== undefined) o.scale.setScalar(ringScale(s.pips)) })
+    const ring = ringRef.current
+    if (ring) {
+      spots.vertices.forEach((s, i) => ring.setColorAt(i, BAND_COLOR[s.pips === undefined ? 'mid' : cornerBand(s.pips)]))
+      if (ring.instanceColor) ring.instanceColor.needsUpdate = true
+    }
     fill(barRef.current, spots.edges, (s) => { const e = s as EdgeSpot; o.position.set(e.x, MARK_Y, e.z); o.rotation.set(0, e.ang, 0); o.scale.set(e.len * 0.62, 1, 1) })
     fill(hexRef.current, spots.tiles, (s) => o.position.set(s.x, 0.06, s.z))
   }, [spots])
@@ -183,6 +198,7 @@ export function Placement() {
     if (!spot) return
     const y = kind === 't' ? 0.06 : MARK_Y + 0.002
     g.position.set(spot.x, y, spot.z)
+    g.scale.setScalar(kind === 'v' && spot.pips !== undefined ? ringScale(spot.pips) : 1)
     if (hoverRing.current) hoverRing.current.visible = kind === 'v'
     if (hoverDot.current) hoverDot.current.visible = kind === 'v'
     if (hoverBar.current) {
