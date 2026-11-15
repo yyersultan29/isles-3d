@@ -72,7 +72,7 @@ const panelView = () => p.evaluate(() => {
     groups: [...d.querySelectorAll('[data-dev-group]')].map((g) => ({ group: g.getAttribute('data-dev-group'), rows: [...g.querySelectorAll('li')].map((li) => ({ text: li.innerText.replace(/\s+/g, ' ').trim(), play: !!li.querySelector('button') })) })),
   }
 })
-const myCards = 'button[aria-label^="My development cards"]'
+const myCards = 'button[data-dev-button]'
 const openTrade = async () => { await tap('button[data-trade-button]'); await p.waitForSelector('[aria-labelledby=trade-title]') }
 const visible = () => p.$eval('[aria-labelledby=trade-title]', (e) => e.innerText.replace(/\s+/g, ' '))
 const meRes = () => p.evaluate(() => { const s = window.__islesStore.getState(); return { ...s.players.find((x) => x.id === s.order[s.active]).resources } })

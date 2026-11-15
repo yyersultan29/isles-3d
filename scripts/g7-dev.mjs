@@ -72,7 +72,7 @@ const panelView = () => p.evaluate(() => {
     groups: [...d.querySelectorAll('[data-dev-group]')].map((g) => ({ group: g.getAttribute('data-dev-group'), rows: [...g.querySelectorAll('li')].map((li) => ({ text: li.innerText.replace(/\s+/g, ' ').trim(), play: !!li.querySelector('button') })) })),
   }
 })
-const myCards = 'button[aria-label^="My development cards"]'
+const myCards = 'button[data-dev-button]'
 
 // ---- A. buy a card from Build: the notice names it; the panel puts it under "Bought this turn" with no Play
 {

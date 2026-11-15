@@ -91,7 +91,8 @@ screenshots, as in G6/G7:
   (the existing announcer already speaks the events).
 
 **G9.2 Core actions and the dice**
-- Trade and development cards become labelled buttons next to the hand (text + icon + key hint).
+- Trade and development cards become labelled buttons (text + icon + a second line with the reason, key or count). Built in the bottom-left corner under the log, where the icons were, rather than by the hand: the same place covers nothing new on the board.
+- Player cards gain development cards held and knights played (moved forward from G9.6 at the owner's request).
 - The dice plinth shows the last roll's sum as a number.
 
 **G9.3 Start menu**

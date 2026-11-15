@@ -76,6 +76,14 @@ export const Trophy = () => (
     <path d="M6 3h12v3h3v2a5 5 0 0 1-4.6 5A6 6 0 0 1 13 16.6V19h4v2H7v-2h4v-2.4A6 6 0 0 1 7.6 13 5 5 0 0 1 3 8V6h3zm0 5V8H5a3 3 0 0 0 1.3 2.5A6 6 0 0 1 6 8zm12 0a6 6 0 0 1-.3 2.5A3 3 0 0 0 19 8z" />
   </svg>
 )
+/** G9.2: a development card (a card with a star) and a played knight (a sword), for the player cards. */
+export const DevCardIco = () => (
+  <svg aria-hidden viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="#e7c27a" strokeWidth="2"><rect x="6" y="4" width="12" height="16" rx="2" /><path d="M12 8.2l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z" fill="#e7c27a" strokeWidth="0.8" /></svg>
+)
+export const KnightIco = () => (
+  <svg aria-hidden viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="#d8dde6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4H20v5.5L10 19.5 4.5 14z" /><path d="M7 12l5 5M3.5 20.5l3-3" /></svg>
+)
+
 export const CardsIco = () => (
   <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="#e8e4dc" strokeWidth="2">
     <rect x="6" y="5" width="12" height="15" rx="2" />
@@ -100,18 +108,18 @@ export function AwardBadges({ seat }: { seat: SeatView }) {
 }
 
 export const seatLabel = (p: SeatView) =>
-  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}${p.auto ? ', played automatically' : ''}`
+  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards, ${p.knights} ${p.knights === 1 ? 'knight' : 'knights'} played${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}${p.auto ? ', played automatically' : ''}`
 
 function Players() {
   const { seats } = useGameView()
   return (
-    <ul aria-label="Players" className="absolute right-[18px] top-[66px] flex w-[212px] flex-col gap-[7px]">
+    <ul aria-label="Players" className="absolute right-[18px] top-[66px] flex w-[228px] flex-col gap-[7px]">
       {seats.map((p) => (
         <li
           key={p.id}
           aria-label={seatLabel(p)}
           aria-current={p.active ? 'true' : undefined}
-          className={`relative flex h-[62px] items-center gap-[12px] overflow-hidden rounded-[8px] pl-[6px] pr-3 transition-transform ${panel} ${p.active ? '-translate-x-[8px]' : ''}`}
+          className={`relative flex h-[62px] items-center gap-[10px] overflow-hidden rounded-[8px] pl-[6px] pr-[10px] transition-transform ${panel} ${p.active ? '-translate-x-[8px]' : ''}`}
           style={{ boxShadow: `inset ${p.active ? 5 : 3}px 0 0 ${p.color}, inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '55'}, 0 8px 22px rgba(0,0,0,.5)` }}
         >
           <div className={`h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[7px] ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
@@ -119,9 +127,11 @@ function Players() {
           </div>
           <div className="flex-1">
             <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}<AwardBadges seat={p} />{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
-            <div className="flex items-center gap-[22px] text-[14px] text-[#ece8e0] leading-none">
-              <span className="flex items-center gap-[5px]"><Trophy />{p.vp}</span>
-              <span className="flex items-center gap-[5px]"><CardsIco />{p.cards}</span>
+            <div aria-hidden className="flex items-center gap-[9px] text-[14px] text-[#ece8e0] leading-none [&>span]:gap-[3px]">
+              <span title="Victory points" className="flex items-center gap-[4px]"><Trophy />{p.vp}</span>
+              <span title="Resource cards" className="flex items-center gap-[4px]"><CardsIco />{p.cards}</span>
+              <span title="Development cards in hand" className="flex items-center gap-[4px]"><DevCardIco />{p.devCards}</span>
+              <span title="Knights played" className={`flex items-center gap-[4px] ${p.knights ? '' : 'opacity-45'}`}><KnightIco />{p.knights}</span>
             </div>
           </div>
           {p.active && <span aria-hidden className="absolute right-[10px] top-[9px] h-[9px] w-[9px] rounded-full bg-[#f2b544] shadow-[0_0_8px_#f2b544]" />}
@@ -218,6 +228,15 @@ export function useDiceAndAction(bounce: (el: HTMLElement) => void) {
   return { ref, a, b, rolled: !!dice, primary, act }
 }
 
+/** G9.2: the last roll's total on a small token between the dice (red for a seven). */
+export function DiceSum({ total, className = '', small = false }: { total: number; className?: string; small?: boolean }) {
+  return (
+    <span aria-hidden data-dice-sum className={`grid place-items-center rounded-full border-2 font-display font-bold leading-none shadow-[0_3px_8px_rgba(0,0,0,.55)] ${small ? 'h-[22px] min-w-[22px] px-[3px] text-[13px]' : 'h-[34px] min-w-[34px] px-[4px] text-[20px]'} ${total === 7 ? 'border-[#ffd2c8] bg-[#b8281f] text-white' : 'border-[#ffe7a6] bg-[#2a1b10] text-[#ffe08a]'} ${className}`}>
+      {total}
+    </span>
+  )
+}
+
 function DiceArea() {
   const { ref, a, b, rolled, primary, act } = useDiceAndAction((el) =>
     gsap.fromTo(el.children, { y: -18, rotate: -25 }, { y: 0, rotate: 0, duration: 0.7, ease: 'bounce.out', stagger: 0.08 }),
@@ -228,6 +247,8 @@ function DiceArea() {
         <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg) rotateZ(-4deg)" />
         <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg) rotateZ(6deg)" color="red" />
       </div>
+      {/* G9.2: the roll as a number, so nobody has to count pips; a sibling of the dice, which gsap animates */}
+      {rolled && <DiceSum total={a + b} className="absolute left-1/2 -top-[22px] z-20 -translate-x-1/2" />}
       {/* wooden plinth */}
       <div className="relative -mt-[18px] h-[96px] rounded-[28px] bg-[linear-gradient(180deg,#6b4a2c,#3d2817_60%,#2a1b10)] shadow-[0_14px_30px_rgba(0,0,0,0.6),inset_0_2px_0_rgba(255,220,170,0.25),inset_0_-6px_12px_rgba(0,0,0,0.5)] ring-1 ring-black/40">
         <div className="absolute inset-x-[10px] top-[8px] h-[8px] rounded-full bg-[repeating-linear-gradient(90deg,rgba(0,0,0,0.12)_0_6px,rgba(255,255,255,0.03)_6px_14px)]" />
@@ -605,14 +626,14 @@ const CardsStackIco = ({ size }: { size: number }) => (
 )
 
 /** Opens the development cards panel (G4.4e); a badge shows how many cards the active player holds. */
-export function DevButton({ className = '', icon = 24 }: { className?: string; icon?: number }) {
+export function DevButton({ className = '', icon = 24 }: { className?: string; icon?: number }) { // compact dock
   const { dev } = useGameView()
   const open = useDevOpen()
   const setup = useSetup()
   const label = `My development cards: ${dev.total}${dev.canOpen || setup ? '' : ' (Not now)'}`
   return (
     <div className="relative shrink-0">
-      <IconButton label={label} aria-pressed={open} disabled={!dev.canOpen} onClick={() => setDevOpen(!open)}
+      <IconButton label={label} data-dev-button aria-pressed={open} disabled={!dev.canOpen} onClick={() => setDevOpen(!open)}
         aria-describedby={setup ? SETUP_NOTE_ID : undefined} className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)} ${className}`}>
         <CardsStackIco size={icon} />
       </IconButton>
@@ -621,11 +642,39 @@ export function DevButton({ className = '', icon = 24 }: { className?: string; i
   )
 }
 
-function BottomLeft() {
+/**
+ * G9.2: trade and development cards as labelled buttons (they were two unlabelled icons). The second
+ * line says why a button is off right now, or its key, so nothing depends on hover.
+ */
+function LabelledAction({ icon, title, sub, badge, className = '', ...rest }: { icon: ReactNode; title: string; sub: string; badge?: number; className?: string } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className' | 'title'>) {
   return (
-    <div className="absolute bottom-[16px] left-[22px] flex gap-[12px]">
-      <TradeButton className="!h-[52px] !w-[52px] !rounded-[12px]" />
-      <DevButton className="!h-[52px] !w-[52px] !rounded-[12px]" />
+    <button {...rest}
+      className={`relative flex h-[54px] min-w-0 items-center gap-[9px] rounded-[12px] pl-[11px] pr-[10px] text-left text-[#ece8e0] transition-[filter,transform] hover:brightness-125 active:translate-y-[1px] disabled:cursor-not-allowed disabled:hover:brightness-100 [&:disabled>*]:opacity-60 ${focusRing} ${panel} ${className}`}>
+      <span className="shrink-0">{icon}</span>
+      <span className="min-w-0 leading-tight">
+        <span className="block truncate font-display text-[16px] font-semibold text-[#f4efe6]">{title}</span>
+        <span className="block truncate text-[12px] text-[#bdb8ae]">{sub}</span>
+      </span>
+      {!!badge && <span aria-hidden className="pointer-events-none absolute -right-[6px] -top-[6px] grid h-[20px] min-w-[20px] place-items-center rounded-full bg-[#f2b544] px-[4px] text-[11.5px] font-bold text-[#2a1a06] shadow-[0_1px_4px_rgba(0,0,0,.5)] !opacity-100">{badge}</span>}
+    </button>
+  )
+}
+
+function BottomLeft() {
+  const { bank, dev } = useGameView()
+  const tradeOpen = useTradeOpen()
+  const devOpen = useDevOpen()
+  const setup = useSetup()
+  const tradeSub = setup ? 'After setup' : bank.open ? 'Key: T' : bank.reason ?? 'Not now'
+  const devSub = setup ? 'After setup' : dev.total === 0 ? 'None yet' : `${dev.total} in hand${dev.canOpen ? '' : ' · not now'}`
+  return (
+    <div className="absolute bottom-[16px] left-[22px] grid w-[272px] grid-cols-2 gap-[10px]">
+      <LabelledAction data-trade-button aria-pressed={tradeOpen} aria-keyshortcuts="T" disabled={!bank.open} onClick={() => setTradeOpen(!tradeOpen)}
+        aria-label={`Trade: ${tradeSub}`} aria-describedby={setup ? SETUP_NOTE_ID : undefined}
+        icon={<TradeIco size={24} />} title="Trade" sub={tradeSub} className={`${tradeOpen ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)}`} />
+      <LabelledAction data-dev-button aria-pressed={devOpen} disabled={!dev.canOpen} onClick={() => setDevOpen(!devOpen)}
+        aria-label={`Dev cards: my development cards, ${devSub}`} aria-describedby={setup ? SETUP_NOTE_ID : undefined}
+        icon={<CardsStackIco size={24} />} title="Dev cards" sub={devSub} className={`${devOpen ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)}`} />
     </div>
   )
 }

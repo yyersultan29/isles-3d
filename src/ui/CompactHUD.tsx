@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
+import { DiceSum, AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
 import { useGameView } from './gameView'
 import { HelpButton } from './shortcuts'
 import { GameDialogs } from './Dialogs'
@@ -24,7 +24,7 @@ export function CompactHUD() {
   // short (landscape phone) screens: the seven dialogs sit over the disabled dock instead of
   // climbing over the top bar
   const short = useViewport().h < 560
-  const { ref: dice, a, b, primary, act } = useDiceAndAction((el) =>
+  const { ref: dice, a, b, rolled, primary, act } = useDiceAndAction((el) =>
     gsap.fromTo(el.children, { y: -10, rotate: -25 }, { y: 0, rotate: 0, duration: 0.6, ease: 'bounce.out', stagger: 0.08 }),
   )
   // Escape closes the build popover; focus inside it goes back to its toggle (G4.6b)
@@ -95,6 +95,7 @@ export function CompactHUD() {
               <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg)" size={24} />
               <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg)" size={24} color="red" />
             </span>
+            {rolled && <DiceSum small total={a + b} className="-ml-[2px]" />}
             <span className="whitespace-nowrap">{primary.short}</span>
           </button>
           <TradeButton icon={22} className="!h-[44px] !w-[40px] shrink-0" />
