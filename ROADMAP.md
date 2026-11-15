@@ -1152,7 +1152,22 @@ engine or protocol changes.
   phone (= G6.7); g7-baseline hover-only 0 in all states at both sizes, placeholders 0, card flows unchanged; g7-dev,
   g7-hand, g7-refusals, hand-trade clean. Screenshots: `screenshots/milestones/g9.2/`.
   Open: the compact player chips still show points only (no room at 390 px; for G8).
-- [ ] **G9.3 Start menu.** Play on this device (names), Play online (room + copyable link), Continue.
+- [x] **G9.3 Start menu.** A plain URL opens the menu over the board: Continue (the saved game with turn, phase and
+  scores; over a live game it just closes), Play on this device with four optional names (Start game, or New game
+  with "Ends the game above"), and Play online (Create room → the existing `?online` flow and lobby with the invite
+  link). A Menu button (desktop top-right, compact top bar; hot-seat only) opens it during a game; Escape closes it
+  there. Names: cleaned to 14 characters, empty = the colour, stored per device under their own key (saves and the
+  replay format unchanged), shown everywhere a seat name is (cards, phase, log, dialogs). Any URL option (`?seed=`,
+  `?menu=0`, …) skips the menu and keeps the old "Continue your game?" card, so drivers are unchanged; the drivers that
+  opened a bare `/` (`screenshot`, `perf`, `audit`) now default to `?menu=0`. Autosave starts after the first choice.
+  New `scripts/g9-menu.mjs`: focus, axe, fit, names, clicks to the first placement, Continue after a reload, Menu
+  button (Continue / Escape / New game), the online move, URL options skip.
+  Checks: g9-menu at 1440×900, 390×844, 844×390: axe 0, fits, **2 clicks from opening the page to the first placement**
+  (target ≤ 3), the reload resumes the same turn with the names, no console errors; 278 tests (2 new), build; g6-audit
+  axe 0 and fit at 3 sizes; ux-flows 3/3/3/4 and 4/4/4/4; g7-baseline hover-only 0 and placeholders 0 ("Menu" removed
+  from its placeholder list since it now works); g7 drivers clean. Screenshots: `screenshots/milestones/g9.3/`.
+  Open: on a landscape phone (844×390) the menu is taller than the screen and scrolls; online names stay the colours
+  (protocol unchanged); the online lobby itself was not re-run against a live server.
 - [ ] **G9.4 Russian language.** All visible strings in `en`/`ru` tables, a language switch, by area.
 - [ ] **G9.5 Setup clarity.** Corner values during setup, plain phase text, build panel and empty hand tidied.
 - [ ] **G9.6 Player cards.** Awards spelled out (the "LR"/"LA" badges). Dev cards and knights were done in G9.2.
@@ -1212,7 +1227,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
 | G7 — Clear state and next step | Exit check passed, owner review | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, `038247e`, `fca18b0`, `441e7c3`, G7.8 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
-| G9 — Easy for a new player | In progress | `b6d816e`, G9.2 | `screenshots/milestones/g9.1/`, `g9.2/` | Plan `docs/G9_PLAN.md` (2026-11-15). G9.1 game log; G9.2 labelled Trade / Dev cards, dice sum, dev cards and knights on player cards; next G9.3 start menu |
+| G9 — Easy for a new player | In progress | `b6d816e`, `7819d21`, G9.3 | `screenshots/milestones/g9.1/` … `g9.3/` | Plan `docs/G9_PLAN.md` (2026-11-15). G9.1 game log; G9.2 labelled Trade / Dev cards, dice sum, dev cards and knights on player cards; G9.3 start menu with names, Continue, online; next G9.4 Russian |
 
 ## 9. How to instruct Claude Code
 
@@ -1220,4 +1235,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** the owner reviews G9.2; then G9.3 (start menu). G8 (phone play) starts only when the owner asks.
+**Recommended next action:** the owner reviews G9.3; then G9.4 (Russian language). G8 (phone play) starts only when the owner asks.

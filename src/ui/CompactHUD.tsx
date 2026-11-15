@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { DiceSum, AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
+import { MenuButton, DiceSum, AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
 import { useGameView } from './gameView'
 import { HelpButton } from './shortcuts'
 import { GameDialogs } from './Dialogs'
@@ -70,6 +70,7 @@ export function CompactHUD() {
         </ul>
 
         <CompactLogButton className="!h-[46px] !w-[40px]" sheetTop={COMPACT_SAFE.top + 4} />
+        <MenuButton className="!h-[46px] !w-[40px]" />
         <HelpButton className="!h-[46px] !w-[40px]" />
       </div>
 

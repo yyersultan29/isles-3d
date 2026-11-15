@@ -3,6 +3,7 @@ import { HUD } from './ui/HUD'
 import { GameProvider } from './store/GameProvider'
 import { PassDevice } from './ui/PassDevice'
 import { Resume } from './ui/Resume'
+import { StartMenu, menuAtStart } from './ui/StartMenu'
 import { Lobby } from './ui/Lobby'
 import { onlineStoreFromUrl } from './net/connect'
 import type { OnlineStore } from './store/onlineStore'
@@ -14,6 +15,7 @@ import { BOARD_MODE } from './scene/board'
 import { SceneErrorBoundary, SceneStatusNotice, hasWebGL2 } from './scene/SceneGuard'
 
 const webgl = hasWebGL2()
+const atStart = menuAtStart()
 
 export default function App() {
   // G5.3b: ?room=… plays on the game server; otherwise a local hot-seat game
@@ -34,7 +36,9 @@ export default function App() {
       </main>
       {online ? <Lobby /> : <PassDevice />}
       {/* the showcase board (?board=demo) and online games have no saved games */}
-      {BOARD_MODE === 'game' && !online && <Resume />}
+      {/* G9.3: a plain URL opens the start menu (which offers the saved game); any URL option keeps the old card */}
+      {BOARD_MODE === 'game' && !online && <StartMenu atStart={atStart} />}
+      {BOARD_MODE === 'game' && !online && !atStart && <Resume />}
     </GameProvider>
   )
 }

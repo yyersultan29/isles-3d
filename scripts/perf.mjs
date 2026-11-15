@@ -2,7 +2,7 @@
 // Usage: node scripts/perf.mjs [url] [w] [h] [dpr]   env: UNCAP=1 (no vsync cap), WAIT=ms, PRE='js to run before measuring'
 // Draw-call and memory fields need the dev server (window.__isles hook); FPS/load work on 'vite preview' too.
 import { chromium } from 'playwright-core'
-const [url='http://localhost:5173/', w='1440', h='900', dpr='2'] = process.argv.slice(2)
+const [url='http://localhost:5173/?menu=0', w='1440', h='900', dpr='2'] = process.argv.slice(2)
 const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal','--enable-gpu','--ignore-gpu-blocklist','--enable-precise-memory-info',...(process.env.UNCAP?['--disable-gpu-vsync','--disable-frame-rate-limit']:[])] })
 const page = await browser.newPage({ viewport: { width: +w, height: +h }, deviceScaleFactor: +dpr })
 const errors = []

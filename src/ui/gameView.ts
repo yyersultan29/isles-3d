@@ -22,6 +22,22 @@ export const SEATS: Record<PlayerId, { name: string; color: string; avatar: numb
   p4: { name: 'Orange', color: '#f0a030', avatar: 2 },
 }
 
+/** The colour names, used when a player leaves their name empty (and always online). */
+export const DEFAULT_NAMES: Record<PlayerId, string> = { p1: 'Red', p2: 'Blue', p3: 'White', p4: 'Orange' }
+export const NAME_MAX = 14
+
+/** A typed name made safe to show: trimmed, single-spaced, at most NAME_MAX characters. */
+export const cleanName = (n: string | undefined) => (n ?? '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX)
+
+/**
+ * G9.3: hot-seat player names. Every screen reads `SEATS[p].name` when it renders or writes a line,
+ * so the names are set before a game starts or loads (the store bump then re-renders everything, and
+ * the game log is rebuilt with them). Empty names fall back to the colour.
+ */
+export function setSeatNames(names: Partial<Record<PlayerId, string>>) {
+  for (const id of Object.keys(SEATS) as PlayerId[]) SEATS[id].name = cleanName(names[id]) || DEFAULT_NAMES[id]
+}
+
 export interface SeatView {
   id: PlayerId
   name: string

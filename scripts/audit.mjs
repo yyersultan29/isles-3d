@@ -1,6 +1,6 @@
 // Scene audit: draw-call sources, lights, materials, triangles. Usage: node scripts/audit.mjs [url]
 import { chromium } from 'playwright-core'
-const url = process.argv[2] ?? 'http://localhost:5173/'
+const url = process.argv[2] ?? 'http://localhost:5173/?menu=0'
 const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] })
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 await page.goto(url, { waitUntil: 'networkidle' })

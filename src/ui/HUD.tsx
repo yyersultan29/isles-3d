@@ -17,7 +17,9 @@ import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
 import { changeDraft, clearDraft, draftCovered, draftEmpty, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePanel, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
-import { useGame, useGameStore, useGameEvents } from '../store/GameProvider'
+import { useGame, useGameStore, useGameEvents, useOnline } from '../store/GameProvider'
+import { openMenu } from './StartMenu'
+import { BOARD_MODE } from '../scene/board'
 import { affordable, shortfall, tradesText, type Shortfall } from './tradePlan'
 import { HelpButton, useShortcuts } from './shortcuts'
 import { deltaText, handDiff, hintSeen, markHintSeen, type HandCounts } from './handDelta'
@@ -574,6 +576,16 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
   )
 }
 
+const MenuIco = () => (
+  <svg aria-hidden viewBox="0 0 24 24" className="h-[20px] w-[20px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+)
+/** G9.3: opens the start menu (continue, new game, online); hot-seat only, online has its own lobby. */
+export function MenuButton({ className = '' }: { className?: string }) {
+  const online = useOnline()
+  if (online || BOARD_MODE !== 'game') return null
+  return <IconButton label="Menu" data-menu-button onClick={openMenu} className={className}><MenuIco /></IconButton>
+}
+
 /** G7: toggles browser fullscreen for the whole page; hidden where the browser has no fullscreen (iPhone Safari). */
 export function FullscreenButton({ className = '' }: { className?: string }) {
   const [on, setOn] = useState(() => typeof document !== 'undefined' && !!document.fullscreenElement)
@@ -693,6 +705,7 @@ export const HUD = memo(function HUD() {
       >
         <Brand />
         <div className="absolute right-[18px] top-[14px] flex gap-[10px]">
+          <MenuButton />
           <FullscreenButton />
           <HelpButton />
         </div>

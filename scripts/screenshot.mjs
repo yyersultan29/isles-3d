@@ -3,7 +3,7 @@
 import { chromium } from 'playwright-core'
 import { mkdirSync } from 'node:fs'
 
-const url = process.argv[2] ?? 'http://localhost:5173/'
+const url = process.argv[2] ?? 'http://localhost:5173/?menu=0'
 const out = process.argv[3] ?? 'shots/latest.png'
 const width = Number(process.argv[4] ?? 1600)
 const height = Number(process.argv[5] ?? 904)
