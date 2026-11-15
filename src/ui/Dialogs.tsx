@@ -5,6 +5,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
 import { RESOURCES, focusRing, panel } from './HUD'
+import { L, count } from './locale'
+import { resName } from './words'
 import { ResourceBackdrop } from './cards/ResourceArt'
 import { ResourceItem } from './cards/ResourceItems'
 import { SEATS, useGameView } from './gameView'
@@ -50,13 +52,13 @@ function DiscardDialog({ compact }: { compact: boolean }) {
     <section ref={box} role="dialog" aria-labelledby="discard-title" className={`pointer-events-auto rounded-[14px] px-[14px] pb-[12px] pt-[12px] ${panel}`} style={{ boxShadow: `inset 0 0 0 2px ${seat.color}aa, 0 14px 34px rgba(0,0,0,.6)` }}>
       <h2 id="discard-title" className="mb-[2px] font-display text-[19px] font-semibold text-[#f4efe6]">
         <span className="mr-[8px] inline-block h-[11px] w-[11px] rounded-full align-middle" style={{ background: seat.color }} />
-        {seat.name}: discard {discard.count} of {total}
+        {L(`${seat.name}: discard ${discard.count} of ${total}`, `${seat.name}: сбросьте ${discard.count} из ${total}`)}
       </h2>
       <p className="mb-[10px] text-[13px] text-[#d6d2ca]">
-        Rolled a seven. {discard.waiting.length > 1 ? `Then: ${discard.waiting.slice(1).map((p) => SEATS[p].name).join(', ')}.` : ''}
+        {L('Rolled a seven.', 'Выпала семёрка.')} {discard.waiting.length > 1 ? `${L('Then', 'Затем')}: ${discard.waiting.slice(1).map((p) => SEATS[p].name).join(', ')}.` : ''}
       </p>
       <ul className="flex gap-[8px]">
-        {RESOURCES.map(({ key, name }) => (
+        {RESOURCES.map(({ key }) => { const name = resName(key); return (
           <li key={key} className={`flex flex-col items-center gap-[6px] ${card}`}>
             <div className={`relative h-[64px] w-full overflow-hidden rounded-[8px] ring-1 ring-[#f2cf84]/50 ${discard.hand[key] ? '' : 'opacity-40'}`}>
               <ResourceBackdrop res={key} />
@@ -65,19 +67,19 @@ function DiscardDialog({ compact }: { compact: boolean }) {
               {pick[key] > 0 && <span aria-hidden className="absolute bottom-[3px] right-[3px] rounded-[4px] bg-[#c8302a] px-[5px] text-[13px] font-bold text-white">−{pick[key]}</span>}
             </div>
             <div className="flex items-center gap-[4px]">
-              <button aria-label={`Discard one less ${name}`} disabled={!pick[key]} onClick={() => step(key, -1)}
+              <button aria-label={L(`Discard one less ${name}`, `Сбросить на одну меньше: ${name}`)} disabled={!pick[key]} onClick={() => step(key, -1)}
                 className={`grid h-[28px] w-[28px] place-items-center rounded-[7px] bg-white/10 text-[17px] font-bold text-white disabled:opacity-30 ${focusRing}`}>−</button>
-              <button data-plus aria-label={`Discard one more ${name} (${pick[key]} of ${discard.hand[key]} chosen)`} disabled={pick[key] >= discard.hand[key] || chosen >= discard.count} onClick={() => step(key, +1)}
+              <button data-plus aria-label={L(`Discard one more ${name} (${pick[key]} of ${discard.hand[key]} chosen)`, `Сбросить ещё: ${name} (выбрано ${pick[key]} из ${discard.hand[key]})`)} disabled={pick[key] >= discard.hand[key] || chosen >= discard.count} onClick={() => step(key, +1)}
                 className={`grid h-[28px] w-[28px] place-items-center rounded-[7px] bg-white/10 text-[17px] font-bold text-white disabled:opacity-30 ${focusRing}`}>+</button>
             </div>
           </li>
-        ))}
+        )})}
       </ul>
       <div className="mt-[12px] flex items-center justify-between">
-        <span aria-live="polite" className="text-[14px] font-semibold text-[#f2cf84]">{chosen} / {discard.count} chosen</span>
+        <span aria-live="polite" className="text-[14px] font-semibold text-[#f2cf84]">{chosen} / {discard.count} {L('chosen', 'выбрано')}</span>
         <button ref={confirmBtn} onClick={confirm} disabled={chosen !== discard.count}
           className={`h-[38px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[22px] font-display text-[17px] font-semibold text-[#3a2208] disabled:grayscale-[0.7] disabled:brightness-75 ${focusRing}`}>
-          Discard
+          {L('Discard', 'Сбросить')}
         </button>
       </div>
     </section>
@@ -95,18 +97,18 @@ function StealDialog() {
     <section role="dialog" aria-labelledby="steal-title" className={`pointer-events-auto rounded-[14px] px-[14px] pb-[12px] pt-[12px] ${panel}`} style={{ boxShadow: `inset 0 0 0 2px ${seat.color}aa, 0 14px 34px rgba(0,0,0,.6)` }}>
       <h2 id="steal-title" className="mb-[10px] font-display text-[19px] font-semibold text-[#f4efe6]">
         <span className="mr-[8px] inline-block h-[11px] w-[11px] rounded-full align-middle" style={{ background: seat.color }} />
-        {seat.name}: rob whom?
+        {L(`${seat.name}: rob whom?`, `${seat.name}: кого ограбить?`)}
       </h2>
       <div className="flex flex-wrap gap-[8px]">
         {steal.candidates.map((c, i) => (
           <button key={c.id} ref={i === 0 ? first : undefined} onClick={() => store.dispatch(steal.player, { type: 'STEAL', victim: c.id })}
-            aria-label={`Rob ${c.name} (${c.cards} cards)`}
+            aria-label={L(`Rob ${c.name} (${c.cards} cards)`, `Ограбить: ${c.name} (${count(c.cards, '', '', 'карта', 'карты', 'карт')})`)}
             className={`flex h-[52px] items-center gap-[10px] rounded-[10px] bg-white/[0.06] pl-[5px] pr-[14px] text-left transition-colors hover:bg-white/[0.12] ${focusRing}`}
             style={{ boxShadow: `inset 3px 0 0 ${c.color}, inset 0 0 0 1px ${c.color}66` }}>
             <span className="h-[42px] w-[42px] overflow-hidden rounded-[7px] ring-2" style={{ ['--tw-ring-color' as string]: c.color }}><Avatar i={c.avatar} className="h-full w-full" /></span>
             <span className="leading-tight">
               <span className="block text-[15px] font-semibold text-white">{c.name}</span>
-              <span className="block text-[13px] text-[#d6d2ca]">{c.cards} cards</span>
+              <span className="block text-[13px] text-[#d6d2ca]">{L(`${c.cards} cards`, count(c.cards, '', '', 'карта', 'карты', 'карт'))}</span>
             </span>
           </button>
         ))}

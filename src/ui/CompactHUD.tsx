@@ -10,6 +10,7 @@ import { CompactLogButton } from './LogPanel'
 import { Victory } from './Victory'
 import { BoardPicker } from './BoardPicker'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
+import { L } from './locale'
 
 /**
  * HUD for narrow and portrait screens. It uses real CSS pixels (no global down-scaling), so text
@@ -47,7 +48,7 @@ export function CompactHUD() {
           <HexLogo className="h-[34px] w-[34px]" />
         </span>
 
-        <ul aria-label="Players" className="flex min-w-0 flex-1 gap-[6px]">
+        <ul aria-label={L('Players', 'Игроки')} className="flex min-w-0 flex-1 gap-[6px]">
           {seats.map((p) => (
             <li
               key={p.id}
@@ -58,7 +59,7 @@ export function CompactHUD() {
             >
               <div className={`h-[30px] w-[30px] shrink-0 overflow-hidden rounded-[6px] ring-2 min-[560px]:h-[36px] min-[560px]:w-[36px] ${p.away ? 'opacity-45 grayscale' : ''} relative`} style={{ ['--tw-ring-color' as string]: p.color }}>
                 <Avatar i={p.avatar} className="h-full w-full" />
-                {p.auto && <span aria-hidden title="Played automatically" className="absolute bottom-0 right-0 h-[9px] w-[9px] rounded-full bg-[#f2b544] ring-1 ring-black/60" />}
+                {p.auto && <span aria-hidden title={L('Played automatically', 'Играет автоматически')} className="absolute bottom-0 right-0 h-[9px] w-[9px] rounded-full bg-[#f2b544] ring-1 ring-black/60" />}
               </div>
               <div aria-hidden className="min-w-0 leading-none [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:shrink-0">
                 <div className="mb-[4px] hidden items-center gap-[4px] truncate text-[13px] font-semibold text-white min-[560px]:flex">{p.name}<AwardBadges seat={p} /></div>
@@ -109,11 +110,11 @@ export function CompactHUD() {
             onClick={() => setBuild((v) => !v)}
             className={`ml-auto flex h-[44px] shrink-0 items-center gap-[6px] rounded-[10px] px-[12px] font-display text-[17px] font-medium ${focusRing} ${panel} ${setBack(setup)}`}
           >
-            Build
+            {L('Build', 'Стройка')}
             <svg aria-hidden viewBox="0 0 24 24" className={`h-[16px] w-[16px] transition-transform ${build ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6" /></svg>
           </button>
           {build && (
-            <section id="compact-build" aria-label="Build" className={`pointer-events-auto absolute bottom-[54px] right-0 max-h-[calc(100dvh-164px)] w-[246px] overflow-y-auto overscroll-contain rounded-[12px] px-[10px] py-[8px] ${panel}`}>
+            <section id="compact-build" aria-label={L('Build', 'Стройка')} className={`pointer-events-auto absolute bottom-[54px] right-0 max-h-[calc(100dvh-164px)] w-[246px] overflow-y-auto overscroll-contain rounded-[12px] px-[10px] py-[8px] ${panel}`}>
               <BuildRows onChosen={() => { refocus(); setBuild(false) }} />
             </section>
           )}

@@ -5,26 +5,29 @@
 
 import { useSyncExternalStore } from 'react'
 import { resourceOf } from '../game'
-import type { Action, GameState, PlayerId, Resource, TileId, VertexId } from '../game'
+import type { Action, GameState, PlayerId, TileId, VertexId } from '../game'
+import { L } from '../ui/locale'
+import { resName } from '../ui/words'
+import { SEATS } from '../ui/gameView'
 
 export type Dir = 'up' | 'down' | 'left' | 'right'
 export type Point = [number, number]
 
 // ---------- pure helpers ----------
 
-const RES: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
-const NAMES: Record<PlayerId, string> = { p1: 'Red', p2: 'Blue', p3: 'White', p4: 'Orange' }
+// G9.4: words in the current language; names as the players set them (G9.3)
+const NAMES = new Proxy({} as Record<PlayerId, string>, { get: (_, p: string) => SEATS[p as PlayerId]?.name ?? p })
 
 /** "6 grain", "desert". */
 export function tileText(s: GameState, t: TileId): string {
   const tile = s.board.tiles[t]
   const r = resourceOf(tile.terrain)
-  return r ? `${tile.token} ${RES[r]}` : 'desert'
+  return r ? `${tile.token} ${resName(r)}` : L('desert', 'пустыня')
 }
 
 function portText(s: GameState, v: VertexId): string | null {
   const p = s.board.ports.find((x) => x.vertices.includes(v))
-  return p ? (p.kind === 'generic' ? '3:1 port' : `2:1 ${RES[p.kind]} port`) : null
+  return p ? (p.kind === 'generic' ? L('3:1 port', 'гавань 3:1') : L(`2:1 ${resName(p.kind)} port`, `гавань 2:1 (${resName(p.kind)})`)) : null
 }
 
 /** Board order of tiles: top row first, west to east (screen order at the default camera). */
@@ -40,20 +43,20 @@ export function spotLabel(s: GameState, action: Action): string {
       const v = action.vertex
       const tiles = byBoard(s, topo.vertexTiles[v]).map((t) => tileText(s, t))
       const port = portText(s, v)
-      const what = action.type === 'BUILD_CITY' ? 'City' : 'Settlement'
+      const what = action.type === 'BUILD_CITY' ? L('City', 'Город') : L('Settlement', 'Поселение')
       return `${what}: ${[...tiles, ...(port ? [port] : [])].join(', ')}`
     }
     case 'PLACE_ROAD':
     case 'BUILD_ROAD': {
       const tiles = byBoard(s, topo.edgeTiles[action.edge]).map((t) => tileText(s, t))
-      return tiles.length === 2 ? `Road between ${tiles[0]} and ${tiles[1]}` : `Road on the coast of ${tiles[0]}`
+      return tiles.length === 2 ? L(`Road between ${tiles[0]} and ${tiles[1]}`, `Дорога между ${tiles[0]} и ${tiles[1]}`) : L(`Road on the coast of ${tiles[0]}`, `Дорога на берегу у ${tiles[0]}`)
     }
     case 'MOVE_ROBBER': {
       const t = action.tile
       const owners = new Set<PlayerId>()
       for (const v of topo.tileVertices[t]) { const b = s.buildings[v]; if (b) owners.add(b.owner) }
       const who = s.order.filter((p) => owners.has(p)).map((p) => NAMES[p])
-      return `Robber to ${tileText(s, t)}${who.length ? ` (${who.join(', ')})` : ''}`
+      return `${L('Robber to', 'Разбойник на')} ${tileText(s, t)}${who.length ? ` (${who.join(', ')})` : ''}`
     }
     default: return ''
   }

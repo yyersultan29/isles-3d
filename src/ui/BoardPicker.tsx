@@ -8,6 +8,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent } from 'react'
 import { panel } from './HUD'
 import { usingKeyboard } from './modality'
+import { L } from './locale'
+
+const KIND_RU: Record<string, string> = { tile: 'гекс', 'road spot': 'место для дороги', spot: 'место' }
 import { BOARD_MODE } from '../scene/board'
 import { useGame, useGameStore, useSeat } from '../store/GameProvider'
 import { keepsPlacing, placementTargets } from '../store/placement'
@@ -139,10 +142,12 @@ export function BoardPicker({ className = '', style }: { className?: string; sty
   return (
     <div className={`pointer-events-none flex justify-center ${className}`} style={style}>
       <button ref={btn} type="button" data-board-picker onClick={place} onFocus={onFocus} onBlur={onBlur} onKeyDown={onKeyDown}
-        aria-label={idx >= 0 ? `${label}. ${idx + 1} of ${n}. Arrow keys choose, Enter places.` : `Choose a ${kind} on the board: ${n} options. Use the arrow keys.`}
+        aria-label={idx >= 0
+          ? L(`${label}. ${idx + 1} of ${n}. Arrow keys choose, Enter places.`, `${label}. ${idx + 1} из ${n}. Стрелки — выбор, Enter — поставить.`)
+          : L(`Choose a ${kind} on the board: ${n} options. Use the arrow keys.`, `Выберите на поле: ${KIND_RU[kind] ?? kind}. Вариантов: ${n}. Используйте стрелки.`)}
         className={`sr-only rounded-full text-[14px] font-semibold text-[#f4efe6] outline-none ring-2 ring-[#f2b544] focus-visible:not-sr-only focus-visible:px-[16px] focus-visible:py-[8px] focus-visible:pointer-events-auto ${panel}`}>
         <span aria-hidden>
-          {idx >= 0 ? label : `Choose a ${kind}`}
+          {idx >= 0 ? label : L(`Choose a ${kind}`, `Выберите: ${KIND_RU[kind] ?? kind}`)}
           <span className="ml-[10px] font-normal text-[#bdb8af]">{idx >= 0 ? `${idx + 1}/${n} · ` : ''}←↑↓→ move · Enter place{mode ? ' · Esc cancel' : ''}</span>
         </span>
       </button>

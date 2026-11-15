@@ -1,8 +1,9 @@
 // Player-facing messages for engine error codes (GAME_DESIGN.md §19, ROADMAP G4.5). The engine's
 // own messages are developer text; the HUD shows these instead. A Record over ErrorCode makes a
-// missing code a type error. One locale for now; another is a second table of the same type.
+// missing code a type error. G9.4: a Russian table of the same type; the type makes a missing code an error in both.
 
 import type { ErrorCode } from '../game'
+import { getLocale } from './locale'
 
 export type Messages = Record<ErrorCode, string>
 
@@ -38,4 +39,37 @@ export const EN: Messages = {
   MALFORMED_ACTION: 'Something went wrong with that action.',
 }
 
-export const errorText = (code: ErrorCode, m: Messages = EN) => m[code]
+export const RU: Messages = {
+  INVALID_SETTINGS: 'Недопустимые настройки игры.',
+  GAME_OVER: 'Игра окончена.',
+  NOT_YOUR_TURN: 'Сейчас не ваш ход.',
+  WRONG_PHASE: 'Сейчас это сделать нельзя.',
+  UNKNOWN_LOCATION: 'Такого места нет на поле.',
+  OCCUPIED: 'Это место уже занято.',
+  DISTANCE_RULE: 'Слишком близко к другому поселению: между ними должен быть свободный угол.',
+  NOT_CONNECTED: 'Нужно соединение с вашей дорогой или постройкой.',
+  BLOCKED_BY_OPPONENT: 'Постройка соперника перекрывает эту дорогу.',
+  NOT_YOUR_SETTLEMENT: 'Городом можно сделать только своё поселение.',
+  NO_PIECES_LEFT: 'Фишки этого вида закончились.',
+  INSUFFICIENT_RESOURCES: 'Не хватает ресурсов.',
+  BANK_EMPTY: 'В банке закончился этот ресурс.',
+  DECK_EMPTY: 'Карты развития закончились.',
+  CARD_NOT_HELD: 'У вас нет этой карты.',
+  CARD_BOUGHT_THIS_TURN: 'Карту нельзя сыграть в ход покупки.',
+  DEV_ALREADY_PLAYED: 'За ход можно сыграть только одну карту развития.',
+  CARD_NOT_PLAYABLE: 'Эту карту сейчас сыграть нельзя.',
+  INVALID_DISCARD: 'Выберите ровно столько карт, сколько нужно сбросить.',
+  ROBBER_SAME_TILE: 'Переставьте разбойника на другой гекс.',
+  ROBBER_PROTECTED: 'Этот гекс защищён добрым разбойником.',
+  INVALID_VICTIM: 'Этого игрока ограбить нельзя.',
+  INVALID_TRADE: 'Неверный обмен: с обеих сторон нужны карты, и разные.',
+  NO_OPEN_TRADE: 'Это предложение уже закрыто.',
+  NOT_ADDRESSED: 'Это предложение было не для этого игрока.',
+  TRADE_NOT_ACCEPTED: 'Игрок не принял предложение.',
+  TRADE_STALE: 'У кого-то уже нет карт для этого обмена.',
+  TRADE_LIMIT: 'В этот ход сделано слишком много предложений.',
+  MALFORMED_ACTION: 'С этим действием что-то пошло не так.',
+}
+
+/** The message for an engine error code, in the current language (or the given table). */
+export const errorText = (code: ErrorCode, m?: Messages) => (m ?? (getLocale() === 'ru' ? RU : EN))[code]

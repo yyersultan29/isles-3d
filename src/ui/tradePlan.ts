@@ -9,8 +9,12 @@
 
 import { COSTS, RESOURCE_ORDER, apply, legalActions, tradeRate, type Action, type GameState, type PlayerId, type Resource } from '../game'
 import type { BuildKind, Counts, Me } from './gameView'
+import { L } from './locale'
+import { resCount, resName } from './words'
 
-const NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
+// G9.4: words in the current language
+const NAME = new Proxy({} as Record<Resource, string>, { get: (_, r: string) => resName(r as Resource) })
+const RC = (n: number, r: Resource) => resCount(n, r)
 const kinds = (c: Counts) => RESOURCE_ORDER.filter((r) => (c[r] ?? 0) > 0)
 const total = (c: Counts) => RESOURCE_ORDER.reduce((a, r) => a + (c[r] ?? 0), 0)
 
@@ -20,10 +24,10 @@ const BUILD_ACTION: Record<BuildKind, Action['type']> = { road: 'BUILD_ROAD', se
 /** The player whose turn it is, if this screen may act for them in `actions`; otherwise why not. */
 function trader(s: GameState, me: Me): { player: PlayerId } | { reason: string } {
   const active = s.order[s.active]
-  if (me === 'spectator') return { reason: 'Watching' }
-  if (me !== null && me !== active) return { reason: 'Wait for your turn' }
-  if (s.phase.kind === 'preRoll') return { reason: 'Roll the dice first' }
-  if (s.phase.kind !== 'actions') return { reason: 'Not now' }
+  if (me === 'spectator') return { reason: L('Watching', 'Вы зритель') }
+  if (me !== null && me !== active) return { reason: L('Wait for your turn', 'Дождитесь своего хода') }
+  if (s.phase.kind === 'preRoll') return { reason: L('Roll the dice first', 'Сначала бросьте кубики') }
+  if (s.phase.kind !== 'actions') return { reason: L('Not now', 'Не сейчас') }
   return { player: active }
 }
 
@@ -39,16 +43,16 @@ export function bankQuote(s: GameState, give: Counts, want: Counts, me: Me = nul
   const t = trader(s, me)
   if ('reason' in t) return { ok: false, reason: t.reason }
   const g = kinds(give), w = kinds(want)
-  if (!g.length || !w.length) return { ok: false, reason: !g.length ? 'Add cards you give' : 'Add cards you want' }
-  if (g.length > 1 || w.length > 1) return { ok: false, reason: 'The bank trades one kind for one kind' }
+  if (!g.length || !w.length) return { ok: false, reason: !g.length ? L('Add cards you give', 'Добавьте карты, которые отдаёте') : L('Add cards you want', 'Добавьте карты, которые хотите') }
+  if (g.length > 1 || w.length > 1) return { ok: false, reason: L('The bank trades one kind for one kind', 'Банк меняет один вид на один вид') }
   const [r] = g, [x] = w
-  if (r === x) return { ok: false, reason: 'A resource can’t be on both sides' }
+  if (r === x) return { ok: false, reason: L('A resource can’t be on both sides', 'Один ресурс не может быть с обеих сторон') }
   const rate = tradeRate(s, t.player, r)
   const n = want[x]!, cost = give[r]!
   const have = s.players.find((p) => p.id === t.player)!.resources[r]
-  if (cost > have) return { ok: false, reason: `You have only ${have} ${NAME[r]}` }
-  if (cost !== n * rate) return { ok: false, reason: `The bank takes ${rate} ${NAME[r]} per card (${rate}:1)` }
-  if (s.bank[x] < n) return { ok: false, reason: `The bank has only ${s.bank[x]} ${NAME[x]}` }
+  if (cost > have) return { ok: false, reason: L(`You have only ${RC(have, r)}`, `У вас только ${RC(have, r)}`) }
+  if (cost !== n * rate) return { ok: false, reason: L(`The bank takes ${RC(rate, r)} per card (${rate}:1)`, `Банк берёт ${RC(rate, r)} за карту (${rate}:1)`) }
+  if (s.bank[x] < n) return { ok: false, reason: L(`The bank has only ${RC(s.bank[x], x)}`, `В банке только ${RC(s.bank[x], x)}`) }
   return { ok: true, action: { type: 'BANK_TRADE', give: r, get: x, count: n }, rate, text: `${cost} ${NAME[r]} → ${n} ${NAME[x]} (${rate}:1)` }
 }
 
@@ -69,7 +73,7 @@ export function payOptions(s: GameState, want: Resource, count = 1, me: Me = nul
     .map(({ r, rate }) => ({
       give: r, cost: rate * count, rate,
       action: { type: 'BANK_TRADE' as const, give: r, get: want, count },
-      text: `${rate * count} ${NAME[r]}${rate < 4 ? ' (port)' : ''}`,
+      text: `${RC(rate * count, r)}${rate < 4 ? L(' (port)', ' (гавань)') : ''}`,
     }))
 }
 
@@ -78,13 +82,13 @@ export function noPayReason(s: GameState, want: Resource, count = 1, me: Me = nu
   if (payOptions(s, want, count, me).length) return null
   const t = trader(s, me)
   if ('reason' in t) return t.reason
-  if (s.bank[want] < count) return `The bank has only ${s.bank[want]} ${NAME[want]}`
+  if (s.bank[want] < count) return L(`The bank has only ${RC(s.bank[want], want)}`, `В банке только ${RC(s.bank[want], want)}`)
   // the player's own rates: a generic port makes every kind 3, a special port one kind 2
   const rates = RESOURCE_ORDER.filter((r) => r !== want).map((r) => ({ r, rate: tradeRate(s, t.player, r) }))
   const low = Math.min(...rates.map((x) => x.rate)), high = Math.max(...rates.map((x) => x.rate))
-  if (low === high) return `Can't pay the bank: you need ${low * count} of one kind`
-  const cheap = rates.filter((x) => x.rate === low).map((x) => NAME[x.r]).join(' or ')
-  return `Can't pay the bank: you need ${low * count} ${cheap} or ${high * count} of another kind`
+  if (low === high) return L(`Can't pay the bank: you need ${low * count} of one kind`, `Нечем заплатить банку: нужно ${low * count} карт одного вида`)
+  const cheap = rates.filter((x) => x.rate === low).map((x) => NAME[x.r]).join(L(' or ', ' или '))
+  return L(`Can't pay the bank: you need ${low * count} ${cheap} or ${high * count} of another kind`, `Нечем заплатить банку: нужно ${low * count} (${cheap}) или ${high * count} карт другого вида`)
 }
 
 export interface Shortfall {
@@ -163,7 +167,7 @@ export function affordable(s: GameState, kind: BuildKind, p: PlayerId): number {
 
 /** "4 wood → 1 brick" for each trade of a plan, at the player's rates. */
 export function tradesText(s: GameState, p: PlayerId, trades: BankTrade[]): string {
-  return trades.map((t) => `${t.count * tradeRate(s, p, t.give)} ${NAME[t.give]} → ${t.count} ${NAME[t.get]}`).join(', ')
+  return trades.map((t) => `${RC(t.count * tradeRate(s, p, t.give), t.give)} → ${RC(t.count, t.get)}`).join(', ')
 }
 
 /** Whether two drafts hold the same cards on each side. */

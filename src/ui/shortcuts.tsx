@@ -10,12 +10,14 @@ import { shortfall } from './tradePlan'
 import { usePrivacy } from './PassDevice'
 import { useGameStore, useSeat } from '../store/GameProvider'
 import { getPlacementMode, getTradeOpen, setTradeOpen } from '../store/ui'
+import { L, onLocale } from './locale'
+import { LangSwitch } from './LangSwitch'
 
 export type Shortcut = BuildKind | 'trade' | 'confirm'
 
-export const SHORTCUT_KEYS: [string, string][] = [
-  ['R', 'Build a road'], ['S', 'Build a settlement'], ['C', 'Build a city'], ['D', 'Buy a development card'],
-  ['T', 'Open or close trade (bank / ports)'], ['Enter', 'Trade: the main button of the mode shown (Space adds a card)'], ['Esc', 'Cancel a build, close a panel'],
+export const SHORTCUT_KEYS = (): [string, string][] => [
+  ['R', L('Build a road', 'Построить дорогу')], ['S', L('Build a settlement', 'Построить поселение')], ['C', L('Build a city', 'Построить город')], ['D', L('Buy a development card', 'Купить карту развития')],
+  ['T', L('Open or close trade (bank / ports)', 'Открыть или закрыть торговлю (банк / гавани)')], ['Enter', L('Trade: the main button of the mode shown (Space adds a card)', 'Торговля: главная кнопка режима (пробел добавляет карту)')], ['Esc', L('Cancel a build, close a panel', 'Отменить стройку, закрыть панель')],
 ]
 const LETTERS: Record<string, Shortcut> = { r: 'road', s: 'settlement', c: 'city', d: 'dev', t: 'trade' }
 
@@ -76,9 +78,12 @@ export function useShortcuts() {
 }
 
 /** The Help button: lists the shortcuts in a small popover (Esc or the button closes it). */
+// a language change re-mounts the HUD; the panel the switch sits in stays open across it
+let reopen = false
 export function HelpButton({ className = '', align = 'right' }: { className?: string; align?: 'right' }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(() => { const v = reopen; reopen = false; return v })
   const btn = useRef<HTMLButtonElement>(null)
+  useEffect(() => (open ? onLocale(() => { reopen = true }) : undefined), [open])
   useEffect(() => {
     if (!open) return
     const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); btn.current?.focus() } }
@@ -87,22 +92,23 @@ export function HelpButton({ className = '', align = 'right' }: { className?: st
   }, [open])
   return (
     <div className="relative shrink-0">
-      <IconButton ref={btn} label="Help" aria-expanded={open} aria-controls="help-panel" onClick={() => setOpen(!open)} className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
+      <IconButton ref={btn} label={L('Help', 'Справка')} aria-expanded={open} aria-controls="help-panel" onClick={() => setOpen(!open)} className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${className}`}>
         <span aria-hidden className="text-[20px] font-bold">?</span>
       </IconButton>
       {open && (
         <section id="help-panel" aria-labelledby="help-title" className={`pointer-events-auto absolute top-[calc(100%+8px)] ${align === 'right' ? 'right-0' : 'left-0'} z-[3] max-h-[calc(100dvh-72px)] w-[260px] overflow-y-auto rounded-[12px] px-[12px] pb-[10px] pt-[10px] text-left ${panel}`}>
-          <h2 id="help-title" className="mb-[6px] font-display text-[17px] font-semibold text-[#f4efe6]">Keyboard shortcuts</h2>
+          <h2 id="help-title" className="mb-[6px] font-display text-[17px] font-semibold text-[#f4efe6]">{L('Keyboard shortcuts', 'Горячие клавиши')}</h2>
           <dl className="grid grid-cols-[auto_1fr] items-center gap-x-[10px] gap-y-[5px] text-[13px] text-[#d6d2ca]">
-            {SHORTCUT_KEYS.map(([k, d]) => (
+            {SHORTCUT_KEYS().map(([k, d]) => (
               <div key={k} className="contents">
                 <dt><kbd className="inline-block min-w-[26px] rounded-[5px] border border-[#c9a45c]/50 bg-white/10 px-[5px] text-center font-ui text-[12px] font-bold text-white">{k}</kbd></dt>
                 <dd>{d}</dd>
               </div>
             ))}
           </dl>
-          <p className="mt-[8px] text-[12px] text-[#a9a49b]">In your turn, when the button is available. Arrow keys and Enter place on the board.</p>
-          <button onClick={() => { setOpen(false); btn.current?.focus() }} className={`mt-[6px] h-[30px] w-full rounded-[8px] bg-white/10 text-[13px] font-semibold text-white hover:bg-white/20 ${focusRing}`}>Close</button>
+          <p className="mt-[8px] text-[12px] text-[#a9a49b]">{L('In your turn, when the button is available. Arrow keys and Enter place on the board.', 'В свой ход, когда кнопка доступна. Стрелки и Enter — постройка на поле.')}</p>
+          <LangSwitch className="mt-[8px]" />
+          <button onClick={() => { setOpen(false); btn.current?.focus() }} className={`mt-[6px] h-[30px] w-full rounded-[8px] bg-white/10 text-[13px] font-semibold text-white hover:bg-white/20 ${focusRing}`}>{L('Close', 'Закрыть')}</button>
         </section>
       )}
     </div>

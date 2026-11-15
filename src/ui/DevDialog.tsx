@@ -13,31 +13,34 @@ import { NAME, Tile, gold, plain, useAct } from './TradeDialog'
 import { setDevOpen } from '../store/ui'
 import { RESOURCE_ORDER, type Resource } from '../game'
 import { DEV_TINT, DevCard } from './cards/DevCardArt'
+import { L, count } from './locale'
+import { cardName, costText0 } from './words'
 
-const CARD: Record<DevKind, { name: string; blurb: string; tint: string }> = {
-  knight: { name: 'Knight', blurb: 'Move the robber and steal a card', tint: DEV_TINT.knight },
-  roadBuilding: { name: 'Road Building', blurb: 'Build two free roads', tint: DEV_TINT.roadBuilding },
-  yearOfPlenty: { name: 'Year of Plenty', blurb: 'Take any two resources from the bank', tint: DEV_TINT.yearOfPlenty },
-  monopoly: { name: 'Monopoly', blurb: 'Take one resource from every player', tint: DEV_TINT.monopoly },
-  victoryPoint: { name: 'Victory Point', blurb: '+1 VP, kept hidden', tint: DEV_TINT.victoryPoint },
-}
+// G9.4: functions, so the words follow the language
+const CARD = (): Record<DevKind, { name: string; blurb: string; tint: string }> => ({
+  knight: { name: cardName('knight'), blurb: L('Move the robber and steal a card', 'Переставьте разбойника и украдите карту'), tint: DEV_TINT.knight },
+  roadBuilding: { name: cardName('roadBuilding'), blurb: L('Build two free roads', 'Постройте две бесплатные дороги'), tint: DEV_TINT.roadBuilding },
+  yearOfPlenty: { name: cardName('yearOfPlenty'), blurb: L('Take any two resources from the bank', 'Возьмите из банка любые два ресурса'), tint: DEV_TINT.yearOfPlenty },
+  monopoly: { name: cardName('monopoly'), blurb: L('Take one resource from every player', 'Заберите один ресурс у всех игроков'), tint: DEV_TINT.monopoly },
+  victoryPoint: { name: cardName('victoryPoint'), blurb: L('+1 VP, kept hidden', '+1 ПО, скрыто'), tint: DEV_TINT.victoryPoint },
+})
 
-const GROUP: Record<DevGroup, string> = {
-  play: 'Can play',
-  new: 'Bought this turn · playable from your next turn',
-  played: 'Already played a card this turn',
-  wait: 'Not now',
-  vp: 'Victory points',
-}
+const GROUP = (): Record<DevGroup, string> => ({
+  play: L('Can play', 'Можно сыграть'),
+  new: L('Bought this turn · playable from your next turn', 'Куплены в этот ход · со следующего хода'),
+  played: L('Already played a card this turn', 'В этот ход карта уже сыграна'),
+  wait: L('Not now', 'Не сейчас'),
+  vp: L('Victory points', 'Победные очки'),
+})
 
 type PlayKind = Exclude<DevKind, 'victoryPoint'>
 /** G7.5: each card as short steps: what happens, where to choose, and what can still be undone. */
-const STEPS: Record<PlayKind, string[]> = {
-  knight: ['Play the card', 'Pick a tile for the robber on the board', 'Rob one card from a player there, if any'],
-  roadBuilding: ['Play the card', 'Pick an edge on the board for each free road (two, or one if only one fits)'],
-  yearOfPlenty: ['Pick two resources here (the same twice is fine)', 'Press Play: they go to your hand'],
-  monopoly: ['Pick a resource here', 'Press Play: every other player gives you all of theirs'],
-}
+const STEPS = (): Record<PlayKind, string[]> => ({
+  knight: [L('Play the card', 'Сыграйте карту'), L('Pick a tile for the robber on the board', 'Выберите на поле гекс для разбойника'), L('Rob one card from a player there, if any', 'Украдите карту у игрока рядом, если он есть')],
+  roadBuilding: [L('Play the card', 'Сыграйте карту'), L('Pick an edge on the board for each free road (two, or one if only one fits)', 'Выберите на поле ребро для каждой бесплатной дороги (двух или одной, если влезает только одна)')],
+  yearOfPlenty: [L('Pick two resources here (the same twice is fine)', 'Выберите здесь два ресурса (можно одинаковые)'), L('Press Play: they go to your hand', 'Нажмите «Сыграть»: они попадут к вам в руку')],
+  monopoly: [L('Pick a resource here', 'Выберите здесь ресурс'), L('Press Play: every other player gives you all of theirs', 'Нажмите «Сыграть»: все остальные отдадут вам весь этот ресурс')],
+})
 
 function CardSteps({ kind, compact, onDone, onBack }: { kind: PlayKind; compact: boolean; onDone: () => void; onBack: () => void }) {
   const { dev } = useGameView()
@@ -60,42 +63,42 @@ function CardSteps({ kind, compact, onDone, onBack }: { kind: PlayKind; compact:
   }
   const names = take.map((r) => NAME[r]).join(' + ')
   const left = dev.yopTake - take.length
-  const summary = board ? (kind === 'knight' ? 'Next: the robber, on the board' : 'Next: the free roads, on the board')
-    : yop ? (left > 0 ? `Pick ${left} more${take.length ? ` (so far: ${names})` : ''}` : `You'll take ${names}`)
-    : mono ? `You'll take every ${NAME[mono]} the other players have` : 'Pick a resource'
+  const summary = board ? (kind === 'knight' ? L('Next: the robber, on the board', 'Дальше: разбойник, на поле') : L('Next: the free roads, on the board', 'Дальше: бесплатные дороги, на поле'))
+    : yop ? (left > 0 ? L(`Pick ${left} more${take.length ? ` (so far: ${names})` : ''}`, `Выберите ещё ${left}${take.length ? ` (пока: ${names})` : ''}`) : L(`You'll take ${names}`, `Вы возьмёте: ${names}`))
+    : mono ? L(`You'll take every ${NAME[mono]} the other players have`, `Вы заберёте у других весь ресурс «${NAME[mono]}»`) : L('Pick a resource', 'Выберите ресурс')
   const firstRes = RESOURCE_ORDER.find((r) => !yop || dev.bank[r] > 0)
   return (
     <div className={compact ? 'w-[322px]' : 'w-[390px]'}>
       {/* A5: the card being played, beside its steps (left out on very low screens, where height is short) */}
       <div className="mb-[8px] flex items-start gap-[10px]">
-        <DevCard type={kind} name={CARD[kind].name} size="large" compact={compact} className="[@media(max-height:560px)]:hidden" />
+        <DevCard type={kind} name={CARD()[kind].name} size="large" compact={compact} className="[@media(max-height:560px)]:hidden" />
         <ol data-card-steps className="flex min-w-0 flex-1 flex-col gap-[3px] text-[13px] text-[#d6d2ca]">
-          {(yop && dev.yopTake === 1 ? ['Pick one resource here (the bank has only one left)', STEPS.yearOfPlenty[1]] : STEPS[kind]).map((t, i) => (
+          {(yop && dev.yopTake === 1 ? [L('Pick one resource here (the bank has only one left)', 'Выберите здесь один ресурс (в банке остался только один)'), STEPS().yearOfPlenty[1]] : STEPS()[kind]).map((t, i) => (
             <li key={i} className="flex gap-[6px]"><span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/10 text-[11px] font-bold text-white">{i + 1}</span><span>{t}</span></li>
           ))}
         </ol>
       </div>
       {!board && <>
-        <p className="mb-[6px] text-[13px] text-[#d6d2ca]">{yop ? 'Take from the bank' : 'Name a resource'} {yop && <span className="text-[#a9a49b]">(bank has)</span>}</p>
+        <p className="mb-[6px] text-[13px] text-[#d6d2ca]">{yop ? L('Take from the bank', 'Взять из банка') : L('Name a resource', 'Назовите ресурс')} {yop && <span className="text-[#a9a49b]">({L('bank has', 'в банке')})</span>}</p>
         <div className="flex gap-[8px]">
           {RESOURCE_ORDER.map((r) => yop ? (
             <div key={r} className="relative">
               <Tile res={r} compact={compact} btnRef={r === firstRes ? first : undefined} top={n(r) ? `×${n(r)}` : ''} corner={String(dev.bank[r])} selected={n(r) > 0}
-                disabled={take.length >= dev.yopTake || dev.bank[r] <= n(r)} label={`Take one ${NAME[r]} (bank has ${dev.bank[r]})`} onClick={() => setTake([...take, r])} />
-              {n(r) > 0 && <button aria-label={`Take one less ${NAME[r]}`} onClick={() => { const i = take.lastIndexOf(r); setTake(take.filter((_, k) => k !== i)) }}
+                disabled={take.length >= dev.yopTake || dev.bank[r] <= n(r)} label={L(`Take one ${NAME[r]} (bank has ${dev.bank[r]})`, `Взять: ${NAME[r]} (в банке ${dev.bank[r]})`)} onClick={() => setTake([...take, r])} />
+              {n(r) > 0 && <button aria-label={L(`Take one less ${NAME[r]}`, `Взять на одну меньше: ${NAME[r]}`)} onClick={() => { const i = take.lastIndexOf(r); setTake(take.filter((_, k) => k !== i)) }}
                 className={`absolute -right-[5px] -top-[7px] grid h-[22px] w-[22px] place-items-center rounded-full bg-[#c8302a] text-[15px] font-bold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,.5)] ${focusRing}`}>−</button>}
             </div>
           ) : (
             <Tile key={r} res={r} compact={compact} btnRef={r === firstRes ? first : undefined} top="" corner="" selected={mono === r} disabled={false}
-              label={`Monopoly on ${NAME[r]}`} onClick={() => setMono(mono === r ? null : r)} />
+              label={L(`Monopoly on ${NAME[r]}`, `${cardName('monopoly')}: ${NAME[r]}`)} onClick={() => setMono(mono === r ? null : r)} />
           ))}
         </div>
       </>}
       <p aria-live="polite" data-card-summary className="mt-[10px] text-[14px] font-semibold text-[#f2cf84]">{summary}</p>
-      <p className="mt-[2px] text-[12px] text-[#a9a49b]">{board ? 'Back keeps the card. Once played, it can’t be taken back.' : 'Back keeps the card. Nothing happens until you press Play.'}</p>
+      <p className="mt-[2px] text-[12px] text-[#a9a49b]">{board ? L('Back keeps the card. Once played, it can’t be taken back.', '«Назад» оставит карту. Сыгранную карту не вернуть.') : L('Back keeps the card. Nothing happens until you press Play.', '«Назад» оставит карту. Пока не нажмёте «Сыграть», ничего не произойдёт.')}</p>
       <div className="mt-[8px] flex items-center justify-between gap-[10px]">
-        <button onClick={onBack} className={plain()}>Back</button>
-        <button ref={playBtn} onClick={play} disabled={!ready} aria-label={`Play ${CARD[kind].name}`} className={gold()}>Play {CARD[kind].name}</button>
+        <button onClick={onBack} className={plain()}>{L('Back', 'Назад')}</button>
+        <button ref={playBtn} onClick={play} disabled={!ready} aria-label={`${L('Play', 'Сыграть')} ${CARD()[kind].name}`} className={gold()}>{L('Play', 'Сыграть')} {CARD()[kind].name}</button>
       </div>
     </div>
   )
@@ -116,18 +119,18 @@ export function DevDialog({ compact }: { compact: boolean }) {
       <div className="mb-[8px] flex items-center justify-between gap-[10px]">
         <h2 id="dev-title" className="whitespace-nowrap font-display text-[19px] font-semibold text-[#f4efe6]">
           <span className="mr-[8px] inline-block h-[11px] w-[11px] rounded-full align-middle" style={{ background: seat.color }} />
-          {pick ? `${seat.name}: ${CARD[pick].name}` : `${seat.name}: my development cards`}
+          {pick ? `${seat.name}: ${CARD()[pick].name}` : L(`${seat.name}: my development cards`, `${seat.name}: мои карты развития`)}
         </h2>
-        <button ref={close} aria-label="Close development cards" onClick={() => setDevOpen(false)} className={`grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[8px] bg-white/10 text-[18px] text-white hover:bg-white/20 ${focusRing}`}>×</button>
+        <button ref={close} aria-label={L('Close development cards', 'Закрыть карты развития')} onClick={() => setDevOpen(false)} className={`grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[8px] bg-white/10 text-[18px] text-white hover:bg-white/20 ${focusRing}`}>×</button>
       </div>
       {pick ? <CardSteps kind={pick} compact={compact} onDone={() => setDevOpen(false)} onBack={() => setPick(null)} /> : (
         dev.rows.length === 0
-          ? <p className={`${compact ? 'w-[322px]' : 'w-[380px]'} text-[14px] text-[#d6d2ca]`}>No development cards yet. Buy one in Build: 1 wool, 1 grain, 1 ore.</p>
+          ? <p className={`${compact ? 'w-[322px]' : 'w-[380px]'} text-[14px] text-[#d6d2ca]`}>{L('No development cards yet. Buy one in Build: ', 'Карт развития пока нет. Купить можно в «Стройке»: ')}{costText0({ wool: 1, grain: 1, ore: 1 })}.</p>
           : (
             <div className={`flex ${compact ? 'w-[322px]' : 'w-[390px]'} flex-col gap-[8px]`}>
               {(['play', 'new', 'played', 'wait', 'vp'] as DevGroup[]).map((g) => { const rows = dev.rows.filter((r) => r.group === g); return rows.length ? (
-                <section key={g} aria-label={GROUP[g]} data-dev-group={g}>
-                  <h3 className="mb-[4px] text-[12px] font-semibold uppercase tracking-[0.04em] text-[#bdb8af]">{GROUP[g]}</h3>
+                <section key={g} aria-label={GROUP()[g]} data-dev-group={g}>
+                  <h3 className="mb-[4px] text-[12px] font-semibold uppercase tracking-[0.04em] text-[#bdb8af]">{GROUP()[g]}</h3>
                   <ul className="flex flex-col gap-[6px]">
                     {rows.map((r) => <DevItem key={r.type} r={r} btnRef={r.type === firstPlayable && g === 'play' ? first : undefined} onPlay={() => play(r.type)} />)}
                   </ul>
@@ -142,23 +145,23 @@ export function DevDialog({ compact }: { compact: boolean }) {
 
 function DevItem({ r, btnRef, onPlay }: { r: DevRow; btnRef?: React.Ref<HTMLButtonElement>; onPlay: () => void }) {
   const vp = r.group === 'vp'
-  const sub = vp ? 'Hidden from the others, counted at the end'
+  const sub = vp ? L('Hidden from the others, counted at the end', 'Скрыто от других, засчитывается в конце')
     : r.group === 'wait' ? r.reason ?? '' // the group heading says why for the others
-    : CARD[r.type].blurb
+    : CARD()[r.type].blurb
   return (
-    <li aria-label={vp ? `${r.count} victory point${r.count > 1 ? 's' : ''}` : undefined} className="flex min-h-[50px] items-center gap-[10px] rounded-[10px] bg-white/[0.05] py-[4px] pl-[5px] pr-[6px]" style={{ boxShadow: `inset 3px 0 0 ${CARD[r.type].tint}` }}>
+    <li aria-label={vp ? L(`${r.count} victory point${r.count > 1 ? 's' : ''}`, count(r.count, '', '', 'победное очко', 'победных очка', 'победных очков')) : undefined} className="flex min-h-[50px] items-center gap-[10px] rounded-[10px] bg-white/[0.05] py-[4px] pl-[5px] pr-[6px]" style={{ boxShadow: `inset 3px 0 0 ${CARD()[r.type].tint}` }}>
       {/* A5: the card face (src/ui/cards/DevCardArt.tsx); a victory point keeps its "+N" as the badge */}
       <span className="relative shrink-0">
         <DevCard type={r.type} dim={!vp && r.group !== 'play'} />
         {(vp || r.count > 1) && <span className="absolute -right-[6px] -top-[6px] rounded-full bg-[#1d1a16] px-[5px] text-[11px] font-bold text-white ring-1 ring-white/30">{vp ? `+${r.count}` : `×${r.count}`}</span>}
       </span>
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="block text-[15px] font-semibold text-white">{vp ? `Victory point${r.count > 1 ? 's' : ''}` : CARD[r.type].name}</span>
+        <span className="block text-[15px] font-semibold text-white">{vp ? L(`Victory point${r.count > 1 ? 's' : ''}`, r.count > 1 ? 'Победные очки' : 'Победное очко') : CARD()[r.type].name}</span>
         <span className="block text-[12px] text-[#bdb8af]">{sub}</span>
       </span>
       {r.group === 'play' && (
-        <button ref={btnRef} onClick={onPlay} aria-label={`Play ${CARD[r.type].name}`} title={CARD[r.type].blurb}
-          className={`${gold()} !h-[34px] !px-[16px] !text-[15px]`}>Play</button>
+        <button ref={btnRef} onClick={onPlay} aria-label={`${L('Play', 'Сыграть')} ${CARD()[r.type].name}`} title={CARD()[r.type].blurb}
+          className={`${gold()} !h-[34px] !px-[16px] !text-[15px]`}>{L('Play', 'Сыграть')}</button>
       )}
     </li>
   )

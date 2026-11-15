@@ -1,5 +1,6 @@
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import { useThree } from '@react-three/fiber'
+import { L, useLocale } from '../ui/locale'
 
 /**
  * WebGL failure handling (V8). The HUD stays usable; only the 3D view is replaced by a notice.
@@ -56,22 +57,23 @@ export function ContextLossGuard() {
   return null
 }
 
-const TEXT: Record<Exclude<Status, 'ok'>, [string, string]> = {
-  unsupported: ['3D view unavailable', 'This browser or device does not support WebGL 2. Try an up-to-date Chrome, Edge, Firefox or Safari, or enable hardware acceleration.'],
-  error: ['3D view failed to start', 'Something went wrong while drawing the island. Reloading usually fixes it.'],
-  lost: ['Graphics were interrupted', 'The GPU reset the 3D view. It should come back in a moment; if not, reload the page.'],
-}
+const TEXT = (): Record<Exclude<Status, 'ok'>, [string, string]> => ({
+  unsupported: [L('3D view unavailable', '3D-вид недоступен'), L('This browser or device does not support WebGL 2. Try an up-to-date Chrome, Edge, Firefox or Safari, or enable hardware acceleration.', 'Этот браузер или устройство не поддерживает WebGL 2. Попробуйте свежий Chrome, Edge, Firefox или Safari либо включите аппаратное ускорение.')],
+  error: [L('3D view failed to start', '3D-вид не запустился'), L('Something went wrong while drawing the island. Reloading usually fixes it.', 'При отрисовке острова что-то пошло не так. Обычно помогает перезагрузка.')],
+  lost: [L('Graphics were interrupted', 'Графика прервалась'), L('The GPU reset the 3D view. It should come back in a moment; if not, reload the page.', 'Видеокарта сбросила 3D-вид. Он должен вернуться через мгновение; если нет — перезагрузите страницу.')],
+})
 
 /** DOM notice shown over the (missing or broken) canvas. */
 export function SceneStatusNotice({ initial }: { initial: Status }) {
   const [status, setStatus] = useState<Status>(initial)
+  useLocale()
   useEffect(() => {
     const f = (e: Event) => setStatus((e as CustomEvent<Status>).detail)
     window.addEventListener(EVENT, f)
     return () => window.removeEventListener(EVENT, f)
   }, [])
   if (status === 'ok') return null
-  const [title, body] = TEXT[status]
+  const [title, body] = TEXT()[status]
   return (
     <div role="alert" className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_50%_40%,#1d3a52,#0b2236_70%)] p-6 font-ui text-[#f4efe6]">
       <div className="max-w-[420px] rounded-[12px] border border-[#c9a45c]/35 bg-[rgba(12,14,19,0.9)] px-6 py-5 text-center shadow-[0_10px_30px_rgba(0,0,0,0.55)]">
@@ -82,7 +84,7 @@ export function SceneStatusNotice({ initial }: { initial: Status }) {
             onClick={() => window.location.reload()}
             className="pointer-events-auto rounded-[9px] border border-[#e0a94a] px-4 py-2 text-[14px] font-semibold text-[#f1d9a8] outline-none hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-[#e0a94a]"
           >
-            Reload
+            {L('Reload', 'Перезагрузить')}
           </button>
         )}
       </div>

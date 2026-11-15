@@ -5,6 +5,7 @@ import { PassDevice } from './ui/PassDevice'
 import { Resume } from './ui/Resume'
 import { StartMenu, menuAtStart } from './ui/StartMenu'
 import { Lobby } from './ui/Lobby'
+import { useLocale } from './ui/locale'
 import { onlineStoreFromUrl } from './net/connect'
 import type { OnlineStore } from './store/onlineStore'
 
@@ -20,6 +21,8 @@ const atStart = menuAtStart()
 export default function App() {
   // G5.3b: ?room=… plays on the game server; otherwise a local hot-seat game
   const online = onlineStore()
+  // G9.4: a language change re-mounts the HUD and the turn screens, so every label is read again
+  const locale = useLocale()
   return (
     <GameProvider store={online ?? undefined}>
       {/* G5.6b: the game is the page's main landmark (screen-reader navigation) */}
@@ -32,9 +35,9 @@ export default function App() {
           )}
           <SceneStatusNotice initial={webgl ? 'ok' : 'unsupported'} />
         </div>
-        <HUD />
+        <HUD key={locale} />
       </main>
-      {online ? <Lobby /> : <PassDevice />}
+      {online ? <Lobby key={locale} /> : <PassDevice key={locale} />}
       {/* the showcase board (?board=demo) and online games have no saved games */}
       {/* G9.3: a plain URL opens the start menu (which offers the saved game); any URL option keeps the old card */}
       {BOARD_MODE === 'game' && !online && <StartMenu atStart={atStart} />}

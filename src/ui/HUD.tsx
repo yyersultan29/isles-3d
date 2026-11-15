@@ -23,6 +23,8 @@ import { BOARD_MODE } from '../scene/board'
 import { affordable, shortfall, tradesText, type Shortfall } from './tradePlan'
 import { HelpButton, useShortcuts } from './shortcuts'
 import { deltaText, handDiff, hintSeen, markHintSeen, type HandCounts } from './handDelta'
+import { L, count } from './locale'
+import { awardName, pieceName, resName, resTitle } from './words'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -95,27 +97,29 @@ export const CardsIco = () => (
 
 /** G5.4: an online player without a live connection; G5.5: one the server is playing for (absent). */
 export const AwayBadge = ({ auto = false }: { auto?: boolean }) => auto
-  ? <span title="Played automatically until they act again" className="rounded-[4px] bg-[#f2b544]/15 px-[4px] text-[11px] font-semibold text-[#f2cf84] ring-1 ring-[#f2b544]/40">auto</span>
-  : <span title="Disconnected" className="rounded-[4px] bg-white/10 px-[4px] text-[11px] font-semibold text-[#d6d2ca] ring-1 ring-white/25">away</span>
+  ? <span title={L('Played automatically until they act again', 'Играет автоматически, пока игрок не вернётся')} className="rounded-[4px] bg-[#f2b544]/15 px-[4px] text-[11px] font-semibold text-[#f2cf84] ring-1 ring-[#f2b544]/40">{L('auto', 'авто')}</span>
+  : <span title={L('Disconnected', 'Нет связи')} className="rounded-[4px] bg-white/10 px-[4px] text-[11px] font-semibold text-[#d6d2ca] ring-1 ring-white/25">{L('away', 'нет связи')}</span>
 
 /** Small award badges (Longest Road / Largest Army) shown on a player card. */
 export function AwardBadges({ seat }: { seat: SeatView }) {
   if (!seat.longestRoad && !seat.largestArmy) return null
   return (
     <span className="flex gap-[3px]">
-      {seat.longestRoad && <span title="Longest Road (+2)" className="rounded-[4px] bg-[#f2b544]/20 px-[4px] text-[11px] font-bold text-[#f2cf84] ring-1 ring-[#f2b544]/50">LR</span>}
-      {seat.largestArmy && <span title="Largest Army (+2)" className="rounded-[4px] bg-[#f2b544]/20 px-[4px] text-[11px] font-bold text-[#f2cf84] ring-1 ring-[#f2b544]/50">LA</span>}
+      {seat.longestRoad && <span title={`${awardName('longestRoad')} (+2)`} className="rounded-[4px] bg-[#f2b544]/20 px-[4px] text-[11px] font-bold text-[#f2cf84] ring-1 ring-[#f2b544]/50">{L('LR', 'ДД')}</span>}
+      {seat.largestArmy && <span title={`${awardName('largestArmy')} (+2)`} className="rounded-[4px] bg-[#f2b544]/20 px-[4px] text-[11px] font-bold text-[#f2cf84] ring-1 ring-[#f2b544]/50">{L('LA', 'БВ')}</span>}
     </span>
   )
 }
 
-export const seatLabel = (p: SeatView) =>
-  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards, ${p.knights} ${p.knights === 1 ? 'knight' : 'knights'} played${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}${p.auto ? ', played automatically' : ''}`
+export const seatLabel = (p: SeatView) => L(
+  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards, ${p.knights} ${p.knights === 1 ? 'knight' : 'knights'} played${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}${p.auto ? ', played automatically' : ''}`,
+  `${p.name}: ${count(p.vp, '', '', 'победное очко', 'победных очка', 'победных очков')}, ${count(p.cards, '', '', 'карта ресурсов', 'карты ресурсов', 'карт ресурсов')}, ${count(p.devCards, '', '', 'карта развития', 'карты развития', 'карт развития')}, сыграно рыцарей: ${p.knights}${p.longestRoad ? `, ${awardName('longestRoad')}` : ''}${p.largestArmy ? `, ${awardName('largestArmy')}` : ''}${p.active ? ', сейчас ходит' : ''}${p.away ? ', нет связи' : ''}${p.auto ? ', играет автоматически' : ''}`,
+)
 
 function Players() {
   const { seats } = useGameView()
   return (
-    <ul aria-label="Players" className="absolute right-[18px] top-[66px] flex w-[228px] flex-col gap-[7px]">
+    <ul aria-label={L('Players', 'Игроки')} className="absolute right-[18px] top-[66px] flex w-[228px] flex-col gap-[7px]">
       {seats.map((p) => (
         <li
           key={p.id}
@@ -130,10 +134,10 @@ function Players() {
           <div className="flex-1">
             <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}<AwardBadges seat={p} />{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
             <div aria-hidden className="flex items-center gap-[9px] text-[14px] text-[#ece8e0] leading-none [&>span]:gap-[3px]">
-              <span title="Victory points" className="flex items-center gap-[4px]"><Trophy />{p.vp}</span>
-              <span title="Resource cards" className="flex items-center gap-[4px]"><CardsIco />{p.cards}</span>
-              <span title="Development cards in hand" className="flex items-center gap-[4px]"><DevCardIco />{p.devCards}</span>
-              <span title="Knights played" className={`flex items-center gap-[4px] ${p.knights ? '' : 'opacity-45'}`}><KnightIco />{p.knights}</span>
+              <span title={L('Victory points', 'Победные очки')} className="flex items-center gap-[4px]"><Trophy />{p.vp}</span>
+              <span title={L('Resource cards', 'Карты ресурсов')} className="flex items-center gap-[4px]"><CardsIco />{p.cards}</span>
+              <span title={L('Development cards in hand', 'Карты развития на руке')} className="flex items-center gap-[4px]"><DevCardIco />{p.devCards}</span>
+              <span title={L('Knights played', 'Сыграно рыцарей')} className={`flex items-center gap-[4px] ${p.knights ? '' : 'opacity-45'}`}><KnightIco />{p.knights}</span>
             </div>
           </div>
           {p.active && <span aria-hidden className="absolute right-[10px] top-[9px] h-[9px] w-[9px] rounded-full bg-[#f2b544] shadow-[0_0_8px_#f2b544]" />}
@@ -245,7 +249,7 @@ function DiceArea() {
   )
   return (
     <div className="absolute right-[14px] top-[420px] w-[232px]">
-      <div ref={ref} aria-label={rolled ? `Dice: ${a} and ${b}, total ${a + b}` : 'Dice not rolled yet'} role="img" className={`relative z-10 mx-auto flex w-[150px] justify-between drop-shadow-[0_10px_8px_rgba(0,0,0,0.55)] transition-opacity ${rolled ? '' : 'opacity-70'}`}>
+      <div ref={ref} aria-label={rolled ? L(`Dice: ${a} and ${b}, total ${a + b}`, `Кубики: ${a} и ${b}, сумма ${a + b}`) : L('Dice not rolled yet', 'Кубики ещё не брошены')} role="img" className={`relative z-10 mx-auto flex w-[150px] justify-between drop-shadow-[0_10px_8px_rgba(0,0,0,0.55)] transition-opacity ${rolled ? '' : 'opacity-70'}`}>
         <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg) rotateZ(-4deg)" />
         <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg) rotateZ(6deg)" color="red" />
       </div>
@@ -326,7 +330,9 @@ export function SetupNote({ compact = false, className = '' }: { compact?: boole
   if (!setup || covered) return null
   return (
     <p id={SETUP_NOTE_ID} data-setup-note className={`pointer-events-none whitespace-nowrap rounded-full px-[12px] py-[5px] text-[13px] font-medium text-[#f4efe6] ring-1 ring-white/15 ${panel} ${className}`}>
-      {compact ? 'Building, trading and cards start after setup' : 'Setup: place on the board. Building, trading and cards start after it.'}
+      {compact
+        ? L('Building, trading and cards start after setup', 'Стройка, торговля и карты — после расстановки')
+        : L('Setup: place on the board. Building, trading and cards start after it.', 'Расстановка: ставьте на поле. Стройка, торговля и карты — после неё.')}
     </p>
   )
 }
@@ -350,7 +356,7 @@ export function HandHint({ compact = false, className = '' }: { compact?: boolea
   if (stage !== 'showing' || !eligible) return null
   return (
     <p data-hand-hint className={`pointer-events-none whitespace-nowrap rounded-full px-[12px] py-[5px] text-[13px] font-medium text-[#f4efe6] ring-1 ring-[#f2cf84]/50 ${panel} animate-[notice-in_.22s_ease-out] ${className}`}>
-      Tip: {compact ? 'tap' : 'click'} a card to put it in a trade
+      {L(`Tip: ${compact ? 'tap' : 'click'} a card to put it in a trade`, `Совет: ${compact ? 'коснитесь карты' : 'нажмите на карту'}, чтобы предложить её в обмен`)}
     </p>
   )
 }
@@ -392,12 +398,13 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
   return (
     <ul aria-label={`${ownerName}'s resources`} className={`relative flex items-end ${compact ? 'gap-[6px]' : 'gap-[8px] pb-[12px]'} ${setBack(setup)}`}>
       {!shown.length && owner && (
-        <li className={`rounded-full bg-[#1d1a16]/80 font-semibold text-[#d6d2ca] ring-1 ring-white/10 ${compact ? 'px-[10px] py-[4px] text-[12px]' : 'px-[14px] py-[6px] text-[13px]'}`}>No resource cards</li>
+        <li className={`rounded-full bg-[#1d1a16]/80 font-semibold text-[#d6d2ca] ring-1 ring-white/10 ${compact ? 'px-[10px] py-[4px] text-[12px]' : 'px-[14px] py-[6px] text-[13px]'}`}>{L('No resource cards', 'Нет карт ресурсов')}</li>
       )}
-      {shown.map(({ key, name }) => {
+      {shown.map(({ key }) => {
+        const name = resTitle(key)
         const n = counts[key]
         const chosen = can ? draft.give[key] ?? 0 : 0
-        const word = name.toLowerCase()
+        const word = resName(key)
         const face = <ResourceCardFace res={key} name={name} count={n} chosen={chosen} compact={compact} />
         const d = delta?.d[key]
         const badge = d ? (
@@ -407,17 +414,17 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
           const why = covered || setup ? '' : bank.reason ? ` (${bank.reason})` : '' // G7.6: setup says why in its note
           return <li key={key} aria-label={`${name}: ${n}`} title={`${name}: ${n}${why}`} className={`${frame} pointer-events-auto`}>{face}{badge}</li>
         }
-        const label = `Trade one ${word} (you have ${n}${chosen ? `, ${chosen} chosen` : ''})`
+        const label = L(`Trade one ${word} (you have ${n}${chosen ? `, ${chosen} chosen` : ''})`, `Отдать в обмен: ${word} (у вас ${n}${chosen ? `, выбрано ${chosen}` : ''})`)
         return (
           <li key={key} className="relative">
-            <button data-hand-card aria-label={label} title={n ? label : `${name}: none to trade`} disabled={chosen >= n}
+            <button data-hand-card aria-label={label} title={n ? label : L(`${name}: none to trade`, `${name}: нечего отдать`)} disabled={chosen >= n}
               onClick={() => { changeDraft('give', key, 1, n); setTradeOpen(true, 'players') }}
               className={`${frame} disabled:cursor-not-allowed ${chosen ? `ring-[3px] ring-[#ffd76a] ${compact ? '-translate-y-[4px]' : '-translate-y-[8px]'}` : 'enabled:hover:-translate-y-[4px]'} ${focusRing}`}>
               {face}
             </button>
             {badge}
             {chosen > 0 && (
-              <button data-hand-card aria-label={`Take back one ${word}`} title={`Take back one ${word}`} onClick={() => changeDraft('give', key, -1)}
+              <button data-hand-card aria-label={L(`Take back one ${word}`, `Убрать из обмена: ${word}`)} title={L(`Take back one ${word}`, `Убрать из обмена: ${word}`)} onClick={() => changeDraft('give', key, -1)}
                 className={`absolute -right-[6px] grid place-items-center rounded-full bg-[#c8302a] font-bold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,.5)] ${compact ? '-top-[10px] h-[24px] w-[24px] text-[16px]' : '-top-[14px] h-[26px] w-[26px] text-[17px]'} ${focusRing}`}>−</button>
             )}
           </li>
@@ -487,7 +494,7 @@ const BUILD_ICON: Record<BuildKind, ReactNode> = {
   city: <HouseIco city />,
   dev: <DevCardBack className="h-[26px] w-[20px]" />, // A5: the card back
 }
-const BUILD_NAME: Record<BuildKind, string> = { road: 'Road', settlement: 'Settlement', city: 'City', dev: 'Development card' }
+const BUILD_NAME = (k: BuildKind) => (k === 'dev' ? L('Development card', 'Карта развития') : pieceName(k))
 
 /**
  * Rows of the build menu (cost icons + arrow); shared by the desktop panel and the compact popover.
@@ -531,7 +538,10 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
         // G6.5: how many the hand pays for, on enabled rows
         const many = enabled && primary.player ? affordable(s, kind, primary.player) : 0
         const trades = tradable && primary.player ? tradesText(s, primary.player, plan!.trades) : ''
-        const label = `${kind === 'dev' ? 'Buy' : 'Build'} ${BUILD_NAME[kind]}: ${costText(cost)}${reason ? ` (${reason}${trades ? `; trade ${trades} first` : ''})` : ''}${many ? ` (can pay for ${many})` : ''}`
+        const label = L(
+          `${kind === 'dev' ? 'Buy' : 'Build'} ${BUILD_NAME(kind)}: ${costText(cost)}${reason ? ` (${reason}${trades ? `; trade ${trades} first` : ''})` : ''}${many ? ` (can pay for ${many})` : ''}`,
+          `${kind === 'dev' ? 'Купить' : 'Построить'}: ${BUILD_NAME(kind).toLowerCase()}, ${costText(cost)}${reason ? ` (${reason}${trades ? `; сначала обменяйте ${trades}` : ''})` : ''}${many ? ` (хватает на ${many})` : ''}`,
+        )
         // G7.1: the cost per kind as "have/need", the missing kinds marked by a dashed outline and the count still needed, not by colour alone
         const kinds = RESOURCE_ORDER.filter((r) => cost[r])
         return (
@@ -551,7 +561,7 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
               {many > 0 && <span className="absolute -right-[7px] -top-[9px] rounded-full bg-[#f2b544] px-[4px] text-[11px] font-bold leading-[15px] text-[#2a1a06] shadow-[0_1px_3px_rgba(0,0,0,.5)]">×{many}</span>}
             </span>
             <span aria-hidden className="min-w-0 flex-1">
-              <span className={`block pr-[26px] text-[14px] font-semibold leading-[18px] ${enabled ? 'text-white' : 'text-[#cfcac1]'}`}>{kind === 'dev' ? 'Buy development card' : BUILD_NAME[kind]}</span>
+              <span className={`block pr-[26px] text-[14px] font-semibold leading-[18px] ${enabled ? 'text-white' : 'text-[#cfcac1]'}`}>{pieceName(kind)}</span>
               <span className="mt-[3px] flex flex-wrap gap-[3px]">
                 {kinds.map((r) => {
                   const I = RES_ICON[r]; const need = cost[r]!; const have = counts[r]; const short = need - have
@@ -564,7 +574,7 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
                 })}
               </span>
               {reason && <span className={`mt-[3px] block text-[12px] leading-[15px] ${tradable ? 'text-[#e9e3d8]' : 'text-[#d9b8a8]'}`}>{reason}</span>}
-              {tradable && <span className="mt-[2px] block text-[12px] font-semibold leading-[15px] text-[#f2b544]">Trade &amp; build: {trades}</span>}
+              {tradable && <span className="mt-[2px] block text-[12px] font-semibold leading-[15px] text-[#f2b544]">{L('Trade & build: ', 'Обменять и построить: ')}{trades}</span>}
             </span>
             {tradable
               ? <span aria-hidden className="absolute right-[6px] top-[4px] grid h-[24px] w-[24px] place-items-center rounded-full bg-[#f2b544]/20 text-[#f2b544] ring-1 ring-[#f2b544]/60"><TradeIco size={15} /></span>
@@ -583,7 +593,7 @@ const MenuIco = () => (
 export function MenuButton({ className = '' }: { className?: string }) {
   const online = useOnline()
   if (online || BOARD_MODE !== 'game') return null
-  return <IconButton label="Menu" data-menu-button onClick={openMenu} className={className}><MenuIco /></IconButton>
+  return <IconButton label={L('Menu', 'Меню')} data-menu-button onClick={openMenu} className={className}><MenuIco /></IconButton>
 }
 
 /** G7: toggles browser fullscreen for the whole page; hidden where the browser has no fullscreen (iPhone Safari). */
@@ -597,7 +607,7 @@ export function FullscreenButton({ className = '' }: { className?: string }) {
   if (typeof document === 'undefined' || !document.fullscreenEnabled) return null
   const toggle = () => { (on ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {}) }
   return (
-    <IconButton label={on ? 'Exit fullscreen' : 'Fullscreen'} aria-pressed={on} onClick={toggle} className={className}>
+    <IconButton label={on ? L('Exit fullscreen', 'Выйти из полноэкранного режима') : L('Fullscreen', 'Во весь экран')} aria-pressed={on} onClick={toggle} className={className}>
       <svg aria-hidden viewBox="0 0 24 24" className="h-[20px] w-[20px]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
         {on ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
       </svg>
@@ -609,7 +619,7 @@ function BuildPanel() {
   const setup = useSetup()
   return (
     <section aria-labelledby="build-title" className={`absolute bottom-[42px] right-[16px] w-[246px] rounded-[12px] px-[10px] pb-[8px] pt-[12px] ${panel} ${setBack(setup)}`}>
-      <h2 id="build-title" className="mb-[8px] px-[6px] font-display text-[20px] font-medium text-[#f4efe6]">Build</h2>
+      <h2 id="build-title" className="mb-[8px] px-[6px] font-display text-[20px] font-medium text-[#f4efe6]">{L('Build', 'Стройка')}</h2>
       <BuildRows />
     </section>
   )
@@ -624,7 +634,7 @@ export function TradeButton({ className = '', icon = 24 }: { className?: string;
   const { bank } = useGameView()
   const open = useTradeOpen()
   const setup = useSetup()
-  const label = `Trade${bank.reason && !setup ? ` (${bank.reason})` : ''}`
+  const label = `${L('Trade', 'Торговля')}${bank.reason && !setup ? ` (${bank.reason})` : ''}`
   return (
     <IconButton label={label} data-trade-button aria-pressed={open} aria-keyshortcuts="T" disabled={!bank.open} onClick={() => setTradeOpen(!open)}
       aria-describedby={setup ? SETUP_NOTE_ID : undefined} className={`${open ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)} ${className}`}>
@@ -642,7 +652,7 @@ export function DevButton({ className = '', icon = 24 }: { className?: string; i
   const { dev } = useGameView()
   const open = useDevOpen()
   const setup = useSetup()
-  const label = `My development cards: ${dev.total}${dev.canOpen || setup ? '' : ' (Not now)'}`
+  const label = `${L('My development cards', 'Мои карты развития')}: ${dev.total}${dev.canOpen || setup ? '' : ` (${L('Not now', 'Не сейчас')})`}`
   return (
     <div className="relative shrink-0">
       <IconButton label={label} data-dev-button aria-pressed={open} disabled={!dev.canOpen} onClick={() => setDevOpen(!open)}
@@ -677,16 +687,17 @@ function BottomLeft() {
   const tradeOpen = useTradeOpen()
   const devOpen = useDevOpen()
   const setup = useSetup()
-  const tradeSub = setup ? 'After setup' : bank.open ? 'Key: T' : bank.reason ?? 'Not now'
-  const devSub = setup ? 'After setup' : dev.total === 0 ? 'None yet' : `${dev.total} in hand${dev.canOpen ? '' : ' · not now'}`
+  const after = L('After setup', 'После расстановки')
+  const tradeSub = setup ? after : bank.open ? L('Key: T', 'Клавиша T') : bank.reason ?? L('Not now', 'Не сейчас')
+  const devSub = setup ? after : dev.total === 0 ? L('None yet', 'Пока нет') : L(`${dev.total} in hand${dev.canOpen ? '' : ' · not now'}`, `${dev.total} на руке${dev.canOpen ? '' : ' · не сейчас'}`)
   return (
     <div className="absolute bottom-[16px] left-[22px] grid w-[272px] grid-cols-2 gap-[10px]">
       <LabelledAction data-trade-button aria-pressed={tradeOpen} aria-keyshortcuts="T" disabled={!bank.open} onClick={() => setTradeOpen(!tradeOpen)}
-        aria-label={`Trade: ${tradeSub}`} aria-describedby={setup ? SETUP_NOTE_ID : undefined}
-        icon={<TradeIco size={24} />} title="Trade" sub={tradeSub} className={`${tradeOpen ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)}`} />
+        aria-label={`${L('Trade', 'Торговля')}: ${tradeSub}`} aria-describedby={setup ? SETUP_NOTE_ID : undefined}
+        icon={<TradeIco size={24} />} title={L('Trade', 'Торговля')} sub={tradeSub} className={`${tradeOpen ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)}`} />
       <LabelledAction data-dev-button aria-pressed={devOpen} disabled={!dev.canOpen} onClick={() => setDevOpen(!devOpen)}
-        aria-label={`Dev cards: my development cards, ${devSub}`} aria-describedby={setup ? SETUP_NOTE_ID : undefined}
-        icon={<CardsStackIco size={24} />} title="Dev cards" sub={devSub} className={`${devOpen ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)}`} />
+        aria-label={L(`Dev cards: my development cards, ${devSub}`, `Карты развития: ${devSub}`)} aria-describedby={setup ? SETUP_NOTE_ID : undefined}
+        icon={<CardsStackIco size={24} />} title={L('Dev cards', 'Карты')} sub={devSub} className={`${devOpen ? 'ring-2 ring-[#f2b544]' : ''} ${setBack(setup)}`} />
     </div>
   )
 }

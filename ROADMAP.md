@@ -1168,7 +1168,11 @@ engine or protocol changes.
   from its placeholder list since it now works); g7 drivers clean. Screenshots: `screenshots/milestones/g9.3/`.
   Open: on a landscape phone (844×390) the menu is taller than the screen and scrolls; online names stay the colours
   (protocol unchanged); the online lobby itself was not re-run against a live server.
-- [ ] **G9.4 Russian language.** All visible strings in `en`/`ru` tables, a language switch, by area.
+- [x] **G9.4 Russian language.** All visible strings in `en`/`ru`, a language switch, by area.
+  - Done as pairs `L(en, ru)` beside each use (`src/ui/locale.ts`), with the game vocabulary and Russian number forms in `src/ui/words.ts` (1 руда, 2 дерева, 5 кирпичей). Language: `?lang=` → the device's choice (`isles3d.lang`) → the browser. The EN/RU switch sits in the start menu, the help panel and the online lobby. A change re-mounts the HUD and redraws the log, notices and phase text without a reload.
+  - Translated: HUD, compact HUD, log, notices, phase text and reasons, trade, dev cards, dialogs, victory, resume, pass-device, board picker, turn clock, shortcuts, start menu, lobby, 3D error screen. Server error details (`code: message`) stay in English.
+  - Checks (2026-11-15): typecheck, 281 unit tests (new `locale.test.ts`: number forms, words, a Russian log line), build; English drivers unchanged: axe 0 and fit at 3 sizes, ux-flows clicks 3/3/3/4, hover-only 0, placeholders 0, g7-dev/hand/refusals without errors, g9-menu all true. `scripts/g9-ru.mjs` at 1440×900, 1280×720, 390×844, 844×390: no page errors, no clipped text in the menu, setup or dialogs. Live switch EN↔RU from the menu and from Help: every label changes at once, Help stays open, the choice is remembered. Screenshots `screenshots/milestones/g9.4/`.
+  - Limits: on a phone the long setup phase line is cut with "…" (as in English, the text is longer); the "highlighted corner" phase wording is a start on G9.5.
 - [ ] **G9.5 Setup clarity.** Corner values during setup, plain phase text, build panel and empty hand tidied.
 - [ ] **G9.6 Player cards.** Awards spelled out (the "LR"/"LA" badges). Dev cards and knights were done in G9.2.
 - [ ] **G9.7 Exit check.** All drivers, both languages, desktop and compact, owner review.
@@ -1227,7 +1231,7 @@ Do not reorganize existing files merely to match this suggestion. Refactor only 
 | G5 — Multiplayer | In progress | `71f775f`, `8e2b243`, `d9aac51`, `356d3d0`, `4831b33`, `26125fe`, `9cefa3e`, `56cef12`, `7a222d1`, `05a3cef`, G5.7b | — | G5.1 room core (local server first); G5.2 WebSocket server; G5.3a online store; G5.3b browser online play (two full 4-tab games); G5.4 reconnect and presence; G5.5 turn timers and absent players; G5.6 server limits, logs, client error states and online accessibility QA; G5.7 live on Render Free + GitHub Pages; `GAME_DESIGN.md` v1.2 |
 | G6 — Fast trade and build | In progress | `981cdb6`, `b067ef5`, `4a5f419`, `c4c363f`, `bb0bab1`, `7ec77e1`, `43b22b7`, `e53d8f2`, G6.7 exit check (open: phone target, deploy, owner review) | — | Approved 2026-11-13 after online play: clickable hand, one trade panel, missing cards → trade → build, building that keeps going, shortcuts |
 | G7 — Clear state and next step | Exit check passed, owner review | `9353a6f`, `b120a2c`, `76f3791`, `1a8bae3`, `86a575b`, `0c04fbc`, `038247e`, `fca18b0`, `441e7c3`, G7.8 | — | `UX_PRODUCT_SPEC.md` adapted to G6 (owner, 2026-11-13): trade modes over one draft, touch-only confirm (G8), phone later (G8), placeholders removed |
-| G9 — Easy for a new player | In progress | `b6d816e`, `7819d21`, G9.3 | `screenshots/milestones/g9.1/` … `g9.3/` | Plan `docs/G9_PLAN.md` (2026-11-15). G9.1 game log; G9.2 labelled Trade / Dev cards, dice sum, dev cards and knights on player cards; G9.3 start menu with names, Continue, online; next G9.4 Russian |
+| G9 — Easy for a new player | In progress | `b6d816e`, `7819d21`, `cbfbd4c`, G9.4 | `screenshots/milestones/g9.1/` … `g9.4/` | Plan `docs/G9_PLAN.md` (2026-11-15). G9.1 game log; G9.2 labelled Trade / Dev cards, dice sum, dev cards and knights on player cards; G9.3 start menu with names, Continue, online; G9.4 Russian language; next G9.5 setup clarity |
 
 ## 9. How to instruct Claude Code
 
@@ -1235,4 +1239,4 @@ Use this at the start of a session:
 
 > Read `ROADMAP.md` and inspect the current project and `references/colonist-reference.png`. We are working on **[MILESTONE]** only. First audit relevant code and propose a concise plan. Implement only this milestone while preserving camera, sharpness, HUD and existing features. Validate with build/typecheck and screenshot comparison. Update the roadmap progress log and report changed files, visual differences, tests, performance observations and commit hash. Do not start the next milestone without approval.
 
-**Recommended next action:** the owner reviews G9.3; then G9.4 (Russian language). G8 (phone play) starts only when the owner asks.
+**Recommended next action:** the owner reviews G9.4; then G9.5 (setup clarity). G8 (phone play) starts only when the owner asks.

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Avatar } from './icons'
 import { focusRing, panel } from './HUD'
+import { L } from './locale'
 import { phaseText, seats } from './gameView'
 import { clearNotices } from './noticeQueue'
 import { usingKeyboard } from './modality'
@@ -66,11 +67,11 @@ export function Resume() {
       <section role="dialog" aria-modal="true" aria-labelledby="resume-title" aria-describedby="resume-where"
         className={`w-full max-w-[400px] rounded-[16px] px-[18px] pb-[16px] pt-[16px] ${panel} animate-[notice-in_.25s_ease-out]`}
         style={{ boxShadow: 'inset 0 0 0 2px #f2b544aa, 0 18px 50px rgba(0,0,0,.65)' }}>
-        <h2 id="resume-title" className="font-display text-[24px] font-semibold leading-tight">Continue your game?</h2>
-        <p id="resume-where" className="mt-[4px] text-[14px] text-[#d6d2ca]">Turn {state.turn} · {phaseText(state)}</p>
-        <ul aria-label="Scores" className="mt-[12px] grid grid-cols-4 gap-[6px]">
+        <h2 id="resume-title" className="font-display text-[24px] font-semibold leading-tight">{L('Continue your game?', 'Продолжить игру?')}</h2>
+        <p id="resume-where" className="mt-[4px] text-[14px] text-[#d6d2ca]">{L('Turn', 'Ход')} {state.turn} · {phaseText(state)}</p>
+        <ul aria-label={L('Scores', 'Счёт')} className="mt-[12px] grid grid-cols-4 gap-[6px]">
           {seats(state).map((p) => (
-            <li key={p.id} aria-label={`${p.name}: ${p.vp} points`} className="flex flex-col items-center gap-[3px] rounded-[10px] bg-white/[0.05] py-[6px]" style={{ boxShadow: `inset 0 -3px 0 ${p.color}` }}>
+            <li key={p.id} aria-label={`${p.name}: ${p.vp} ${L('points', 'очк.')}`} className="flex flex-col items-center gap-[3px] rounded-[10px] bg-white/[0.05] py-[6px]" style={{ boxShadow: `inset 0 -3px 0 ${p.color}` }}>
               <span className="h-[30px] w-[30px] overflow-hidden rounded-[7px]"><Avatar i={p.avatar} className="h-full w-full" /></span>
               <span aria-hidden className="text-[13px] font-semibold">{p.name}</span>
               <span aria-hidden className="font-display text-[17px] font-semibold text-[#f2cf84]">{p.vp}</span>
@@ -78,10 +79,10 @@ export function Resume() {
           ))}
         </ul>
         <div className="mt-[16px] flex items-center justify-between gap-[10px]">
-          <button onClick={fresh} className={`h-[38px] rounded-[9px] bg-white/10 px-[14px] text-[14px] font-semibold text-white hover:bg-white/20 ${focusRing}`}>New game</button>
+          <button onClick={fresh} className={`h-[38px] rounded-[9px] bg-white/10 px-[14px] text-[14px] font-semibold text-white hover:bg-white/20 ${focusRing}`}>{L('New game', 'Новая игра')}</button>
           <button ref={btn} onClick={resume}
             className={`h-[42px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[26px] font-display text-[18px] font-semibold text-[#3a2208] ${focusRing}`}>
-            Resume
+            {L('Resume', 'Продолжить')}
           </button>
         </div>
       </section>

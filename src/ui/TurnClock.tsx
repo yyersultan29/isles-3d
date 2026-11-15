@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSeat, useSession } from '../store/GameProvider'
+import { L } from './locale'
 
 /** Whole seconds left on the running turn timer, or null without one. */
 export function useTurnClock(): { seconds: number; mine: boolean } | null {
@@ -33,7 +34,7 @@ export function TurnClock() {
     <>
       <span aria-hidden className={`ml-[8px] shrink-0 whitespace-nowrap tabular-nums ${urgent ? 'text-[#ff9b7a]' : 'text-[#c9c3b8]'}`}>· {fmt(clock.seconds)}</span>
       {/* the same text while it lasts, so a screen reader announces it once */}
-      {urgent && clock.seconds > 0 && <span role="status" className="sr-only">10 seconds left</span>}
+      {urgent && clock.seconds > 0 && <span role="status" className="sr-only">{L('10 seconds left', 'Осталось 10 секунд')}</span>}
     </>
   )
 }

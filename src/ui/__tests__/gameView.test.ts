@@ -18,7 +18,7 @@ describe('G4.4a HUD view', () => {
   it('phase text names who acts and what to do', () => {
     let s = newGame(2)
     const first = SEATS[s.order[0]].name
-    expect(phaseText(s)).toBe(`${first}: choose a light spot for your first settlement`)
+    expect(phaseText(s)).toBe(`${first}: choose a highlighted corner for your first settlement`)
     s = playSetup(s)
     expect(phaseText(s)).toBe(`${SEATS[s.order[0]].name}: roll the dice`)
     expect(phaseText(fixture({ phase: { kind: 'discard', pending: { p2: 4, p4: 5 } } }))).toBe('Seven! Discard half: Blue 4, Orange 5')

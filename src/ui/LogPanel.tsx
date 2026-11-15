@@ -10,9 +10,12 @@ import { useGameLog, type LogEntry } from './gameLog'
 import { SEATS } from './gameView'
 import { Brick, Logs, Ore, SheepIcon, WheatIcon } from './icons'
 import { focusRing, panel } from './HUD'
+import { L } from './locale'
+import { resName } from './words'
 
 const ICON: Record<Resource, (p: { className?: string }) => React.ReactElement> = { lumber: Logs, brick: Brick, wool: SheepIcon, grain: WheatIcon, ore: Ore }
-const WORD: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
+const WORD = (r: Resource) => resName(r)
+const LOG = () => L('Game log', 'Журнал')
 const COLLAPSED_LINES = 5
 const OPEN_KEY = 'isles3d.logOpen'
 
@@ -44,7 +47,7 @@ function Line({ e }: { e: LogEntry }) {
             <span aria-hidden>{e.lead}</span>
             {RESOURCE_ORDER.filter((r) => e.gains![r]).map((r) => {
               const I = ICON[r]
-              return <span key={r} aria-hidden className="inline-flex items-center gap-[3px]"><b className="font-semibold text-[#f2cf84]">+{e.gains![r]}</b><I className="h-[16px] w-[20px]" />{WORD[r]}</span>
+              return <span key={r} aria-hidden className="inline-flex items-center gap-[3px]"><b className="font-semibold text-[#f2cf84]">+{e.gains![r]}</b><I className="h-[16px] w-[20px]" />{WORD(r)}</span>
             })}
           </span>
         : <span className={strong ? 'font-semibold' : ''}>
@@ -65,10 +68,10 @@ function LogList({ entries, all, className = '' }: { entries: readonly LogEntry[
     if (el && stick.current) el.scrollTop = el.scrollHeight
   }, [shown, all])
   return (
-    <ol ref={box} role="log" aria-live="off" aria-label="Game log"
+    <ol ref={box} role="log" aria-live="off" aria-label={LOG()}
       onScroll={(ev) => { const el = ev.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24 }}
       className={`flex flex-col gap-[3px] ${all ? 'overflow-y-auto overscroll-contain pr-[4px]' : 'overflow-hidden'} ${className}`}>
-      {shown.length ? shown.map((e) => <Line key={e.id} e={e} />) : <li className="text-[13px] text-[#a9a49a]">Nothing has happened yet</li>}
+      {shown.length ? shown.map((e) => <Line key={e.id} e={e} />) : <li className="text-[13px] text-[#a9a49a]">{L('Nothing has happened yet', 'Пока ничего не произошло')}</li>}
     </ol>
   )
 }
@@ -85,10 +88,10 @@ export function GameLog({ className = '' }: { className?: string }) {
   return (
     <section aria-labelledby="log-title" data-game-log className={`pointer-events-auto rounded-[12px] px-[12px] pb-[10px] pt-[6px] ${panel} ${className}`}>
       <div className="flex items-center justify-between">
-        <h2 id="log-title" className="font-display text-[15px] font-semibold text-[#f4efe6]">Game log</h2>
+        <h2 id="log-title" className="font-display text-[15px] font-semibold text-[#f4efe6]">{LOG()}</h2>
         <button onClick={toggle} aria-expanded={open} aria-controls="game-log-list" data-log-toggle
           className={`-mr-[6px] flex items-center gap-[4px] rounded-[7px] px-[7px] py-[3px] text-[12.5px] font-medium text-[#d6d2ca] hover:bg-white/10 ${focusRing}`}>
-          {open ? 'Show less' : 'Show all'}<Chevron up={!open} />
+          {open ? L('Show less', 'Свернуть') : L('Show all', 'Показать всё')}<Chevron up={!open} />
         </button>
       </div>
       <div id="game-log-list" className="mt-[4px]">
@@ -115,15 +118,15 @@ export function CompactLogButton({ className = '', sheetTop }: { className?: str
   }, [open])
   return (
     <>
-      <button ref={btn} onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-controls="compact-log" aria-label="Game log" title="Game log" data-log-toggle
+      <button ref={btn} onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-controls="compact-log" aria-label={LOG()} title={LOG()} data-log-toggle
         className={`grid shrink-0 place-items-center rounded-[9px] text-[#ece8e0] ${open ? 'ring-2 ring-[#f2b544]' : ''} ${focusRing} ${panel} ${className}`}>
         <LogIco />
       </button>
       {open && (
-        <section id="compact-log" aria-label="Game log" data-game-log className={`pointer-events-auto fixed inset-x-[8px] z-[3] rounded-[12px] px-[12px] pb-[10px] pt-[8px] ${panel}`} style={{ top: sheetTop }}>
+        <section id="compact-log" aria-label={LOG()} data-game-log className={`pointer-events-auto fixed inset-x-[8px] z-[3] rounded-[12px] px-[12px] pb-[10px] pt-[8px] ${panel}`} style={{ top: sheetTop }}>
           <div className="mb-[4px] flex items-center justify-between">
-            <h2 className="font-display text-[15px] font-semibold">Game log</h2>
-            <button onClick={() => { setOpen(false); btn.current?.focus() }} className={`rounded-[7px] px-[8px] py-[3px] text-[13px] text-[#d6d2ca] hover:bg-white/10 ${focusRing}`}>Close</button>
+            <h2 className="font-display text-[15px] font-semibold">{LOG()}</h2>
+            <button onClick={() => { setOpen(false); btn.current?.focus() }} className={`rounded-[7px] px-[8px] py-[3px] text-[13px] text-[#d6d2ca] hover:bg-white/10 ${focusRing}`}>{L('Close', 'Закрыть')}</button>
           </div>
           <LogList entries={entries} all className="max-h-[45dvh]" />
         </section>

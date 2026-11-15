@@ -12,6 +12,7 @@ import { usingKeyboard } from './modality'
 import { SEATS, discardPrompt, needsPass, viewerOf } from './gameView'
 import { useGame, useSeat } from '../store/GameProvider'
 import { setSeen, useSeen } from '../store/ui'
+import { L, count } from './locale'
 
 /** The current viewer and whether the pass screen covers the app. Safe to call from many components. */
 export function usePrivacy() {
@@ -60,7 +61,9 @@ export function PassDevice() {
   if (!covered || !viewer) return null
   const seat = SEATS[viewer]
   const d = discardPrompt(s)
-  const reason = d && d.player === viewer ? `${seat.name} must discard ${d.count} cards` : `${seat.name}’s turn`
+  const reason = d && d.player === viewer
+    ? L(`${seat.name} must discard ${d.count} cards`, `${seat.name} сбрасывает ${count(d.count, '', '', 'карту', 'карты', 'карт')}`)
+    : L(`${seat.name}’s turn`, `Ходит ${seat.name}`)
   return createPortal(
     <div role="dialog" aria-modal="true" aria-labelledby="pass-title" aria-describedby="pass-reason"
       className="fixed inset-0 z-[60] grid place-items-center bg-[#08121c]/[0.96] px-[16px] font-ui text-[#f4efe6] animate-[notice-in_.25s_ease-out]">
@@ -68,11 +71,11 @@ export function PassDevice() {
         <span className="mb-[14px] h-[84px] w-[84px] overflow-hidden rounded-[18px] ring-4" style={{ ['--tw-ring-color' as string]: seat.color }}>
           <Avatar i={seat.avatar} className="h-full w-full" />
         </span>
-        <h2 id="pass-title" className="font-display text-[28px] font-semibold leading-tight">Pass the device to {seat.name}</h2>
-        <p id="pass-reason" className="mt-[6px] text-[15px] text-[#d6d2ca]">{reason}. Only {seat.name} should look at the screen.</p>
+        <h2 id="pass-title" className="font-display text-[28px] font-semibold leading-tight">{L(`Pass the device to ${seat.name}`, `Передайте устройство: ${seat.name}`)}</h2>
+        <p id="pass-reason" className="mt-[6px] text-[15px] text-[#d6d2ca]">{reason}. {L(`Only ${seat.name} should look at the screen.`, `На экран смотрит только ${seat.name}.`)}</p>
         <button ref={btn} onClick={() => setSeen(viewer)}
           className={`mt-[22px] h-[46px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[26px] font-display text-[19px] font-semibold text-[#3a2208] shadow-[0_0_16px_rgba(255,190,70,0.5)] ${focusRing}`}>
-          I’m {seat.name}: show my cards
+          {L(`I’m ${seat.name}: show my cards`, `Это ${seat.name}: показать мои карты`)}
         </button>
       </div>
     </div>,

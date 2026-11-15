@@ -5,6 +5,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
 import { focusRing, panel } from './HUD'
+import { L } from './locale'
+import { awardName } from './words'
 import { useGameView } from './gameView'
 import { useGameStore, useOnline } from '../store/GameProvider'
 
@@ -26,7 +28,7 @@ export function Victory({ compact = false }: { compact?: boolean }) {
   if (hidden) return (
     <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ bottom: compact ? 160 : 140 }}>
       <button ref={pill} onClick={() => setHidden(false)} className={`pointer-events-auto h-[40px] rounded-full px-[18px] font-display text-[16px] font-semibold text-[#f4efe6] ring-2 ring-[#f2b544]/80 ${panel} ${focusRing}`}>
-        {w.name} won · Show results
+        {L(`${w.name} won · Show results`, `Победитель: ${w.name} · Итоги`)}
       </button>
     </div>
   )
@@ -40,20 +42,20 @@ export function Victory({ compact = false }: { compact?: boolean }) {
         <div className="mb-[12px] flex items-center gap-[12px] [@media(max-height:560px)]:mb-[4px]">
           <span className="h-[56px] w-[56px] shrink-0 overflow-hidden rounded-[12px] ring-[3px] [@media(max-height:560px)]:h-[36px] [@media(max-height:560px)]:w-[36px] [@media(max-height:560px)]:rounded-[8px]" style={{ ['--tw-ring-color' as string]: w.color }}><Avatar i={w.avatar} className="h-full w-full" /></span>
           <div>
-            <h2 id="victory-title" className="font-display text-[26px] [@media(max-height:560px)]:text-[22px] font-semibold leading-tight text-[#f4efe6]">{w.name} wins!</h2>
-            <p className="text-[14px] text-[#d6d2ca]">{w.total} victory points on turn {final.turn}</p>
+            <h2 id="victory-title" className="font-display text-[26px] [@media(max-height:560px)]:text-[22px] font-semibold leading-tight text-[#f4efe6]">{L(`${w.name} wins!`, `${w.name} побеждает!`)}</h2>
+            <p className="text-[14px] text-[#d6d2ca]">{L(`${w.total} victory points on turn ${final.turn}`, `${w.total} победных очков на ${final.turn}-м ходу`)}</p>
           </div>
         </div>
         <table className="w-full border-collapse">
-          <caption className="sr-only">Final scores</caption>
+          <caption className="sr-only">{L('Final scores', 'Итоговый счёт')}</caption>
           <thead>
             <tr className="border-b border-white/10">
-              <th scope="col" className={`${th} text-left`}>Player</th>
-              <th scope="col" className={th} title="Settlements (1 point each)">{compact ? 'Set.' : 'Settlements'}</th>
-              <th scope="col" className={th} title="Cities (2 points each)">Cities</th>
-              <th scope="col" className={th} title="Longest Road and Largest Army (2 points each)">Awards</th>
-              <th scope="col" className={th} title="Victory Point cards, revealed">{compact ? 'VP' : 'VP cards'}</th>
-              <th scope="col" className={th}>Total</th>
+              <th scope="col" className={`${th} text-left`}>{L('Player', 'Игрок')}</th>
+              <th scope="col" className={th} title={L('Settlements (1 point each)', 'Поселения (по 1 очку)')}>{compact ? L('Set.', 'Пос.') : L('Settlements', 'Поселения')}</th>
+              <th scope="col" className={th} title={L('Cities (2 points each)', 'Города (по 2 очка)')}>{L('Cities', 'Города')}</th>
+              <th scope="col" className={th} title={L('Longest Road and Largest Army (2 points each)', 'Самая длинная дорога и самое большое войско (по 2 очка)')}>{L('Awards', 'Награды')}</th>
+              <th scope="col" className={th} title={L('Victory Point cards, revealed', 'Карты победных очков, открытые')}>{compact ? L('VP', 'ПО') : L('VP cards', 'Карты ПО')}</th>
+              <th scope="col" className={th}>{L('Total', 'Итого')}</th>
             </tr>
           </thead>
           <tbody>
@@ -69,7 +71,7 @@ export function Victory({ compact = false }: { compact?: boolean }) {
                 <td className={td}>{r.cities}</td>
                 <td className={`${td} text-[12px]`}>
                   {r.longestRoad || r.largestArmy
-                    ? <span className="inline-flex flex-col gap-[2px] leading-tight">{r.longestRoad && <span title="Longest Road">Road</span>}{r.largestArmy && <span title="Largest Army">Army</span>}</span>
+                    ? <span className="inline-flex flex-col gap-[2px] leading-tight">{r.longestRoad && <span title={awardName('longestRoad')}>{L('Road', 'Дорога')}</span>}{r.largestArmy && <span title={awardName('largestArmy')}>{L('Army', 'Войско')}</span>}</span>
                     : <span className="text-[#77736c]">–</span>}
                 </td>
                 <td className={td}>{r.vpCards}</td>
@@ -79,13 +81,13 @@ export function Victory({ compact = false }: { compact?: boolean }) {
           </tbody>
         </table>
         <div className="mt-[14px] flex items-center justify-between gap-[10px] [@media(max-height:560px)]:mt-[6px]">
-          <button onClick={() => setHidden(true)} className={`h-[36px] rounded-[9px] bg-white/10 px-[14px] text-[14px] font-semibold text-white hover:bg-white/20 ${focusRing}`}>View board</button>
+          <button onClick={() => setHidden(true)} className={`h-[36px] rounded-[9px] bg-white/10 px-[14px] text-[14px] font-semibold text-white hover:bg-white/20 ${focusRing}`}>{L('View board', 'Посмотреть поле')}</button>
           {online ? <a ref={again as unknown as React.Ref<HTMLAnchorElement>} href="?online"
             className={`grid h-[40px] place-items-center rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[24px] font-display text-[18px] font-semibold text-[#3a2208] ${focusRing}`}>
-            New room
+            {L('New room', 'Новая комната')}
           </a> : <button ref={again} onClick={newGame}
             className={`h-[40px] rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[24px] font-display text-[18px] font-semibold text-[#3a2208] ${focusRing}`}>
-            New game
+            {L('New game', 'Новая игра')}
           </button>}
         </div>
       </section>

@@ -21,9 +21,13 @@ import { bankQuote, noPayReason, payOptions, sameDraft, shortfall, tradesText } 
 import { useGame, useGameStore } from '../store/GameProvider'
 import { changeDraft, clearDraft, setBuildGoal, setPlacementMode, setTradeMode, setTradeOpen, useBuildGoal, useTradeDraft, useTradeMode, type TradeMode } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
+import { L } from './locale'
+import { resList, resName } from './words'
 
-export const NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
-const text = (c: Counts) => RESOURCE_ORDER.filter((r) => c[r]).map((r) => `${c[r]} ${NAME[r]}`).join(', ')
+// G9.4: resource words in the current language
+export const NAME = new Proxy({} as Record<Resource, string>, { get: (_, r: string) => resName(r as Resource) })
+const text = (c: Counts) => resList(c)
+const VERB_RU: Record<string, string> = { Give: 'Отдать', Want: 'Получить' }
 // functions, not constants: HUD.tsx (focusRing) and this module import each other
 export const gold = () => `h-[38px] shrink-0 rounded-full border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] px-[20px] font-display text-[17px] font-semibold text-[#3a2208] disabled:grayscale-[0.7] disabled:brightness-75 ${focusRing}`
 export const plain = () => `h-[34px] shrink-0 rounded-[9px] bg-white/10 px-[12px] text-[14px] font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-white/10 ${focusRing}`
@@ -61,9 +65,9 @@ function CountTile({ res, chosen, max, sub, hint = '', detail, verb, compact, bt
   return (
     <div className="relative">
       <Tile res={res} compact={compact} btnRef={btnRef} top={chosen ? `×${chosen}` : hint} corner={sub} selected={chosen > 0} disabled={chosen >= max}
-        label={`${verb} one ${NAME[res]} (${chosen} chosen${detail ? `, ${detail}` : ''})`} onClick={onAdd} />
+        label={L(`${verb} one ${NAME[res]} (${chosen} chosen${detail ? `, ${detail}` : ''})`, `${VERB_RU[verb] ?? verb}: ${NAME[res]} (выбрано ${chosen}${detail ? `, ${detail}` : ''})`)} onClick={onAdd} />
       {chosen > 0 && (
-        <button aria-label={`${verb} one less ${NAME[res]}`} onClick={onRemove}
+        <button aria-label={L(`${verb} one less ${NAME[res]}`, `${VERB_RU[verb] ?? verb} на одну меньше: ${NAME[res]}`)} onClick={onRemove}
           className={`absolute -right-[5px] -top-[7px] grid h-[22px] w-[22px] place-items-center rounded-full bg-[#c8302a] text-[15px] font-bold leading-none text-white shadow-[0_2px_6px_rgba(0,0,0,.5)] ${focusRing}`}>−</button>
       )}
     </div>
@@ -113,7 +117,7 @@ function ComposePanel({ compact }: { compact: boolean }) {
   const pay = !giving && wanted.length === 1 ? payOptions(s, wanted[0], want[wanted[0]]!, me) : []
   const noPay = !giving && wanted.length === 1 && !pay.length ? noPayReason(s, wanted[0], want[wanted[0]]!, me) : null
   const bankTrade = (a: Action) => { if (act(bank.player, a)) { clearDraft(); setTradeOpen(false) } }
-  const BUILD_WORD = { road: 'road', settlement: 'settlement', city: 'city', dev: 'development card' } as const
+  const BUILD_WORD = { road: L('road', 'дороги'), settlement: L('settlement', 'поселения'), city: L('city', 'города'), dev: L('development card', 'карты развития') }
   const tradeThenBuild = () => {
     if (!forBuild) return
     // online each trade is checked against the state before the first one; the plan pays every
@@ -128,36 +132,36 @@ function ComposePanel({ compact }: { compact: boolean }) {
 
   const bankMain = forBuild
     ? <button ref={main} data-main-action onClick={tradeThenBuild} title={forBuild.text} className={`${gold()} !px-[14px]`}
-        aria-label={`${forBuild.kind === 'dev' ? 'Trade with the bank for a development card' : `Trade with the bank, then build the ${BUILD_WORD[forBuild.kind]}`}: ${forBuild.text}`}>Trade &amp; build</button>
+        aria-label={L(`${forBuild.kind === 'dev' ? 'Trade with the bank for a development card' : `Trade with the bank, then build the ${BUILD_WORD[forBuild.kind]}`}: ${forBuild.text}`, `Обменять с банком и ${forBuild.kind === 'dev' ? 'купить карту развития' : `построить (${BUILD_WORD[forBuild.kind]})`}: ${forBuild.text}`)}>{L('Trade & build', 'Обменять и построить')}</button>
     : <button data-main-action onClick={() => quote.ok && bankTrade(quote.action)} disabled={!quote.ok}
-        aria-label={quote.ok ? `Trade with the bank: ${quote.text}` : `Trade with the bank (${noPay ?? quote.reason})`} className={`${gold()} !px-[14px]`}>Trade with the bank</button>
+        aria-label={quote.ok ? `${L('Trade with the bank', 'Обменять с банком')}: ${quote.text}` : `${L('Trade with the bank', 'Обменять с банком')} (${noPay ?? quote.reason})`} className={`${gold()} !px-[14px]`}>{L('Trade with the bank', 'Обменять с банком')}</button>
   // G7.3: one result sentence per mode, and the reason a main button is disabled next to it
-  const bankResult = forBuild ? `For a ${BUILD_WORD[forBuild.kind]}: ${forBuild.text}` : quote.ok ? quote.text : pay.length ? 'Pick how to pay, or add cards you give' : noPay ?? quote.reason
-  const names = (ids: PlayerId[]) => ids.length === opponents.length ? 'everyone' : ids.map((x) => SEATS[x].name).join(' and ')
-  const playersResult = offerReason ?? `Offer ${text(give)} to ${names(to)} for ${text(want)}`
+  const bankResult = forBuild ? `${L('For a', 'Для')} ${BUILD_WORD[forBuild.kind]}: ${forBuild.text}` : quote.ok ? quote.text : pay.length ? L('Pick how to pay, or add cards you give', 'Выберите, чем платить, или добавьте карты') : noPay ?? quote.reason
+  const names = (ids: PlayerId[]) => ids.length === opponents.length ? L('everyone', 'всем') : ids.map((x) => SEATS[x].name).join(L(' and ', ' и '))
+  const playersResult = offerReason ?? L(`Offer ${text(give)} to ${names(to)} for ${text(want)}`, `Предложить ${names(to)}: ${text(give)} за ${text(want)}`)
   const kept = giving || wanted.length > 0
 
   return (
     <>
-      <p className="mb-[4px] text-[13px] text-[#d6d2ca]">You give <span className="text-[#a9a49b]">({mode === 'bank' ? 'bank rate · you have' : 'you have'})</span></p>
+      <p className="mb-[4px] text-[13px] text-[#d6d2ca]">{L('You give', 'Вы отдаёте')} <span className="text-[#a9a49b]">({mode === 'bank' ? L('bank rate · you have', 'курс банка · у вас') : L('you have', 'у вас')})</span></p>
       <div className="flex gap-[8px]">
         {bank.rows.map((r) => (
           <CountTile key={r.res} res={r.res} compact={compact} btnRef={r.res === firstHeld ? first : undefined} verb="Give" chosen={give[r.res] ?? 0} max={hand.counts[r.res]}
-            sub={String(hand.counts[r.res])} hint={mode === 'bank' ? `${r.rate}:1` : ''} detail={mode === 'bank' ? `you have ${hand.counts[r.res]}, bank rate ${r.rate}:1` : `you have ${hand.counts[r.res]}`}
+            sub={String(hand.counts[r.res])} hint={mode === 'bank' ? `${r.rate}:1` : ''} detail={mode === 'bank' ? L(`you have ${hand.counts[r.res]}, bank rate ${r.rate}:1`, `у вас ${hand.counts[r.res]}, курс ${r.rate}:1`) : L(`you have ${hand.counts[r.res]}`, `у вас ${hand.counts[r.res]}`)}
             onAdd={() => add('give', r.res, 1)} onRemove={() => add('give', r.res, -1)} />
         ))}
       </div>
-      <p className="mb-[4px] mt-[10px] text-[13px] text-[#d6d2ca]">You want {mode === 'bank' && <span className="text-[#a9a49b]">(bank has)</span>}</p>
+      <p className="mb-[4px] mt-[10px] text-[13px] text-[#d6d2ca]">{L('You want', 'Вы получаете')} {mode === 'bank' && <span className="text-[#a9a49b]">({L('bank has', 'в банке')})</span>}</p>
       <div className="flex gap-[8px]">
         {bank.rows.map((r) => (
-          <CountTile key={r.res} res={r.res} compact={compact} verb="Want" chosen={want[r.res] ?? 0} max={19} sub={mode === 'bank' ? String(r.bank) : ''} detail={mode === 'bank' ? `bank has ${r.bank}` : ''}
+          <CountTile key={r.res} res={r.res} compact={compact} verb="Want" chosen={want[r.res] ?? 0} max={19} sub={mode === 'bank' ? String(r.bank) : ''} detail={mode === 'bank' ? L(`bank has ${r.bank}`, `в банке ${r.bank}`) : ''}
             onAdd={() => add('want', r.res, 1)} onRemove={() => add('want', r.res, -1)} />
         ))}
       </div>
       {mode === 'bank' && pay.length > 0 && (
-        <div role="group" aria-label="Pay the bank" className="mt-[10px] flex flex-wrap items-center gap-[6px]">
-          <span className="mr-[2px] text-[13px] text-[#d6d2ca]">Pay the bank</span>
-          {pay.map((o) => { const R = RESOURCES.find((x) => x.key === o.give)!; const label = `Pay ${o.cost} ${NAME[o.give]} for ${o.action.count} ${NAME[o.action.get]}`; return (
+        <div role="group" aria-label={L('Pay the bank', 'Заплатить банку')} className="mt-[10px] flex flex-wrap items-center gap-[6px]">
+          <span className="mr-[2px] text-[13px] text-[#d6d2ca]">{L('Pay the bank', 'Заплатить банку')}</span>
+          {pay.map((o) => { const R = RESOURCES.find((x) => x.key === o.give)!; const label = L(`Pay ${o.cost} ${NAME[o.give]} for ${o.action.count} ${NAME[o.action.get]}`, `Заплатить ${o.cost} (${NAME[o.give]}) за ${o.action.count} (${NAME[o.action.get]})`); return (
             <button key={o.give} aria-label={label} title={label} onClick={() => bankTrade(o.action)}
               className={`flex h-[34px] items-center gap-[4px] rounded-[8px] bg-gradient-to-b ${R.bg} pl-[3px] pr-[9px] text-[14px] font-bold text-white ring-1 ring-[#f2cf84]/50 hover:brightness-110 ${focusRing}`}>
               <R.Icon aria-hidden className="h-[26px] w-[28px]" />{o.cost} → {o.action.count} {NAME[o.action.get]}
@@ -167,10 +171,10 @@ function ComposePanel({ compact }: { compact: boolean }) {
         </div>
       )}
       {mode === 'players' && (
-        <div role="group" aria-label="Offer to" className="mt-[10px] flex flex-wrap items-center gap-[6px]">
-          <span className="mr-[2px] text-[13px] text-[#d6d2ca]">To</span>
+        <div role="group" aria-label={L('Offer to', 'Кому предложить')} className="mt-[10px] flex flex-wrap items-center gap-[6px]">
+          <span className="mr-[2px] text-[13px] text-[#d6d2ca]">{L('To', 'Кому')}</span>
           {opponents.map((id) => { const on = to.includes(id); return (
-            <button key={id} aria-pressed={on} aria-label={`Offer to ${SEATS[id].name}`} onClick={() => setTo(on ? to.filter((x) => x !== id) : opponents.filter((x) => x === id || to.includes(x)))}
+            <button key={id} aria-pressed={on} aria-label={L(`Offer to ${SEATS[id].name}`, `Предложить: ${SEATS[id].name}`)} onClick={() => setTo(on ? to.filter((x) => x !== id) : opponents.filter((x) => x === id || to.includes(x)))}
               className={`flex h-[32px] items-center gap-[6px] rounded-full pl-[3px] pr-[10px] text-[13px] font-semibold transition-opacity ${on ? 'bg-white/[0.12] text-white' : 'bg-white/[0.04] text-white/50'} ${focusRing}`}
               style={{ boxShadow: on ? `inset 0 0 0 2px ${SEATS[id].color}` : undefined }}>
               <span className={`h-[26px] w-[26px] overflow-hidden rounded-full ${on ? '' : 'opacity-50 grayscale'}`}><Avatar i={SEATS[id].avatar} className="h-full w-full" /></span>
@@ -185,10 +189,10 @@ function ComposePanel({ compact }: { compact: boolean }) {
         </p>
         {mode === 'bank' ? bankMain : (
           <button data-main-action onClick={offer} disabled={!!offerReason}
-            aria-label={offerReason ? `Offer trade (${offerReason})` : `Offer trade: ${playersResult}`} className={`${gold()} !px-[14px]`}>Offer trade</button>
+            aria-label={offerReason ? `${L('Offer trade', 'Предложить обмен')} (${offerReason})` : `${L('Offer trade', 'Предложить обмен')}: ${playersResult}`} className={`${gold()} !px-[14px]`}>{L('Offer trade', 'Предложить обмен')}</button>
         )}
       </div>
-      {kept && <p className="mt-[6px] text-[12px] text-[#a9a49b]">Closing keeps your choice until the end of the turn.</p>}
+      {kept && <p className="mt-[6px] text-[12px] text-[#a9a49b]">{L('Closing keeps your choice until the end of the turn.', 'Если закрыть, выбор сохранится до конца хода.')}</p>}
     </>
   )
 }
@@ -201,8 +205,8 @@ function ModeSwitch() {
       className={`h-[30px] [@media(max-height:560px)]:h-[26px] flex-1 rounded-[8px] px-[12px] text-[14px] font-semibold transition-colors ${mode === m ? 'bg-[#f2cf84] text-[#2a1a06]' : 'text-[#d6d2ca] hover:bg-white/10'} ${focusRing}`}>{label}</button>
   )
   return (
-    <div role="group" aria-label="Trade with" className="mb-[10px] [@media(max-height:560px)]:mb-[6px] flex gap-[4px] rounded-[10px] bg-white/[0.06] p-[3px]">
-      {opt('bank', 'Bank / ports')}{opt('players', 'Players')}
+    <div role="group" aria-label={L('Trade with', 'Торговать с')} className="mb-[10px] [@media(max-height:560px)]:mb-[6px] flex gap-[4px] rounded-[10px] bg-white/[0.06] p-[3px]">
+      {opt('bank', L('Bank / ports', 'Банк / гавани'))}{opt('players', L('Players', 'Игроки'))}
     </div>
   )
 }
@@ -222,13 +226,13 @@ function OfferPanel() {
   const accepted = offer.rows.some((r) => r.response === 'accept')
   const pending = offer.rows.some((r) => r.response === 'pending')
   const step = !offer.canManage ? null
-    : accepted ? 'Last step: confirm with a player who accepted. Nothing is traded until you do.'
-    : pending ? 'Offer sent. Waiting for answers.'
-    : 'Everyone declined. Cancel the offer to change it.'
+    : accepted ? L('Last step: confirm with a player who accepted. Nothing is traded until you do.', 'Последний шаг: подтвердите с игроком, который согласился. До этого обмена нет.')
+    : pending ? L('Offer sent. Waiting for answers.', 'Предложение отправлено. Ждём ответов.')
+    : L('Everyone declined. Cancel the offer to change it.', 'Все отказались. Отмените предложение, чтобы изменить его.')
   return (
     <>
       <div className="mb-[8px] flex flex-wrap items-center gap-[8px] text-[14px] text-[#d6d2ca]">
-        <span>{from.name} gives</span><Chips c={offer.offer} /><span>for</span><Chips c={offer.request} />
+        <span>{L(`${from.name} gives`, `${from.name} отдаёт`)}</span><Chips c={offer.offer} /><span>{L('for', 'за')}</span><Chips c={offer.request} />
       </div>
       {step && <p aria-live="polite" data-offer-step className={`mb-[8px] text-[13px] font-semibold ${accepted ? 'text-[#f2cf84]' : 'text-[#d6d2ca]'}`}>{step}</p>}
       <ul className="flex flex-col gap-[6px]">
@@ -236,25 +240,25 @@ function OfferPanel() {
           <li key={r.id} className="flex h-[44px] items-center gap-[10px] rounded-[10px] bg-white/[0.05] pl-[5px] pr-[6px]" style={{ boxShadow: `inset 3px 0 0 ${r.color}` }}>
             <span className="h-[34px] w-[34px] shrink-0 overflow-hidden rounded-[7px]"><Avatar i={r.avatar} className="h-full w-full" /></span>
             <span className="min-w-[52px] flex-1 text-[15px] font-semibold text-white">{r.name}</span>
-            {r.response === 'pending' && !r.canRespond && <span className="pr-[6px] text-[14px] text-[#a9a49b]">Waiting</span>}
+            {r.response === 'pending' && !r.canRespond && <span className="pr-[6px] text-[14px] text-[#a9a49b]">{L('Waiting', 'Ждём')}</span>}
             {r.response === 'pending' && r.canRespond && (<>
               {/* G7.8: why this player can't accept is visible text, not a hover title on a disabled button */}
               {!r.canAccept && r.reason ? <span data-offer-reason className="text-right text-[13px] leading-tight text-[#e8b4a0]">{r.reason}</span> : <button ref={r.id === firstEnabled ? first : undefined} disabled={!r.canAccept} title={r.reason ?? undefined}
-                aria-label={`${r.name}: accept${r.reason ? ` (${r.reason})` : ''}`} onClick={() => act(r.id, { type: 'RESPOND_TRADE', tradeId: offer.id, accept: true })}
-                className={`${plain()} !bg-[#2f7d3a] hover:!bg-[#3a9447] disabled:!bg-white/10`}>Accept</button>}
-              <button aria-label={`${r.name}: decline`} onClick={() => act(r.id, { type: 'RESPOND_TRADE', tradeId: offer.id, accept: false })} className={plain()}>Decline</button>
+                aria-label={`${r.name}: ${L('accept', 'принять')}${r.reason ? ` (${r.reason})` : ''}`} onClick={() => act(r.id, { type: 'RESPOND_TRADE', tradeId: offer.id, accept: true })}
+                className={`${plain()} !bg-[#2f7d3a] hover:!bg-[#3a9447] disabled:!bg-white/10`}>{L('Accept', 'Принять')}</button>}
+              <button aria-label={`${r.name}: ${L('decline', 'отказаться')}`} onClick={() => act(r.id, { type: 'RESPOND_TRADE', tradeId: offer.id, accept: false })} className={plain()}>{L('Decline', 'Отказаться')}</button>
             </>)}
-            {r.response === 'reject' && <span className="pr-[6px] text-[14px] text-[#a9a49b]">Declined</span>}
-            {r.response === 'accept' && <span className="pr-[2px] text-[14px] text-[#9fd49a]">Accepted</span>}
+            {r.response === 'reject' && <span className="pr-[6px] text-[14px] text-[#a9a49b]">{L('Declined', 'Отказ')}</span>}
+            {r.response === 'accept' && <span className="pr-[2px] text-[14px] text-[#9fd49a]">{L('Accepted', 'Согласен')}</span>}
             {r.response === 'accept' && offer.canManage && (
-              <button ref={r.id === firstEnabled ? first : undefined} disabled={!r.canConfirm} aria-label={`Confirm trade with ${r.name}`}
-                onClick={() => { if (act(offer.from, { type: 'CONFIRM_TRADE', tradeId: offer.id, with: r.id })) setTradeOpen(false) }} className={`${gold()} !h-[34px] !px-[12px] !text-[15px]`}>Confirm trade</button>
+              <button ref={r.id === firstEnabled ? first : undefined} disabled={!r.canConfirm} aria-label={L(`Confirm trade with ${r.name}`, `Подтвердить обмен: ${r.name}`)}
+                onClick={() => { if (act(offer.from, { type: 'CONFIRM_TRADE', tradeId: offer.id, with: r.id })) setTradeOpen(false) }} className={`${gold()} !h-[34px] !px-[12px] !text-[15px]`}>{L('Confirm trade', 'Подтвердить')}</button>
             )}
           </li>
         ))}
       </ul>
       {offer.canManage && <div className="mt-[10px] flex justify-end">
-        <button ref={cancel} aria-label="Cancel offer" onClick={() => act(offer.from, { type: 'CANCEL_TRADE' })} className={plain()}>Cancel offer</button>
+        <button ref={cancel} aria-label={L('Cancel offer', 'Отменить предложение')} onClick={() => act(offer.from, { type: 'CANCEL_TRADE' })} className={plain()}>{L('Cancel offer', 'Отменить предложение')}</button>
       </div>}
     </>
   )
@@ -265,7 +269,7 @@ function OfferPanel() {
 export function TradeDialog({ compact }: { compact: boolean }) {
   const { bank, offer } = useGameView()
   const seat = SEATS[offer?.from ?? bank.player]
-  const title = offer ? `${seat.name} offers a trade` : `${seat.name}: trade`
+  const title = offer ? L(`${seat.name} offers a trade`, `${seat.name} предлагает обмен`) : L(`${seat.name}: trade`, `${seat.name}: торговля`)
   return (
     <section role="dialog" aria-labelledby="trade-title" className={`pointer-events-auto rounded-[14px] px-[14px] pb-[12px] pt-[10px] ${panel}`} style={{ boxShadow: `inset 0 0 0 2px ${seat.color}aa, 0 14px 34px rgba(0,0,0,.6)` }}>
       <div className="mb-[8px] flex items-center justify-between gap-[10px]">
@@ -273,7 +277,7 @@ export function TradeDialog({ compact }: { compact: boolean }) {
           <span className="mr-[8px] inline-block h-[11px] w-[11px] rounded-full align-middle" style={{ background: seat.color }} />
           {title}
         </h2>
-        {!offer && <button aria-label="Close trade" onClick={() => setTradeOpen(false)} className={`grid h-[30px] w-[30px] place-items-center rounded-[8px] bg-white/10 text-[18px] text-white hover:bg-white/20 ${focusRing}`}>×</button>}
+        {!offer && <button aria-label={L('Close trade', 'Закрыть торговлю')} onClick={() => setTradeOpen(false)} className={`grid h-[30px] w-[30px] place-items-center rounded-[8px] bg-white/10 text-[18px] text-white hover:bg-white/20 ${focusRing}`}>×</button>}
       </div>
       <div id="trade-body">
         {offer ? <OfferPanel /> : <><ModeSwitch /><ComposePanel compact={compact} /></>}

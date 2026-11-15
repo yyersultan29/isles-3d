@@ -18,6 +18,8 @@ import { clearSave, readSave, resumable, startAutosave } from '../store/autosave
 import { readNames, writeNames, type Names } from '../store/names'
 import { setDevOpen, setPanel, setPlacementMode, setSeen, setTradeOpen } from '../store/ui'
 import { BRAND_NAME } from '../brand'
+import { L, count as countOf, useLocale } from './locale'
+import { LangSwitch } from './LangSwitch'
 import type { GameState, PlayerId, ReplayFile } from '../game'
 
 /** Whether this page load starts at the menu: a plain URL does, any option skips it. */
@@ -47,6 +49,7 @@ const plain = 'bg-white/10 font-semibold text-white hover:bg-white/20'
 export function StartMenu({ atStart }: { atStart: boolean }) {
   const store = useGameStore()
   const isOpen = useMenuOpen()
+  useLocale()
   // the saved game is offered only at load; later "Continue" goes back to the live game
   const [save, setSave] = useState<{ file: ReplayFile; state: GameState } | null>(() => {
     if (!atStart) return null
@@ -115,23 +118,26 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
       <section ref={card} role="dialog" aria-modal="true" aria-labelledby="menu-title" data-start-menu
         className={`w-full max-w-[440px] rounded-[16px] px-[18px] pb-[16px] pt-[16px] ${panel} animate-[notice-in_.25s_ease-out]`}
         style={{ boxShadow: 'inset 0 0 0 2px #f2b544aa, 0 18px 50px rgba(0,0,0,.65)' }}>
-        <h2 id="menu-title" className="font-display text-[28px] font-semibold leading-tight text-[#f4efe6]">{BRAND_NAME} <span className="text-[#f2b544]">3D</span></h2>
+        <div className="flex items-center justify-between gap-[10px]">
+          <h2 id="menu-title" className="font-display text-[28px] font-semibold leading-tight text-[#f4efe6]">{BRAND_NAME} <span className="text-[#f2b544]">3D</span></h2>
+          <LangSwitch />
+        </div>
 
         {(save || live) && (
           <div className="mt-[12px] rounded-[12px] bg-white/[0.05] p-[12px]">
             <div className="flex items-center justify-between gap-[10px]">
               <div className="min-w-0">
-                <h3 className="font-display text-[18px] font-semibold">{save ? 'Your saved game' : 'The current game'}</h3>
-                {save && <p className="truncate text-[13px] text-[#d6d2ca]">Turn {save.state.turn} · {phaseText(save.state)}</p>}
+                <h3 className="font-display text-[18px] font-semibold">{save ? L('Your saved game', 'Сохранённая игра') : L('The current game', 'Текущая игра')}</h3>
+                {save && <p className="truncate text-[13px] text-[#d6d2ca]">{L('Turn', 'Ход')} {save.state.turn} · {phaseText(save.state)}</p>}
               </div>
               <button ref={first} onClick={live && !save ? closeMenu : resume} data-menu-continue className={`h-[42px] shrink-0 rounded-full px-[22px] text-[17px] ${gold} ${focusRing}`}>
-                Continue
+                {L('Continue', 'Продолжить')}
               </button>
             </div>
             {shown && (
-              <ul aria-label="Scores" className="mt-[10px] grid grid-cols-4 gap-[6px]">
+              <ul aria-label={L('Scores', 'Очки')} className="mt-[10px] grid grid-cols-4 gap-[6px]">
                 {shown.map((p) => (
-                  <li key={p.id} aria-label={`${p.name}: ${p.vp} points`} className="flex items-center justify-center gap-[5px] rounded-[8px] bg-white/[0.05] py-[4px]" style={{ boxShadow: `inset 0 -3px 0 ${p.color}` }}>
+                  <li key={p.id} aria-label={`${p.name}: ${countOf(p.vp, 'point', 'points', 'очко', 'очка', 'очков')}`} className="flex items-center justify-center gap-[5px] rounded-[8px] bg-white/[0.05] py-[4px]" style={{ boxShadow: `inset 0 -3px 0 ${p.color}` }}>
                     <span aria-hidden className="h-[22px] w-[22px] overflow-hidden rounded-[5px]"><Avatar i={p.avatar} className="h-full w-full" /></span>
                     <span aria-hidden className="font-display text-[15px] font-semibold text-[#f2cf84]">{p.vp}</span>
                   </li>
@@ -142,13 +148,13 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
         )}
 
         <div className="mt-[12px] rounded-[12px] bg-white/[0.05] p-[12px]">
-          <h3 className="font-display text-[18px] font-semibold">Play on this device</h3>
-          <p className="text-[13px] text-[#d6d2ca]">Four players take turns on one screen. Names are optional.</p>
+          <h3 className="font-display text-[18px] font-semibold">{L('Play on this device', 'Играть на этом устройстве')}</h3>
+          <p className="text-[13px] text-[#d6d2ca]">{L('Four players take turns on one screen. Names are optional.', 'Четыре игрока ходят по очереди за одним экраном. Имена — по желанию.')}</p>
           <div className="mt-[8px] grid grid-cols-2 gap-[6px]">
             {ORDER.map((id) => (
               <label key={id} className="flex items-center gap-[6px] rounded-[8px] bg-black/25 py-[4px] pl-[4px] pr-[6px] ring-1 ring-white/10 focus-within:ring-2 focus-within:ring-[#f2b544]" style={{ boxShadow: `inset 3px 0 0 ${SEATS[id].color}` }}>
                 <span aria-hidden className="ml-[3px] h-[26px] w-[26px] shrink-0 overflow-hidden rounded-[6px]"><Avatar i={SEATS[id].avatar} className="h-full w-full" /></span>
-                <span className="sr-only">{DEFAULT_NAMES[id]} player's name</span>
+                <span className="sr-only">{L(`${DEFAULT_NAMES[id]} player's name`, `Имя игрока: ${DEFAULT_NAMES[id]}`)}</span>
                 <input value={names[id] ?? ''} maxLength={NAME_MAX} placeholder={DEFAULT_NAMES[id]} data-name-input={id}
                   onChange={(e) => setNames((n) => ({ ...n, [id]: e.target.value }))}
                   className="h-[30px] min-w-0 flex-1 bg-transparent text-[14.5px] text-white outline-none placeholder:text-[#a9a49a]" />
@@ -156,20 +162,20 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
             ))}
           </div>
           <div className="mt-[10px] flex items-center justify-between gap-[10px]">
-            <span className="text-[12.5px] text-[#d6d2ca]">{save || live ? 'Ends the game above' : ''}</span>
+            <span className="text-[12.5px] text-[#d6d2ca]">{save || live ? L('Ends the game above', 'Завершит игру выше') : ''}</span>
             <button ref={save || live ? undefined : first} onClick={startHere} data-menu-new
               className={`h-[42px] shrink-0 rounded-full px-[22px] text-[17px] ${save || live ? `rounded-[10px] ${plain}` : gold} ${focusRing}`}>
-              {save || live ? 'New game' : 'Start game'}
+              {save || live ? L('New game', 'Новая игра') : L('Start game', 'Начать игру')}
             </button>
           </div>
         </div>
 
         <div className="mt-[12px] flex items-center justify-between gap-[10px] rounded-[12px] bg-white/[0.05] p-[12px]">
           <div className="min-w-0">
-            <h3 className="font-display text-[18px] font-semibold">Play online</h3>
-            <p className="text-[13px] text-[#d6d2ca]">Create a room and send the link to three friends.</p>
+            <h3 className="font-display text-[18px] font-semibold">{L('Play online', 'Играть онлайн')}</h3>
+            <p className="text-[13px] text-[#d6d2ca]">{L('Create a room and send the link to three friends.', 'Создайте комнату и отправьте ссылку трём друзьям.')}</p>
           </div>
-          <button onClick={goOnline} data-menu-online className={`h-[40px] shrink-0 rounded-[10px] px-[14px] text-[14.5px] ${plain} ${focusRing}`}>Create room</button>
+          <button onClick={goOnline} data-menu-online className={`h-[40px] shrink-0 rounded-[10px] px-[14px] text-[14.5px] ${plain} ${focusRing}`}>{L('Create room', 'Создать комнату')}</button>
         </div>
       </section>
     </div>,

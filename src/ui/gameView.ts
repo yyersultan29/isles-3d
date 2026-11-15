@@ -5,6 +5,8 @@
 import { useMemo } from 'react'
 import { COSTS, legalActions, MAX_PROPOSALS_PER_TURN, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource, type Viewer } from '../game'
 import { useGame, useSeat, useSession } from '../store/GameProvider'
+import { L, count as countOf, onLocale } from './locale'
+import { cardName, colourName, resCount } from './words'
 
 /**
  * G5.3b: whose screen it is. `null` is hot-seat (the screen follows whoever the game waits for);
@@ -22,8 +24,9 @@ export const SEATS: Record<PlayerId, { name: string; color: string; avatar: numb
   p4: { name: 'Orange', color: '#f0a030', avatar: 2 },
 }
 
-/** The colour names, used when a player leaves their name empty (and always online). */
+/** The colour names in the current language, used when a player leaves their name empty (and always online). */
 export const DEFAULT_NAMES: Record<PlayerId, string> = { p1: 'Red', p2: 'Blue', p3: 'White', p4: 'Orange' }
+const refreshDefaults = () => { for (const id of Object.keys(DEFAULT_NAMES) as PlayerId[]) DEFAULT_NAMES[id] = colourName(id) }
 export const NAME_MAX = 14
 
 /** A typed name made safe to show: trimmed, single-spaced, at most NAME_MAX characters. */
@@ -34,9 +37,15 @@ export const cleanName = (n: string | undefined) => (n ?? '').replace(/\s+/g, ' 
  * so the names are set before a game starts or loads (the store bump then re-renders everything, and
  * the game log is rebuilt with them). Empty names fall back to the colour.
  */
+let typed: Partial<Record<PlayerId, string>> = {}
 export function setSeatNames(names: Partial<Record<PlayerId, string>>) {
-  for (const id of Object.keys(SEATS) as PlayerId[]) SEATS[id].name = cleanName(names[id]) || DEFAULT_NAMES[id]
+  typed = names
+  refreshDefaults()
+  for (const id of Object.keys(SEATS) as PlayerId[]) SEATS[id].name = cleanName(typed[id]) || DEFAULT_NAMES[id]
 }
+// G9.4: colour names follow the language (the HUD re-mounts after this runs)
+setSeatNames({})
+onLocale(() => setSeatNames(typed))
 
 export interface SeatView {
   id: PlayerId
@@ -88,41 +97,49 @@ export function phaseText(s: GameState): string {
   const who = SEATS[s.order[s.active]].name
   switch (s.phase.kind) {
     case 'setup': {
-      const round = s.phase.round === 1 ? 'first' : 'second'
-      // G7.6: a command, naming what to look for on the board
-      return s.phase.step === 'settlement' ? `${who}: choose a light spot for your ${round} settlement` : `${who}: place a road next to your settlement`
+      const first = s.phase.round === 1
+      // G7.6: a command, naming what to look for on the board (G9.4: "a highlighted corner", was "a light spot")
+      return s.phase.step === 'settlement'
+        ? L(`${who}: choose a highlighted corner for your ${first ? 'first' : 'second'} settlement`, `${who}: выберите подсвеченный угол для ${first ? 'первого' : 'второго'} поселения`)
+        : L(`${who}: place a road next to your settlement`, `${who}: поставьте дорогу рядом с поселением`)
     }
-    case 'preRoll': return `${who}: roll the dice`
-    case 'actions': return `${who}: build, trade or end your turn`
+    case 'preRoll': return L(`${who}: roll the dice`, `${who}: бросьте кубики`)
+    case 'actions': return L(`${who}: build, trade or end your turn`, `${who}: стройте, торгуйте или завершите ход`)
     case 'discard': {
       const pending = s.phase.pending
       const list = s.order.filter((p) => pending[p]).map((p) => `${SEATS[p].name} ${pending[p]}`).join(', ')
-      return `Seven! Discard half: ${list}`
+      return L(`Seven! Discard half: ${list}`, `Семёрка! Сбросьте половину: ${list}`)
     }
     // G7.5: a card's steps say which card it is, what to pick and how many are left
-    case 'moveRobber': return s.phase.source === 'knight' ? `${who}: Knight: pick a tile for the robber` : `${who}: move the robber to another tile`
-    case 'steal': return `${who}: choose a player to rob`
-    case 'roadBuilding': return `${who}: Road Building: pick an edge for a free road (${s.phase.remaining} left)`
-    case 'gameOver': return `${SEATS[s.phase.winner].name} wins!`
+    case 'moveRobber': return s.phase.source === 'knight'
+      ? L(`${who}: Knight: pick a tile for the robber`, `${who}: ${cardName('knight')}: выберите гекс для разбойника`)
+      : L(`${who}: move the robber to another tile`, `${who}: переставьте разбойника на другой гекс`)
+    case 'steal': return L(`${who}: choose a player to rob`, `${who}: выберите, кого ограбить`)
+    case 'roadBuilding': return L(`${who}: Road Building: pick an edge for a free road (${s.phase.remaining} left)`, `${who}: ${cardName('roadBuilding')}: выберите ребро для бесплатной дороги (осталось ${s.phase.remaining})`)
+    case 'gameOver': return L(`${SEATS[s.phase.winner].name} wins!`, `${SEATS[s.phase.winner].name} побеждает!`)
   }
 }
 
 /** The plinth's main button: Roll in preRoll, End Turn in actions, otherwise a disabled hint. */
 export function primaryAction(s: GameState, me: Me = null): { label: string; short: string; action: Action | null; player: PlayerId | null } {
-  if (s.phase.kind === 'gameOver') return { label: 'Game over', short: 'Over', action: null, player: null }
+  if (s.phase.kind === 'gameOver') return { label: L('Game over', 'Игра окончена'), short: L('Over', 'Конец'), action: null, player: null }
   const player = s.order[s.active]
   if (!mine(me, player)) {
     // online, someone else's move; during a seven this seat may still owe a discard (its dialog)
-    const label = s.phase.kind === 'discard' ? 'Discarding…' : `${SEATS[player].name}’s turn`
-    return { label, short: 'Wait', action: null, player: null }
+    const label = s.phase.kind === 'discard' ? L('Discarding…', 'Сброс карт…') : L(`${SEATS[player].name}’s turn`, `Ходит ${SEATS[player].name}`)
+    return { label, short: L('Wait', 'Ждите'), action: null, player: null }
   }
   const legal = legalActions(s, player)
-  if (s.phase.kind === 'preRoll' && legal.some((a) => a.type === 'ROLL')) return { label: 'Roll Dice', short: 'Roll', action: { type: 'ROLL' }, player }
-  if (s.phase.kind === 'actions' && legal.some((a) => a.type === 'END_TURN')) return { label: 'End Turn', short: 'End', action: { type: 'END_TURN' }, player }
+  if (s.phase.kind === 'preRoll' && legal.some((a) => a.type === 'ROLL')) return { label: L('Roll Dice', 'Бросить'), short: L('Roll', 'Бросок'), action: { type: 'ROLL' }, player }
+  if (s.phase.kind === 'actions' && legal.some((a) => a.type === 'END_TURN')) return { label: L('End Turn', 'Конец хода'), short: L('End', 'Конец'), action: { type: 'END_TURN' }, player }
   // disabled hints: [desktop label, compact label]
   // G7.6: never a bare "Place": the hint says where the action is
-  const hint: Record<string, [string, string]> = { setup: ['On the board', 'On board'], discard: ['Discarding…', 'Wait'], moveRobber: ['Move the robber', 'Robber'], steal: ['Pick who to rob', 'Rob'], roadBuilding: ['Free roads', 'Roads'] }
-  const [label, short] = hint[s.phase.kind] ?? ['Wait', 'Wait']
+  const hint: Record<string, [string, string]> = {
+    setup: [L('On the board', 'На поле'), L('On board', 'На поле')], discard: [L('Discarding…', 'Сброс карт…'), L('Wait', 'Ждите')],
+    moveRobber: [L('Move the robber', 'Разбойник'), L('Robber', 'Разбойник')], steal: [L('Pick who to rob', 'Кого ограбить'), L('Rob', 'Грабёж')],
+    roadBuilding: [L('Free roads', 'Дороги'), L('Roads', 'Дороги')],
+  }
+  const [label, short] = hint[s.phase.kind] ?? [L('Wait', 'Ждите'), L('Wait', 'Ждите')]
   return { label, short, action: null, player }
 }
 
@@ -154,9 +171,12 @@ export function gameView(s: GameState, me: Me = null) {
 export type BuildKind = 'road' | 'settlement' | 'city' | 'dev'
 export interface BuildOption { kind: BuildKind; enabled: boolean; reason: string | null; cost: Partial<Record<Resource, number>> }
 
-const RES_NAME: Record<Resource, string> = { lumber: 'wood', brick: 'brick', wool: 'wool', grain: 'grain', ore: 'ore' }
 export const costText = (c: Partial<Record<Resource, number>>) =>
-  RESOURCE_ORDER.filter((r) => c[r]).map((r) => `${c[r]} ${RES_NAME[r]}`).join(', ')
+  RESOURCE_ORDER.filter((r) => c[r]).map((r) => resCount(c[r]!, r)).join(', ')
+const WAIT = () => L('Wait for your turn', 'Дождитесь своего хода')
+const WATCHING = () => L('Watching', 'Вы зритель')
+const NOT_NOW = () => L('Not now', 'Не сейчас')
+const ROLL_FIRST = () => L('Roll the dice first', 'Сначала бросьте кубики')
 
 // ---------- G4.8a: hot-seat privacy ----------
 
@@ -194,7 +214,7 @@ export function handOf(s: GameState, me: Me = null): { owner: PlayerId; counts: 
 export function buildOptions(s: GameState, me: Me = null): BuildOption[] {
   const active = s.order[s.active]
   if (!mine(me, active)) {
-    const reason = me === 'spectator' ? 'Watching' : 'Wait for your turn'
+    const reason = me === 'spectator' ? WATCHING() : WAIT()
     return (['road', 'settlement', 'city', 'dev'] as BuildKind[]).map((kind) => ({ kind, enabled: false, reason, cost: COSTS[kind] }))
   }
   const p = active
@@ -208,12 +228,12 @@ export function buildOptions(s: GameState, me: Me = null): BuildOption[] {
     let reason: string | null = null
     if (!enabled) {
       const missing = RESOURCE_ORDER.filter((r) => pl.resources[r] < (cost[r] ?? 0))
-      if (s.phase.kind === 'preRoll') reason = 'Roll the dice first'
-      else if (s.phase.kind === 'setup') reason = 'After setup' // G7.6
-      else if (s.phase.kind !== 'actions') reason = 'Not now'
-      else if (pieces[kind] === 0) reason = kind === 'dev' ? 'The deck is empty' : `No ${kind === 'city' ? 'cities' : kind + 's'} left`
-      else if (missing.length) reason = `Need ${missing.map((r) => `${(cost[r] ?? 0) - pl.resources[r]} ${RES_NAME[r]}`).join(', ')}` // G7.4: short, so the rows fit above the dice
-      else reason = 'No legal spot'
+      if (s.phase.kind === 'preRoll') reason = ROLL_FIRST()
+      else if (s.phase.kind === 'setup') reason = L('After setup', 'После расстановки') // G7.6
+      else if (s.phase.kind !== 'actions') reason = NOT_NOW()
+      else if (pieces[kind] === 0) reason = kind === 'dev' ? L('The deck is empty', 'Колода пуста') : L(`No ${kind === 'city' ? 'cities' : kind + 's'} left`, ({ road: 'Дороги', settlement: 'Поселения', city: 'Города' } as Record<string, string>)[kind] + ' закончились')
+      else if (missing.length) reason = L('Need ', 'Нужно: ') + missing.map((r) => resCount((cost[r] ?? 0) - pl.resources[r], r)).join(', ') // G7.4: short, so the rows fit above the dice
+      else reason = L('No legal spot', 'Нет места')
     }
     return { kind, enabled, reason, cost }
   })
@@ -257,7 +277,7 @@ export function bankView(s: GameState, me: Me = null): BankView {
   const pl = s.players.find((p) => p.id === player)!
   const myTurn = mine(me, s.order[s.active])
   const open = s.phase.kind === 'actions' && myTurn
-  const reason = open ? null : !myTurn ? (me === 'spectator' ? 'Watching' : 'Wait for your turn') : s.phase.kind === 'preRoll' ? 'Roll the dice first' : 'Not now'
+  const reason = open ? null : !myTurn ? (me === 'spectator' ? WATCHING() : WAIT()) : s.phase.kind === 'preRoll' ? ROLL_FIRST() : NOT_NOW()
   const rows = RESOURCE_ORDER.map((res) => {
     const rate = tradeRate(s, player, res)
     return { res, rate, have: pl.resources[res], bank: s.bank[res], canGive: open && pl.resources[res] >= rate }
@@ -279,15 +299,15 @@ const sum = (c: Counts) => RESOURCE_ORDER.reduce((a, r) => a + (c[r] ?? 0), 0)
 
 /** Why the active player can't propose this offer yet (mirrors rules/trade.ts propose), or null. */
 export function proposeCheck(s: GameState, offer: Counts, request: Counts, to: PlayerId[]): string | null {
-  if (s.phase.kind !== 'actions') return 'Not now'
+  if (s.phase.kind !== 'actions') return NOT_NOW()
   const pl = s.players.find((p) => p.id === s.order[s.active])!
-  if (!sum(offer)) return 'Add cards you give'
-  if (!sum(request)) return 'Add cards you want'
-  if (RESOURCE_ORDER.some((r) => offer[r] && request[r])) return 'A resource can’t be on both sides'
-  if (!to.length) return 'Choose at least one player'
+  if (!sum(offer)) return L('Add cards you give', 'Добавьте карты, которые отдаёте')
+  if (!sum(request)) return L('Add cards you want', 'Добавьте карты, которые хотите')
+  if (RESOURCE_ORDER.some((r) => offer[r] && request[r])) return L('A resource can’t be on both sides', 'Один ресурс не может быть с обеих сторон')
+  if (!to.length) return L('Choose at least one player', 'Выберите хотя бы одного игрока')
   const short = RESOURCE_ORDER.find((r) => (offer[r] ?? 0) > pl.resources[r])
-  if (short) return `You have only ${pl.resources[short]} ${RES_NAME[short]}`
-  if (s.tradesProposedThisTurn >= MAX_PROPOSALS_PER_TURN) return `At most ${MAX_PROPOSALS_PER_TURN} offers per turn`
+  if (short) return L(`You have only ${resCount(pl.resources[short], short)}`, `У вас только ${resCount(pl.resources[short], short)}`)
+  if (s.tradesProposedThisTurn >= MAX_PROPOSALS_PER_TURN) return L(`At most ${MAX_PROPOSALS_PER_TURN} offers per turn`, `Не больше ${countOf(MAX_PROPOSALS_PER_TURN, 'offer', 'offers', 'предложения', 'предложений', 'предложений')} за ход`)
   return null
 }
 
@@ -309,7 +329,7 @@ export function offerView(s: GameState, me: Me = null): OfferView | null {
     const short = RESOURCE_ORDER.filter((r) => res[r] < (t.request[r] ?? 0))
     return {
       id, ...SEATS[id], response: t.responses[id] ?? 'pending', canRespond, canAccept, canConfirm: confirmable.has(id),
-      reason: canAccept || !canRespond ? null : short.length ? `Needs ${short.map((r) => `${(t.request[r] ?? 0) - res[r]} more ${RES_NAME[r]}`).join(', ')}` : null,
+      reason: canAccept || !canRespond ? null : short.length ? L(`Needs ${short.map((r) => `${(t.request[r] ?? 0) - res[r]} more ${resCount(2, r).replace(/^2 /, '')}`).join(', ')}`, `Не хватает: ${short.map((r) => resCount((t.request[r] ?? 0) - res[r], r)).join(', ')}`) : null,
     } as OfferRow
   })
   return { id: t.id, from: t.from, offer: { ...t.offer }, request: { ...t.request }, rows, canManage }
@@ -341,7 +361,7 @@ export function devView(s: GameState, me: Me = null): DevView {
   const rows = DEV_ORDER.flatMap((type): DevRow[] => {
     const cards = pl.devCards.filter((c) => c.type === type)
     if (!cards.length) return []
-    if (type === 'victoryPoint') return [{ type, count: cards.length, playable: false, reason: 'Counts at the end', group: 'vp' }]
+    if (type === 'victoryPoint') return [{ type, count: cards.length, playable: false, reason: L('Counts at the end', 'Засчитывается в конце'), group: 'vp' }]
     const fresh = cards.filter((c) => c.boughtOnTurn >= s.turn).length
     const old = cards.length - fresh
     const out: DevRow[] = []
@@ -351,16 +371,16 @@ export function devView(s: GameState, me: Me = null): DevView {
       let group: DevGroup = 'play'
       if (!playable) {
         group = 'wait'
-        if (!mine(me, s.order[s.active])) reason = 'Wait for your turn'
-        else if (s.phase.kind !== 'preRoll' && s.phase.kind !== 'actions') reason = 'Not now'
-        else if (pl.playedDevThisTurn) { reason = 'One card per turn'; group = 'played' }
-        else if (type === 'roadBuilding') reason = 'No legal road'
-        else if (type === 'yearOfPlenty') reason = 'The bank is empty'
-        else reason = 'Not now'
+        if (!mine(me, s.order[s.active])) reason = WAIT()
+        else if (s.phase.kind !== 'preRoll' && s.phase.kind !== 'actions') reason = NOT_NOW()
+        else if (pl.playedDevThisTurn) { reason = L('One card per turn', 'Одна карта за ход'); group = 'played' }
+        else if (type === 'roadBuilding') reason = L('No legal road', 'Негде строить дорогу')
+        else if (type === 'yearOfPlenty') reason = L('The bank is empty', 'Банк пуст')
+        else reason = NOT_NOW()
       }
       out.push({ type, count: old, playable, reason, group })
     }
-    if (fresh) out.push({ type, count: fresh, playable: false, reason: 'Bought this turn', group: 'new' })
+    if (fresh) out.push({ type, count: fresh, playable: false, reason: L('Bought this turn', 'Куплена в этот ход'), group: 'new' })
     return out
   }).sort((a, b) => DEV_GROUPS.indexOf(a.group) - DEV_GROUPS.indexOf(b.group))
   const bankTotal = RESOURCE_ORDER.reduce((a, r) => a + s.bank[r], 0)
