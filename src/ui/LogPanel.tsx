@@ -60,7 +60,7 @@ function Line({ e }: { e: LogEntry }) {
 
 /** The list itself; `all` shows every line in a scroller kept at the newest line. */
 function LogList({ entries, all, className = '' }: { entries: readonly LogEntry[]; all: boolean; className?: string }) {
-  const box = useRef<HTMLOListElement>(null)
+  const box = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
   const shown = all ? entries : entries.slice(-COLLAPSED_LINES)
   useLayoutEffect(() => {
@@ -68,11 +68,14 @@ function LogList({ entries, all, className = '' }: { entries: readonly LogEntry[
     if (el && stick.current) el.scrollTop = el.scrollHeight
   }, [shown, all])
   return (
-    <ol ref={box} role="log" aria-live="off" aria-label={LOG()}
+    // the log role sits on a wrapper: on the <ol> itself it would hide the list from its items (axe: listitem)
+    <div ref={box} role="log" aria-live="off" aria-label={LOG()}
       onScroll={(ev) => { const el = ev.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24 }}
-      className={`flex flex-col gap-[3px] ${all ? 'overflow-y-auto overscroll-contain pr-[4px]' : 'overflow-hidden'} ${className}`}>
-      {shown.length ? shown.map((e) => <Line key={e.id} e={e} />) : <li className="text-[13px] text-[#a9a49a]">{L('Nothing has happened yet', 'Пока ничего не произошло')}</li>}
-    </ol>
+      className={`${all ? 'overflow-y-auto overscroll-contain pr-[4px]' : 'overflow-hidden'} ${className}`}>
+      <ol className="flex flex-col gap-[3px]">
+        {shown.length ? shown.map((e) => <Line key={e.id} e={e} />) : <li className="text-[13px] text-[#a9a49a]">{L('Nothing has happened yet', 'Пока ничего не произошло')}</li>}
+      </ol>
+    </div>
   )
 }
 

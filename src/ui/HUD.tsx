@@ -24,7 +24,7 @@ import { affordable, shortfall, tradesText, type Shortfall } from './tradePlan'
 import { HelpButton, useShortcuts } from './shortcuts'
 import { deltaText, handDiff, hintSeen, markHintSeen, type HandCounts } from './handDelta'
 import { L, count } from './locale'
-import { awardName, pieceName, resName, resTitle } from './words'
+import { awardName, awardShort, pieceName, resName, resTitle } from './words'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -100,14 +100,38 @@ export const AwayBadge = ({ auto = false }: { auto?: boolean }) => auto
   ? <span title={L('Played automatically until they act again', 'Играет автоматически, пока игрок не вернётся')} className="rounded-[4px] bg-[#f2b544]/15 px-[4px] text-[11px] font-semibold text-[#f2cf84] ring-1 ring-[#f2b544]/40">{L('auto', 'авто')}</span>
   : <span title={L('Disconnected', 'Нет связи')} className="rounded-[4px] bg-white/10 px-[4px] text-[11px] font-semibold text-[#d6d2ca] ring-1 ring-white/25">{L('away', 'нет связи')}</span>
 
-/** Small award badges (Longest Road / Largest Army) shown on a player card. */
+export const RoadAwardIco = ({ className = 'h-[15px] w-[15px]' }: { className?: string }) => (
+  <svg aria-hidden viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M7 21l3-18M17 21L14 3" /><path d="M12 5v2.5M12 11v2.5M12 17v2.5" /></svg>
+)
+export const ArmyAwardIco = ({ className = 'h-[15px] w-[15px]' }: { className?: string }) => (
+  <svg aria-hidden viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" /><path d="M9.5 9.5l5 5M14.5 9.5l-5 5" strokeLinecap="round" /></svg>
+)
+const AWARD_ICO = { longestRoad: RoadAwardIco, largestArmy: ArmyAwardIco }
+const awardsOf = (seat: SeatView) => (['longestRoad', 'largestArmy'] as const).filter((a) => seat[a])
+
+/** Compact award chips (icon and +2) for the small player cards; the full name is the title. */
 export function AwardBadges({ seat }: { seat: SeatView }) {
-  if (!seat.longestRoad && !seat.largestArmy) return null
+  const list = awardsOf(seat)
+  if (!list.length) return null
   return (
-    <span className="flex gap-[3px]">
-      {seat.longestRoad && <span title={`${awardName('longestRoad')} (+2)`} className="rounded-[4px] bg-[#f2b544]/20 px-[4px] text-[11px] font-bold text-[#f2cf84] ring-1 ring-[#f2b544]/50">{L('LR', 'ДД')}</span>}
-      {seat.largestArmy && <span title={`${awardName('largestArmy')} (+2)`} className="rounded-[4px] bg-[#f2b544]/20 px-[4px] text-[11px] font-bold text-[#f2cf84] ring-1 ring-[#f2b544]/50">{L('LA', 'БВ')}</span>}
+    <span className="ml-[2px] flex gap-[3px]">
+      {list.map((a) => { const I = AWARD_ICO[a]; return (
+        <span key={a} title={`${awardName(a)} (+2)`} className="flex items-center gap-[2px] rounded-[4px] bg-[#f2b544]/20 px-[3px] text-[11px] font-bold text-[#f2cf84] ring-1 ring-[#f2b544]/50"><I className="h-[12px] w-[12px]" /><span className="hidden min-[560px]:inline">+2</span></span>
+      ) })}
     </span>
+  )
+}
+
+/** G9.6: awards spelled out on the desktop player card, one line each: icon, name, +2. */
+function AwardLines({ seat }: { seat: SeatView }) {
+  const list = awardsOf(seat)
+  if (!list.length) return null
+  return (
+    <div data-award-lines className="mt-[6px] flex flex-col gap-[3px] text-[12px] font-semibold leading-tight text-[#f2cf84]">
+      {list.map((a) => { const I = AWARD_ICO[a]; return (
+        <span key={a} data-award={a} title={`${awardName(a)} (+2)`} className="flex items-center gap-[5px]"><I className="h-[14px] w-[14px] shrink-0" /><span className="truncate">{awardShort(a)}</span><span className="text-[#ffe08a]">+2</span></span>
+      ) })}
+    </div>
   )
 }
 
@@ -125,20 +149,21 @@ function Players() {
           key={p.id}
           aria-label={seatLabel(p)}
           aria-current={p.active ? 'true' : undefined}
-          className={`relative flex h-[62px] items-center gap-[10px] overflow-hidden rounded-[8px] pl-[6px] pr-[10px] transition-transform ${panel} ${p.active ? '-translate-x-[8px]' : ''}`}
+          className={`relative flex min-h-[62px] items-center gap-[10px] overflow-hidden rounded-[8px] py-[6px] pl-[6px] pr-[10px] transition-transform ${panel} ${p.active ? '-translate-x-[8px]' : ''}`}
           style={{ boxShadow: `inset ${p.active ? 5 : 3}px 0 0 ${p.color}, inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '55'}, 0 8px 22px rgba(0,0,0,.5)` }}
         >
           <div className={`h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[7px] ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
             <Avatar i={p.avatar} className="h-full w-full" />
           </div>
-          <div className="flex-1">
-            <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}<AwardBadges seat={p} />{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
+          <div className="min-w-0 flex-1">
+            <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
             <div aria-hidden className="flex items-center gap-[9px] text-[14px] text-[#ece8e0] leading-none [&>span]:gap-[3px]">
               <span title={L('Victory points', 'Победные очки')} className="flex items-center gap-[4px]"><Trophy />{p.vp}</span>
               <span title={L('Resource cards', 'Карты ресурсов')} className="flex items-center gap-[4px]"><CardsIco />{p.cards}</span>
               <span title={L('Development cards in hand', 'Карты развития на руке')} className="flex items-center gap-[4px]"><DevCardIco />{p.devCards}</span>
               <span title={L('Knights played', 'Сыграно рыцарей')} className={`flex items-center gap-[4px] ${p.knights ? '' : 'opacity-45'}`}><KnightIco />{p.knights}</span>
             </div>
+            <AwardLines seat={p} />
           </div>
           {p.active && <span aria-hidden className="absolute right-[10px] top-[9px] h-[9px] w-[9px] rounded-full bg-[#f2b544] shadow-[0_0_8px_#f2b544]" />}
         </li>

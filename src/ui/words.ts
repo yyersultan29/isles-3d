@@ -43,3 +43,6 @@ export const colourName = (p: PlayerId) => ({ p1: L('Red', 'Красный'), p2
 
 /** "1 wool, 1 grain, 1 ore": a cost in the current language. */
 export const costText0 = resList
+
+/** Award names that fit a player card (G9.6): the full name in English, a shorter one in Russian. */
+export const awardShort = (a: 'longestRoad' | 'largestArmy') => (a === 'longestRoad' ? L('Longest Road', 'Длинная дорога') : L('Largest Army', 'Большое войско'))

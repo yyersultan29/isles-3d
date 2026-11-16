@@ -62,8 +62,9 @@ export function CompactHUD() {
                 {p.auto && <span aria-hidden title={L('Played automatically', 'Играет автоматически')} className="absolute bottom-0 right-0 h-[9px] w-[9px] rounded-full bg-[#f2b544] ring-1 ring-black/60" />}
               </div>
               <div aria-hidden className="min-w-0 leading-none [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:shrink-0">
-                <div className="mb-[4px] hidden items-center gap-[4px] truncate text-[13px] font-semibold text-white min-[560px]:flex">{p.name}<AwardBadges seat={p} /></div>
-                <div className="flex items-center gap-[3px] text-[13px] font-semibold"><Trophy />{p.vp}</div>
+                <div className="mb-[4px] hidden items-center gap-[4px] truncate text-[13px] font-semibold text-white min-[560px]:flex">{p.name}</div>
+                {/* G9.6: awards beside the points (the name row is cut short by long names) */}
+                <div className="flex items-center gap-[3px] text-[13px] font-semibold"><Trophy />{p.vp}<AwardBadges seat={p} /></div>
                 <div className="mt-[2px] flex items-center gap-[3px] text-[12px] text-[#d6d2ca] min-[560px]:hidden"><CardsIco />{p.cards}</div>
               </div>
             </li>
