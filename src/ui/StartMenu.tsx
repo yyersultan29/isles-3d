@@ -22,9 +22,13 @@ import { L, count as countOf, useLocale } from './locale'
 import { LangSwitch } from './LangSwitch'
 import type { GameState, PlayerId, ReplayFile } from '../game'
 
-/** Whether this page load starts at the menu: a plain URL does, any option skips it. */
+/** Whether this page load starts at the menu: a plain URL does, any option skips it, except the
+ *  language (`?lang=ru` is a link for new players and should still open the menu). */
 export function menuAtStart() {
-  return typeof window !== 'undefined' && window.location.search === ''
+  if (typeof window === 'undefined') return false
+  const q = new URLSearchParams(window.location.search)
+  q.delete('lang')
+  return q.size === 0
 }
 
 // ---------------------------------------------------------------- open / closed
