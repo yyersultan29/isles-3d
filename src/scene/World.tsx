@@ -20,9 +20,11 @@ import { CameraInteraction, setHome, applyViewPreset } from './CameraInteraction
 import { TileHover } from './TileHover'
 import { Placement } from './Placement'
 import { Feedback } from './Feedback'
-import { quality } from './quality'
+import { quality, useQuality } from './quality'
 import { motion } from './motion'
 import { ContextLossGuard } from './SceneGuard'
+import { MountainGuy } from './MountainGuy'
+import { FrameTicker } from './FrameTicker'
 
 // Debug override: ?cam=x,y,z&tgt=x,y,z
 const qp = new URLSearchParams(window.location.search)
@@ -179,6 +181,14 @@ function fitCompact(camera: THREE.PerspectiveCamera, w: number, h: number, contr
 function Sun() {
   const ref = useRef<THREE.DirectionalLight>(null)
   const { scene } = useThree()
+  const q = useQuality()
+  // PERF P4: a new map size needs a new shadow render target (three allocates it on the next render)
+  useEffect(() => {
+    const l = ref.current
+    if (!l?.shadow.map) return
+    l.shadow.map.dispose()
+    ;(l.shadow as { map: THREE.WebGLRenderTarget | null }).map = null
+  }, [q.shadowMapSize])
   useEffect(() => {
     const l = ref.current
     if (!l) return
@@ -193,7 +203,7 @@ function Sun() {
       intensity={3.3}
       color="#ffbd78"
       castShadow
-      shadow-mapSize={[quality.shadowMapSize, quality.shadowMapSize]}
+      shadow-mapSize={[q.shadowMapSize, q.shadowMapSize]}
       shadow-bias={-0.0004}
       shadow-normalBias={0.02}
       shadow-radius={3}
@@ -232,6 +242,7 @@ function Lights() {
 }
 
 const off = new Set((qp.get('off') ?? '').split(','))
+const ALWAYS = qp.has('alwaysrender')
 
 /**
  * Saturation +0.08 and contrast +0.1, the same maths and colour spaces as postprocessing's
@@ -254,11 +265,27 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   outputColor = vec4(gradeToLinear(max(c, vec3(0.0))), inputColor.a);
 }`, { blendFunction: BlendFunction.SRC })
 
+/**
+ * N8AO, created once and then only switched on or off (Graphics: Low has no AO). Unmounting it
+ * would leak its render targets: the wrapper never disposes the pass.
+ */
+function AO({ quality }: { quality: 'low' | 'medium' | null }) {
+  const ref = useRef<{ enabled: boolean } | null>(null)
+  const mode = useRef<'low' | 'medium'>(quality ?? 'medium')
+  if (quality) mode.current = quality
+  useLayoutEffect(() => { if (ref.current) ref.current.enabled = !!quality }, [quality])
+  return <N8AO ref={ref as never} aoRadius={0.45} intensity={2.6} distanceFalloff={0.6} quality={mode.current} halfRes />
+}
+
 function Effects() {
+  const q = useQuality()
+  // AO mounts the first time a preset needs it and stays mounted (see AO)
+  const aoUsed = useRef(false)
+  if (q.ao) aoUsed.current = true
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
-      {off.has('ao') || !quality.ao ? <></> : <N8AO aoRadius={0.45} intensity={2.6} distanceFalloff={0.6} quality={quality.ao} halfRes />}
-      {off.has('bloom') || !quality.bloom ? <></> : <Bloom luminanceThreshold={1.7} luminanceSmoothing={0.3} intensity={0.5} mipmapBlur radius={0.5} />}
+      {off.has('ao') || !aoUsed.current ? <></> : <AO quality={q.ao} />}
+      {off.has('bloom') || !q.bloom ? <></> : <Bloom luminanceThreshold={1.7} luminanceSmoothing={0.3} intensity={0.5} mipmapBlur radius={0.5} />}
       <primitive object={GRADE} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette offset={0.32} darkness={0.5} />
@@ -289,10 +316,14 @@ function ShadowThrottle() {
 
 export function World() {
   const controls = useRef<OrbitControlsImpl>(null)
+  const q = useQuality()
   return (
     <Canvas
+      // PERF P1: FrameTicker renders each frame, at the rate the frame budget picks (60 acting / 30 watching / 4 unfocused);
+      // ?alwaysrender restores the old every-display-frame loop for A/B checks
+      frameloop={ALWAYS ? 'always' : 'never'}
       shadows={{ type: THREE.PCFSoftShadowMap }}
-      dpr={quality.dpr}
+      dpr={q.dpr}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
       camera={{ position: CAMERA_POS, fov: 30, near: 0.1, far: 120 }}
       onCreated={({ gl, scene, camera }) => {
@@ -304,6 +335,7 @@ export function World() {
       }}
     >
       <CameraRig />
+      {!ALWAYS && <FrameTicker />}
       <ShadowThrottle />
       <ContextLossGuard />
       <CameraInteraction />
@@ -314,6 +346,8 @@ export function World() {
         <Vegetation />
         <Tokens />
         <Robber />
+        {/* own boundary: the island never waits for the character's model file */}
+        {!off.has('guy') && <Suspense fallback={null}><MountainGuy /></Suspense>}
         <Buildings />
         <Smoke />
         {!qp.has('nohover') && <TileHover />}

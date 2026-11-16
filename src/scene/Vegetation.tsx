@@ -8,6 +8,7 @@ import { addWind } from './shaders'
 import { oceanTime } from './Ocean'
 import { animTime } from './motion'
 import { usePieces } from './Pieces'
+import { GUY_SPOT, GUY_FOOT, ROCK_R } from './mountainGuyLogic'
 
 export interface Inst { x: number; y: number; z: number; s: number; ry: number; sy?: number; rx?: number; rz?: number; tint?: THREE.Color }
 
@@ -36,6 +37,9 @@ for (const h of HARBORS) {
   const a = corner(t, h.edge), b = corner(t, (h.edge + 1) % 6)
   blockers.push([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0.3])
 }
+// the mountain guy, his boulder and the strip toward the camera: wide enough that a mountain
+// outcrop (up to ~0.2 across, placed by its centre) can't cover his legs or the boulder
+if (GUY_SPOT) { const { x, z, rock } = GUY_SPOT; blockers.push([x, z, GUY_FOOT + 0.14], [x, z + 0.28, 0.24], [x, z + 0.55, 0.22], [rock.x, rock.z, ROCK_R + 0.14], [rock.x, rock.z + 0.3, 0.2]) }
 export const blocked = (x: number, z: number, pad = 0) => blockers.some(([bx, bz, r]) => (x - bx) ** 2 + (z - bz) ** 2 < (r + pad) ** 2)
 
 /** Random point on the turf strip between the outer rails and the cliff lip, or null. */

@@ -20,6 +20,7 @@ import { setDevOpen, setPanel, setPlacementMode, setSeen, setTradeOpen } from '.
 import { BRAND_NAME } from '../brand'
 import { L, count as countOf, useLocale } from './locale'
 import { LangSwitch } from './LangSwitch'
+import { GraphicsSwitch } from './GraphicsSwitch'
 import type { GameState, PlayerId, ReplayFile } from '../game'
 
 /** Whether this page load starts at the menu: a plain URL does, any option skips it, except the
@@ -181,6 +182,8 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
           </div>
           <button onClick={goOnline} data-menu-online className={`h-[40px] shrink-0 rounded-[10px] px-[14px] text-[14.5px] ${plain} ${focusRing}`}>{L('Create room', 'Создать комнату')}</button>
         </div>
+
+        <GraphicsSwitch className="mt-[12px] px-[2px]" />
       </section>
     </div>,
     document.body,

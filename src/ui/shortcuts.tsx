@@ -12,6 +12,7 @@ import { useGameStore, useSeat } from '../store/GameProvider'
 import { getPlacementMode, getTradeOpen, setTradeOpen } from '../store/ui'
 import { L, onLocale } from './locale'
 import { LangSwitch } from './LangSwitch'
+import { GraphicsSwitch } from './GraphicsSwitch'
 
 export type Shortcut = BuildKind | 'trade' | 'confirm'
 
@@ -108,6 +109,7 @@ export function HelpButton({ className = '', align = 'right' }: { className?: st
           </dl>
           <p className="mt-[8px] text-[12px] text-[#a9a49b]">{L('In your turn, when the button is available. Arrow keys and Enter place on the board.', 'В свой ход, когда кнопка доступна. Стрелки и Enter — постройка на поле.')}</p>
           <LangSwitch className="mt-[8px]" />
+          <GraphicsSwitch className="mt-[8px]" />
           <button onClick={() => { setOpen(false); btn.current?.focus() }} className={`mt-[6px] h-[30px] w-full rounded-[8px] bg-white/10 text-[13px] font-semibold text-white hover:bg-white/20 ${focusRing}`}>{L('Close', 'Закрыть')}</button>
         </section>
       )}

@@ -17,6 +17,7 @@ Everything visible is generated at runtime from code in this repository.
 | Surface detail textures (21) | `CanvasTexture`s painted at startup, 64²–512² | `src/scene/textures.ts` | project-original |
 | Environment lighting | drei `<Environment>` built from `<Lightformer>` panels (no HDR file is downloaded) | `World.tsx` | project-original |
 | HUD icons, avatars, resource illustrations, logo | hand-written inline SVG | `src/ui/icons.tsx`, `HUD.tsx`, `index.html` favicon | project-original |
+| "Mountain guy" character (the author's friend) | AI-generated with hyper3d.ai (OBJ + PBR maps), reduced to 4,998 triangles, 1024² WebP, meshopt (`scripts/build-mountain-guy.mjs`) | `public/models/mountain-guy.glb` (224 KB); originals in `src/models/mountain-guy/` (not shipped) | owner-supplied; **owner to confirm** the Hyper3D plan's terms for use in a public site (attribution / visibility rules differ by plan) |
 | Fonts: Fredoka, Inter | Google Fonts CDN, loaded in `index.html` | — | SIL Open Font License 1.1 (both) |
 
 The brand name lives in `src/brand.ts`. The project must not use third-party game branding.

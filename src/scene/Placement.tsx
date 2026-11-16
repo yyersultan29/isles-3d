@@ -8,6 +8,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { corner, edgeToScene, PLAYER_COLOR_OF, PLAYER_COLORS, tileAt, tileByAxial, vertexToScene } from './board'
 import { animTime, motion } from './motion'
+import { hitsGuy } from './mountainGuyLogic'
 import { useGame, useGameStore, useSeat } from '../store/GameProvider'
 import { cornerBand, cornerPips, keepsPlacing, placementTargets } from '../store/placement'
 import { setPlacementMode, usePlacementMode } from '../store/ui'
@@ -123,7 +124,8 @@ export function Placement() {
       const r = el.getBoundingClientRect()
       ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1)
       ray.setFromCamera(ndc, camera)
-      if (!ray.ray.intersectPlane(plane, hit)) return { spot: null, kind: null }
+      // a click on the mountain guy is his, not the board's (his ray would land behind him)
+      if (hitsGuy(ray.ray) || !ray.ray.intersectPlane(plane, hit)) return { spot: null, kind: null }
       let best: Spot | null = null, kind: 'v' | 'e' | 't' | null = null, bd = Infinity
       for (const s of spots.vertices) { const d = Math.hypot(hit.x - s.x, hit.z - s.z); if (d < PICK_VERTEX && d < bd) { best = s; bd = d; kind = 'v' } }
       for (const s of spots.edges) { const d = distToSegment(hit.x, hit.z, s.a, s.b); if (d < PICK_EDGE && d < bd) { best = s; bd = d; kind = 'e' } }

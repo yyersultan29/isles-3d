@@ -187,8 +187,27 @@ function mountainHeight(t: Tile, lx: number, lz: number, x: number, z: number, s
   return Math.max(0, m) + 0.05 + 0.025 * fbm(x * 4, z * 4, 2)
 }
 
+/**
+ * Flat ledges cut into the ground: inside `r` the height is `y`, blending back to the natural
+ * terrain over LEDGE_EDGE. Used for the mountain guy's little quarry (mountainGuyLogic.ts), which
+ * registers it at load, before any terrain mesh is built.
+ */
+export const LEDGES: { x: number; z: number; r: number; y: number }[] = []
+const LEDGE_EDGE = 0.07
+function ledged(h: number, x: number, z: number) {
+  for (const l of LEDGES) {
+    const d = Math.hypot(x - l.x, z - l.z)
+    if (d < l.r + LEDGE_EDGE) h += (l.y - h) * smoothstep(l.r + LEDGE_EDGE, l.r, d)
+  }
+  return h
+}
+
 /** Height above the tile plane for a world point inside tile t. */
 export function tileHeight(t: Tile, x: number, z: number): number {
+  return LEDGES.length ? ledged(naturalHeight(t, x, z), x, z) : naturalHeight(t, x, z)
+}
+
+function naturalHeight(t: Tile, x: number, z: number): number {
   const lx = x - t.x
   const lz = z - t.z
   const d = hexDist(lx, lz)

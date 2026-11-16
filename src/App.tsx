@@ -5,6 +5,7 @@ import { PassDevice } from './ui/PassDevice'
 import { Resume } from './ui/Resume'
 import { StartMenu, menuAtStart } from './ui/StartMenu'
 import { Lobby } from './ui/Lobby'
+import { FpsMeter } from './ui/FpsMeter'
 import { useLocale } from './ui/locale'
 import { onlineStoreFromUrl } from './net/connect'
 import type { OnlineStore } from './store/onlineStore'
@@ -42,6 +43,7 @@ export default function App() {
       {/* G9.3: a plain URL opens the start menu (which offers the saved game); any URL option keeps the old card */}
       {BOARD_MODE === 'game' && !online && <StartMenu atStart={atStart} />}
       {BOARD_MODE === 'game' && !online && !atStart && <Resume />}
+      <FpsMeter />
     </GameProvider>
   )
 }
