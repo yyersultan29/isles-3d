@@ -1,10 +1,11 @@
 // Render quality presets (V8) and the Graphics setting (PERF P4). They change only rendering cost,
 // never game logic or layout.
 //
-//   high    default: the signed-off look (DPR up to 2, 4096² sun shadows, N8AO, bloom)
+//   high    the signed-off look (DPR up to 2, 4096² sun shadows, N8AO, bloom)
 //   medium  DPR up to 1.5, 2048² shadows, cheaper AO denoise
 //   low     DPR 1, 2048² shadows, no AO; for integrated GPUs and older laptops
-//   auto    starts at high; steps down to medium if high can't hold 60 fps while the player acts
+//   auto    default (owner, 2026-11-16): starts at high; steps down to medium if high can't hold
+//           60 fps while the player acts
 //
 // The player picks one in the start menu or the help panel (saved in localStorage). `?quality=`
 // overrides it for tests and screenshots. Measured costs: screenshots/milestones/v8/PERF.md and
@@ -36,8 +37,8 @@ export const PRESETS: Record<QualityName, Quality> = {
   low: { name: 'low', dpr: [1, 1], shadowMapSize: 2048, ao: null, bloom: true, shadowEvery: 3 },
 }
 
-/** The setting a first-time player gets. 'high' keeps the signed-off look; 'auto' would favour quiet laptops. */
-export const DEFAULT_SETTING: GraphicsSetting = 'high'
+/** The setting a first-time player gets: Auto keeps the High look where the GPU can hold it, and quiets laptops where it can't. */
+export const DEFAULT_SETTING: GraphicsSetting = 'auto'
 export const GRAPHICS_SETTINGS: GraphicsSetting[] = ['auto', 'high', 'medium', 'low']
 const KEY = 'isles.graphics'
 

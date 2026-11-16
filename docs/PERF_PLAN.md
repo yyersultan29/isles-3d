@@ -1,6 +1,6 @@
 # P — Quiet and cool: performance analysis and plan
 
-Status: plan approved 2026-11-16 ("да начинаем"). **P0–P4 implemented, P5 measured and skipped (no cost), owner review pending** (see §6, §7 and `screenshots/milestones/perf/PERF.md`). P4's default stays `high` until the owner chooses; P6 not started. Trigger: "когда я играю локально у меня мак
+Status: plan approved 2026-11-16 ("да начинаем"). **P0–P4 implemented, P5 measured and skipped (no cost), owner review pending** (see §6, §7 and `screenshots/milestones/perf/PERF.md`). P4's default is **Auto** (owner, 2026-11-16: "стало тише, ставь по умолчанию авто"); P6 not started. Trigger: "когда я играю локально у меня мак
 начинает шуметь" — the owner's MacBook Pro (M3 Pro, 120 Hz Liquid Retina XDR) spins its fans
 during play.
 
