@@ -69,9 +69,9 @@ function LogList({ entries, all, className = '' }: { entries: readonly LogEntry[
   }, [shown, all])
   return (
     // the log role sits on a wrapper: on the <ol> itself it would hide the list from its items (axe: listitem)
-    <div ref={box} role="log" aria-live="off" aria-label={LOG()}
+    <div ref={box} role="log" aria-live="off" aria-label={LOG()} tabIndex={all ? 0 : undefined}
       onScroll={(ev) => { const el = ev.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24 }}
-      className={`${all ? 'overflow-y-auto overscroll-contain pr-[4px]' : 'overflow-hidden'} ${className}`}>
+      className={`${all ? `overflow-y-auto overscroll-contain rounded-[6px] pr-[4px] ${focusRing}` : 'overflow-hidden'} ${className}`}>
       <ol className="flex flex-col gap-[3px]">
         {shown.length ? shown.map((e) => <Line key={e.id} e={e} />) : <li className="text-[13px] text-[#a9a49a]">{L('Nothing has happened yet', 'Пока ничего не произошло')}</li>}
       </ol>

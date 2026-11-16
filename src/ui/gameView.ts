@@ -100,7 +100,7 @@ export function phaseText(s: GameState): string {
       const first = s.phase.round === 1
       // G7.6: a command naming what to do; G9.5: plain words (the rings' meaning is in the setup note)
       return s.phase.step === 'settlement'
-        ? L(`${who}: put your ${first ? 'first' : 'second'} settlement on a free corner`, `${who}: ${first ? 'первое' : 'второе'} поселение — на свободный угол`)
+        ? L(`${who}: put your ${first ? 'first' : 'second'} settlement on a free corner`, `${who}: ставьте ${first ? 'первое' : 'второе'} поселение`)
         : L(`${who}: place a road next to your settlement`, `${who}: поставьте дорогу рядом с поселением`)
     }
     case 'preRoll': return L(`${who}: roll the dice`, `${who}: бросьте кубики`)

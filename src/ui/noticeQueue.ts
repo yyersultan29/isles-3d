@@ -42,7 +42,7 @@ export function eventNotices(events: readonly GameEvent[]): Omit<Notice, 'id'>[]
         out.push({ kind: 'warn', text: L(`${name(e.to)} stole a card from ${name(e.from)}.`, `${name(e.to)} крадёт карту у ${name(e.from)}.`), color: SEATS[e.to].color }) // never which one
         break
       case 'AWARD_CHANGED':
-        if (e.to) out.push({ kind: 'good', text: L(`${name(e.to)} takes ${awardName(e.award)}${e.from ? ` from ${name(e.from)}` : ''}!`, `${name(e.to)} получает «${awardName(e.award)}»${e.from ? ` (было у ${name(e.from)})` : ''}!`), color: SEATS[e.to].color })
+        if (e.to) out.push({ kind: 'good', text: L(`${name(e.to)} takes ${awardName(e.award)}${e.from ? ` from ${name(e.from)}` : ''}!`, `${name(e.to)} получает «${awardName(e.award)}»${e.from ? ` (раньше — ${name(e.from)})` : ''}!`), color: SEATS[e.to].color })
         else if (e.from) out.push({ kind: 'warn', text: L(`${name(e.from)} loses ${awardName(e.award)}.`, `${name(e.from)} теряет «${awardName(e.award)}».`), color: SEATS[e.from].color })
         break
       case 'DEV_PLAYED':

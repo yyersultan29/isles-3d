@@ -120,7 +120,7 @@ export function logLines(events: readonly GameEvent[], tiles?: Record<TileId, Ti
         out.push({ kind: 'trade', player: e.from, text: L(`${name(e.from)} gave ${resList(e.gave)} to ${name(e.with)} for ${resList(e.got)}`, `${name(e.from)} отдаёт ${name(e.with)} ${resList(e.gave)} за ${resList(e.got)}`) })
         break
       case 'AWARD_CHANGED':
-        if (e.to) out.push({ kind: 'award', player: e.to, text: L(`${name(e.to)} takes ${awardName(e.award)}${e.from ? ` from ${name(e.from)}` : ''} (+2 points)`, `${name(e.to)} получает «${awardName(e.award)}»${e.from ? ` (было у ${name(e.from)})` : ''}: +2 очка`) })
+        if (e.to) out.push({ kind: 'award', player: e.to, text: L(`${name(e.to)} takes ${awardName(e.award)}${e.from ? ` from ${name(e.from)}` : ''} (+2 points)`, `${name(e.to)} получает «${awardName(e.award)}»${e.from ? ` (раньше — ${name(e.from)})` : ''}: +2 очка`) })
         else if (e.from) out.push({ kind: 'award', player: e.from, text: L(`${name(e.from)} loses ${awardName(e.award)}`, `${name(e.from)} теряет «${awardName(e.award)}»`) })
         break
       case 'GAME_WON':
@@ -170,6 +170,12 @@ function feedFor(store: GameStore): Feed {
   const notify = () => { for (const l of [...feed.listeners]) l() }
   const append = (b: Batch) => {
     feed.batches.push(b)
+    // keep only the batches the last LOG_MAX lines come from (a language change rewrites from them)
+    if (feed.batches.length > 2 * LOG_MAX) {
+      let n = 0, i = feed.batches.length
+      while (i > 0 && n < LOG_MAX) n += linesOf(feed.batches[--i]).length
+      feed.batches = feed.batches.slice(i)
+    }
     feed.entries = [...feed.entries, ...stamp(linesOf(b))].slice(-LOG_MAX)
     notify()
   }

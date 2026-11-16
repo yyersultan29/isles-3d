@@ -71,3 +71,31 @@ describe('G9.1 game log', () => {
     expect(LOG_MAX).toBe(200)
   })
 })
+
+describe('G9.7 long games', () => {
+  it('keeps the last LOG_MAX lines through a language change after many turns', async () => {
+    const { setLocale, getLocale } = await import('../locale')
+    const was = getLocale()
+    setLocale('en')
+    const store = createGameStore({ seed: 4 })
+    gameLogFor(store)
+    const rng = createRng(8)
+    for (let i = 0; i < 1500; i++) {
+      const s = store.getState()
+      if (s.phase.kind === 'gameOver') break
+      const who = s.phase.kind === 'discard' ? s.order.find((p) => (s.phase as { pending: Record<string, number> }).pending[p])! : activeId(s)
+      const legal = legalActions(s, who).filter((a) => !['PROPOSE_TRADE', 'RESPOND_TRADE', 'CONFIRM_TRADE', 'CANCEL_TRADE'].includes(a.type)) as Action[]
+      if (!legal.length) break
+      store.dispatch(who, legal[pick(rng, legal.length)])
+    }
+    const en = gameLogFor(store).map((l) => l.text)
+    expect(en.length).toBe(LOG_MAX)
+    setLocale('ru')
+    const ru = gameLogFor(store)
+    expect(ru.length).toBe(LOG_MAX)
+    expect(ru.at(-1)!.text).not.toBe(en.at(-1))
+    setLocale('en')
+    expect(gameLogFor(store).map((l) => l.text)).toEqual(en)
+    setLocale(was)
+  })
+})

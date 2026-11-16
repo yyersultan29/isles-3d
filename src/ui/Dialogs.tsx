@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
 import { RESOURCES, focusRing, panel } from './HUD'
 import { L, count } from './locale'
-import { resName } from './words'
+import { resTitle } from './words'
 import { ResourceBackdrop } from './cards/ResourceArt'
 import { ResourceItem } from './cards/ResourceItems'
 import { SEATS, useGameView } from './gameView'
@@ -58,7 +58,7 @@ function DiscardDialog({ compact }: { compact: boolean }) {
         {L('Rolled a seven.', 'Выпала семёрка.')} {discard.waiting.length > 1 ? `${L('Then', 'Затем')}: ${discard.waiting.slice(1).map((p) => SEATS[p].name).join(', ')}.` : ''}
       </p>
       <ul className="flex gap-[8px]">
-        {RESOURCES.map(({ key }) => { const name = resName(key); return (
+        {RESOURCES.map(({ key }) => { const name = resTitle(key); return (
           <li key={key} className={`flex flex-col items-center gap-[6px] ${card}`}>
             <div className={`relative h-[64px] w-full overflow-hidden rounded-[8px] ring-1 ring-[#f2cf84]/50 ${discard.hand[key] ? '' : 'opacity-40'}`}>
               <ResourceBackdrop res={key} />

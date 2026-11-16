@@ -1,0 +1,1 @@
+Screenshots: the Russian states at 1440×900 and 390×844 and one English play screen are committed; `node scripts/g9-exit.mjs <w> <h> screenshots/milestones/g9.7` regenerates all 100 (both languages, five sizes).

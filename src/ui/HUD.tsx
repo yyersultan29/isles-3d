@@ -447,7 +447,7 @@ export function HandCards({ compact = false }: { compact?: boolean }) {
         const face = <ResourceCardFace res={key} name={name} count={n} chosen={chosen} compact={compact} />
         const d = delta?.d[key]
         const badge = d ? (
-          <span key={delta!.seq} aria-hidden data-hand-delta className={`pointer-events-none absolute inset-x-0 z-[1] mx-auto w-fit rounded-full px-[7px] py-[1px] font-bold leading-[1.25] text-white shadow-[0_2px_6px_rgba(0,0,0,.55)] ring-1 ring-white/40 animate-[delta-pop_2.5s_ease-out] ${d > 0 ? 'bg-[#2f8a3a]' : 'bg-[#b8322b]'} ${compact ? '-top-[11px] text-[13px]' : '-top-[13px] text-[15px]'}`}>{deltaText(d)}</span>
+          <span key={delta!.seq} aria-hidden data-hand-delta className={`pointer-events-none absolute inset-x-0 z-[1] mx-auto w-fit rounded-full px-[7px] py-[1px] font-bold leading-[1.25] text-white shadow-[0_2px_6px_rgba(0,0,0,.55)] ring-1 ring-white/40 animate-[delta-pop_2.5s_ease-out] ${d > 0 ? 'bg-[#2a7d34]' : 'bg-[#b8322b]'} ${compact ? '-top-[11px] text-[13px]' : '-top-[13px] text-[15px]'}`}>{deltaText(d)}</span>
         ) : null
         if (!can) {
           const why = covered || setup ? '' : bank.reason ? ` (${bank.reason})` : '' // G7.6: setup says why in its note
@@ -735,7 +735,8 @@ function BottomLeft() {
   const setup = useSetup()
   const after = L('After setup', 'Позже')
   const tradeSub = setup ? after : bank.open ? L('Key: T', 'Клавиша T') : bank.reason ?? L('Not now', 'Не сейчас')
-  const devSub = setup ? after : dev.total === 0 ? L('None yet', 'Пока нет') : L(`${dev.total} in hand${dev.canOpen ? '' : ' · not now'}`, `${dev.total} на руке${dev.canOpen ? '' : ' · не сейчас'}`)
+  // G9.7: short enough for the subline in both languages (was cut off: "2 на руке ·…")
+  const devSub = setup ? after : dev.total === 0 ? L('None yet', 'Пока нет') : dev.canOpen ? L(`${dev.total} in hand`, `${dev.total} на руке`) : L(`${dev.total} · not now`, `${dev.total} · не сейчас`)
   return (
     <div className="absolute bottom-[16px] left-[22px] grid w-[272px] grid-cols-2 gap-[10px]">
       <LabelledAction data-trade-button aria-pressed={tradeOpen} aria-keyshortcuts="T" disabled={!bank.open} onClick={() => setTradeOpen(!tradeOpen)}

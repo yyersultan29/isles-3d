@@ -1,0 +1,370 @@
+{
+ "viewport": "844x390",
+ "en": {
+  "errors": [],
+  "states": {
+   "menu": {
+    "latin": [
+     "Red ← \"Red\"",
+     "Orange ← \"Orange\"",
+     "White ← \"White\"",
+     "Blue ← \"Blue\"",
+     "Red ← \"Red: put your first settlement on a free corner\"",
+     "put ← \"Red: put your first settlement on a free corner\"",
+     "your ← \"Red: put your first settlement on a free corner\"",
+     "first ← \"Red: put your first settlement on a free corner\"",
+     "settlement ← \"Red: put your first settlement on a free corner\"",
+     "on ← \"Red: put your first settlement on a free corner\"",
+     "free ← \"Red: put your first settlement on a free corner\"",
+     "corner ← \"Red: put your first settlement on a free corner\"",
+     "Bigger ← \"Bigger ring, richer corner\"",
+     "ring ← \"Bigger ring, richer corner\"",
+     "richer ← \"Bigger ring, richer corner\"",
+     "corner ← \"Bigger ring, richer corner\"",
+     "On ← \"On board\"",
+     "board ← \"On board\"",
+     "Build ← \"Build\"",
+     "Language ← \"Language\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "setup": {
+    "latin": [
+     "Red ← \"Red\"",
+     "Blue ← \"Blue\"",
+     "Orange ← \"Orange\"",
+     "White ← \"White\"",
+     "Red ← \"Red: put your first settlement on a free corner\"",
+     "put ← \"Red: put your first settlement on a free corner\"",
+     "your ← \"Red: put your first settlement on a free corner\"",
+     "first ← \"Red: put your first settlement on a free corner\"",
+     "settlement ← \"Red: put your first settlement on a free corner\"",
+     "on ← \"Red: put your first settlement on a free corner\"",
+     "free ← \"Red: put your first settlement on a free corner\"",
+     "corner ← \"Red: put your first settlement on a free corner\"",
+     "Bigger ← \"Bigger ring, richer corner\"",
+     "ring ← \"Bigger ring, richer corner\"",
+     "richer ← \"Bigger ring, richer corner\"",
+     "corner ← \"Bigger ring, richer corner\"",
+     "On ← \"On board\"",
+     "board ← \"On board\"",
+     "Build ← \"Build\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "play": {
+    "latin": [
+     "Red ← \"Red\"",
+     "Blue ← \"Blue\"",
+     "Orange ← \"Orange\"",
+     "White ← \"White\"",
+     "Blue ← \"Blue: build, trade or end your turn\"",
+     "build ← \"Blue: build, trade or end your turn\"",
+     "trade ← \"Blue: build, trade or end your turn\"",
+     "or ← \"Blue: build, trade or end your turn\"",
+     "end ← \"Blue: build, trade or end your turn\"",
+     "your ← \"Blue: build, trade or end your turn\"",
+     "turn ← \"Blue: build, trade or end your turn\"",
+     "Red ← \"Red: no resources this roll\"",
+     "no ← \"Red: no resources this roll\"",
+     "resources ← \"Red: no resources this roll\"",
+     "this ← \"Red: no resources this roll\"",
+     "roll ← \"Red: no resources this roll\"",
+     "Blue ← \"Blue rolled a seven!\"",
+     "rolled ← \"Blue rolled a seven!\"",
+     "seven ← \"Blue rolled a seven!\"",
+     "Blue ← \"Blue stole a card from Orange.\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "trade": {
+    "latin": [
+     "Red ← \"Red\"",
+     "Blue ← \"Blue\"",
+     "Orange ← \"Orange\"",
+     "White ← \"White\"",
+     "Blue ← \"Blue: build, trade or end your turn\"",
+     "build ← \"Blue: build, trade or end your turn\"",
+     "trade ← \"Blue: build, trade or end your turn\"",
+     "or ← \"Blue: build, trade or end your turn\"",
+     "end ← \"Blue: build, trade or end your turn\"",
+     "your ← \"Blue: build, trade or end your turn\"",
+     "turn ← \"Blue: build, trade or end your turn\"",
+     "Red ← \"Red: no resources this roll\"",
+     "no ← \"Red: no resources this roll\"",
+     "resources ← \"Red: no resources this roll\"",
+     "this ← \"Red: no resources this roll\"",
+     "roll ← \"Red: no resources this roll\"",
+     "Blue ← \"Blue rolled a seven!\"",
+     "rolled ← \"Blue rolled a seven!\"",
+     "seven ← \"Blue rolled a seven!\"",
+     "Blue ← \"Blue stole a card from Orange.\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "dev": {
+    "latin": [
+     "Red ← \"Red\"",
+     "Blue ← \"Blue\"",
+     "Orange ← \"Orange\"",
+     "White ← \"White\"",
+     "Blue ← \"Blue: build, trade or end your turn\"",
+     "build ← \"Blue: build, trade or end your turn\"",
+     "trade ← \"Blue: build, trade or end your turn\"",
+     "or ← \"Blue: build, trade or end your turn\"",
+     "end ← \"Blue: build, trade or end your turn\"",
+     "your ← \"Blue: build, trade or end your turn\"",
+     "turn ← \"Blue: build, trade or end your turn\"",
+     "Red ← \"Red: no resources this roll\"",
+     "no ← \"Red: no resources this roll\"",
+     "resources ← \"Red: no resources this roll\"",
+     "this ← \"Red: no resources this roll\"",
+     "roll ← \"Red: no resources this roll\"",
+     "Blue ← \"Blue rolled a seven!\"",
+     "rolled ← \"Blue rolled a seven!\"",
+     "seven ← \"Blue rolled a seven!\"",
+     "Blue ← \"Blue stole a card from Orange.\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "help": {
+    "latin": [
+     "Red ← \"Red\"",
+     "Blue ← \"Blue\"",
+     "Orange ← \"Orange\"",
+     "White ← \"White\"",
+     "Keyboard ← \"Keyboard shortcuts\"",
+     "shortcuts ← \"Keyboard shortcuts\"",
+     "Build ← \"Build a road\"",
+     "road ← \"Build a road\"",
+     "Build ← \"Build a settlement\"",
+     "settlement ← \"Build a settlement\"",
+     "Build ← \"Build a city\"",
+     "city ← \"Build a city\"",
+     "Buy ← \"Buy a development card\"",
+     "development ← \"Buy a development card\"",
+     "card ← \"Buy a development card\"",
+     "Open ← \"Open or close trade (bank / ports)\"",
+     "or ← \"Open or close trade (bank / ports)\"",
+     "close ← \"Open or close trade (bank / ports)\"",
+     "trade ← \"Open or close trade (bank / ports)\"",
+     "bank ← \"Open or close trade (bank / ports)\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "log": {
+    "latin": [
+     "Red ← \"Red\"",
+     "Blue ← \"Blue\"",
+     "Orange ← \"Orange\"",
+     "White ← \"White\"",
+     "Game ← \"Game log\"",
+     "log ← \"Game log\"",
+     "Close ← \"Close\"",
+     "New ← \"New game: Red, Blue, Orange, White\"",
+     "game ← \"New game: Red, Blue, Orange, White\"",
+     "Red ← \"New game: Red, Blue, Orange, White\"",
+     "Blue ← \"New game: Red, Blue, Orange, White\"",
+     "Orange ← \"New game: Red, Blue, Orange, White\"",
+     "White ← \"New game: Red, Blue, Orange, White\"",
+     "Red ← \"Red placed a settlement\"",
+     "placed ← \"Red placed a settlement\"",
+     "settlement ← \"Red placed a settlement\"",
+     "Red ← \"Red placed a road\"",
+     "placed ← \"Red placed a road\"",
+     "road ← \"Red placed a road\"",
+     "Blue ← \"Blue placed a settlement\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "discard": {
+    "latin": [
+     "Red ← \"Red\"",
+     "Blue ← \"Blue\"",
+     "Orange ← \"Orange\"",
+     "White ← \"White\"",
+     "Seven ← \"Seven! Discard half: Red 4\"",
+     "Discard ← \"Seven! Discard half: Red 4\"",
+     "half ← \"Seven! Discard half: Red 4\"",
+     "Red ← \"Seven! Discard half: Red 4\"",
+     "White ← \"White traded 4 wood for 1 grain with the bank.\"",
+     "traded ← \"White traded 4 wood for 1 grain with the bank.\"",
+     "wood ← \"White traded 4 wood for 1 grain with the bank.\"",
+     "for ← \"White traded 4 wood for 1 grain with the bank.\"",
+     "grain ← \"White traded 4 wood for 1 grain with the bank.\"",
+     "with ← \"White traded 4 wood for 1 grain with the bank.\"",
+     "the ← \"White traded 4 wood for 1 grain with the bank.\"",
+     "bank ← \"White traded 4 wood for 1 grain with the bank.\"",
+     "White ← \"White traded 4 grain for 1 wood with the bank.\"",
+     "traded ← \"White traded 4 grain for 1 wood with the bank.\"",
+     "grain ← \"White traded 4 grain for 1 wood with the bank.\"",
+     "for ← \"White traded 4 grain for 1 wood with the bank.\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "victory": {
+    "latin": [
+     "Red ← \"Red\"",
+     "Blue ← \"Blue\"",
+     "Orange ← \"Orange\"",
+     "White ← \"White\"",
+     "Orange ← \"Orange wins!\"",
+     "wins ← \"Orange wins!\"",
+     "Red ← \"Red +1 wool · Orange +1 wool\"",
+     "wool ← \"Red +1 wool · Orange +1 wool\"",
+     "Orange ← \"Red +1 wool · Orange +1 wool\"",
+     "Orange ← \"Orange traded 4 wool for 1 grain with the bank.\"",
+     "traded ← \"Orange traded 4 wool for 1 grain with the bank.\"",
+     "wool ← \"Orange traded 4 wool for 1 grain with the bank.\"",
+     "for ← \"Orange traded 4 wool for 1 grain with the bank.\"",
+     "grain ← \"Orange traded 4 wool for 1 grain with the bank.\"",
+     "with ← \"Orange traded 4 wool for 1 grain with the bank.\"",
+     "the ← \"Orange traded 4 wool for 1 grain with the bank.\"",
+     "bank ← \"Orange traded 4 wool for 1 grain with the bank.\"",
+     "Orange ← \"Orange wins with 10 points!\"",
+     "wins ← \"Orange wins with 10 points!\"",
+     "with ← \"Orange wins with 10 points!\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "lobby": {
+    "latin": [
+     "Orange ← \"Orange\"",
+     "Blue ← \"Blue\"",
+     "Red ← \"Red\"",
+     "White ← \"White\"",
+     "Orange ← \"Orange: put your first settlement on a free corner\"",
+     "put ← \"Orange: put your first settlement on a free corner\"",
+     "your ← \"Orange: put your first settlement on a free corner\"",
+     "first ← \"Orange: put your first settlement on a free corner\"",
+     "settlement ← \"Orange: put your first settlement on a free corner\"",
+     "on ← \"Orange: put your first settlement on a free corner\"",
+     "free ← \"Orange: put your first settlement on a free corner\"",
+     "corner ← \"Orange: put your first settlement on a free corner\"",
+     "Bigger ← \"Bigger ring, richer corner\"",
+     "ring ← \"Bigger ring, richer corner\"",
+     "richer ← \"Bigger ring, richer corner\"",
+     "corner ← \"Bigger ring, richer corner\"",
+     "Wait ← \"Wait\"",
+     "Build ← \"Build\"",
+     "Online ← \"Online room\"",
+     "room ← \"Online room\""
+    ],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   }
+  },
+  "toActions": {
+   "turn": 10,
+   "phase": "actions"
+  },
+  "logAfterReload": {
+   "lines": 5,
+   "same": true
+  },
+  "discardReached": true,
+  "victoryReached": true,
+  "online": {
+   "clicksToLink": 1,
+   "link": "http://localhost:5173/?room=ydop4l1ktc"
+  }
+ },
+ "ru": {
+  "errors": [],
+  "states": {
+   "menu": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "setup": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "play": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "trade": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "dev": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "help": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "log": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "discard": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "victory": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   },
+   "lobby": {
+    "latin": [],
+    "overflow": [],
+    "cut": [],
+    "axe": []
+   }
+  },
+  "toActions": {
+   "turn": 10,
+   "phase": "actions"
+  },
+  "logAfterReload": {
+   "lines": 5,
+   "same": true
+  },
+  "discardReached": true,
+  "victoryReached": true,
+  "online": {
+   "clicksToLink": 1,
+   "link": "http://localhost:5173/?room=pwiqb11pdg"
+  }
+ }
+}
