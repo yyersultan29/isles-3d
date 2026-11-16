@@ -65,7 +65,10 @@ describe('mountain guy', () => {
       expect(m.pick).toBeCloseTo(PICK.rest)
       const hits = Array.from({ length: 2000 }, (_, i) => mineCycle((i / 2000) * MINE_PERIOD).pick)
       expect(Math.max(...hits)).toBeCloseTo(PICK.hit, 1)
-      expect(Math.min(...hits)).toBeCloseTo(PICK.up, 1)
+      expect(Math.min(...hits)).toBeCloseTo(PICK.rest, 1)
+      // after the first blow, swings run between wound-up and the blow, with a small recoil
+      const later = Array.from({ length: 400 }, (_, i) => mineCycle(0.5 + 1.15 * (1 + (i / 400) * 2)).pick)
+      expect(Math.min(...later)).toBeCloseTo(PICK.up, 1)
     })
     it('stops working (pick to rest) when work is 0, as during a reaction', () => {
       for (let t = 0; t < MINE_PERIOD; t += 0.3) expect(guyPose(t, undefined, false, false, 0).pick).toBe(PICK.rest)

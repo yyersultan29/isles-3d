@@ -202,13 +202,13 @@ export const BOUT_SWINGS = 4
 const TURN_S = 0.5 // turning to the boulder before the first swing, and back after the last
 const BOUT_S = TURN_S + BOUT_SWINGS * SWING_S + TURN_S
 export const MINE_PERIOD = BOUT_S + 3.4
-/** Pick angles about his x axis (0 = handle straight up, + = forward/down); at rest it sits on his shoulder. */
-export const PICK = { rest: -0.35, up: -0.7, hit: 2.1 }
+/** Swing phase (guyRig.swingArms): 0 = arms at rest, pick held low in front; 1 = wound up over his head; 2 = the blow. */
+export const PICK = { rest: 0, up: 1, hit: 2 }
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k
 
 /**
- * Mining state at ambient time t: `face` 0..1 (turned to the boulder), the pick angle for a swing
- * that ends on `hit` (the angle where the pick meets the rock), the body pitch, and `strikes`: how
+ * Mining state at ambient time t: `face` 0..1 (turned to the boulder), the swing phase `pick`
+ * (PICK: rest → up → hit; the view turns it into arm angles), the body pitch, and `strikes`: how
  * many blows have landed so far (the view spawns chips when it goes up).
  */
 export function mineCycle(t: number, hit = PICK.hit) {
@@ -238,7 +238,7 @@ export interface GuyAct { mood: GuyMood | null; s: number; lookYaw?: number }
  * Pose at ambient time t (seconds), no skeleton needed. Idle: a slow breathing bob, the body
  * turning a little to look around, a slight lean, and mining bouts (`work` 0..1 scales them; the
  * view lowers it during reactions): he turns to `faceYaw` and swings the pick. On top, the current
- * reaction (`act.s` seconds after it started): cheer = a jump with a full turn (no turn when
+ * reaction (`act.s` seconds after it started), with an arm gesture (`arms`, `armsK`): cheer = arms up, a jump with a full turn (no turn when
  * `calm`, reduced motion); click and relief = a small hop; scared = a hop back with a lean away;
  * sad = a slump; look = turn to `lookYaw` (relative to his rest facing). `shiver` (robber on his
  * tile) adds a fast tremble.
@@ -267,7 +267,11 @@ export function guyPose(t: number, act: GuyAct = { mood: null, s: 0 }, calm = fa
     else if (mood === 'look' && act.lookYaw !== undefined) yaw += wrap(act.lookYaw - yaw) * envelope(s, 0.4, MOOD_S.look)
   }
   if (shiver) yaw += Math.sin(t * 40) * (calm ? 0.008 : 0.03)
-  return { y, yaw, pitch, lean, squash, pick, strikes }
+  // arm gesture for the view (guyRig.GESTURES), blended over the mining arms by armsK
+  let arms: 'cheer' | 'scared' | 'sad' | null = null, armsK = 0
+  if (live && (mood === 'cheer' || mood === 'scared' || mood === 'sad')) { arms = mood; armsK = envelope(s, 0.2, MOOD_S[mood]) }
+  else if (shiver) { arms = 'scared'; armsK = 0.6 }
+  return { y, yaw, pitch, lean, squash, pick, strikes, arms, armsK }
 }
 
 // ---------- click target, shared with board picking ----------
