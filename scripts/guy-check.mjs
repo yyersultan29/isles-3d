@@ -25,11 +25,11 @@ const guyInfo = (p) => p.evaluate(() => {
   const top = v.clone(); top.y += 0.43
   const px = (x) => { const q = x.clone().project(camera); return [(q.x * 0.5 + 0.5) * innerWidth, (-q.y * 0.5 + 0.5) * innerHeight] }
   const [fx, fy] = px(v), [tx, ty] = px(top)
-  const mesh = g.children[0].children[0]
+  let mesh = null; g.traverse((o) => { if (!mesh && (o.isSkinnedMesh || (o.isMesh && o.material?.map))) mesh = o })
   const m = mesh.material
   return {
     world: [v.x, v.y, v.z].map((n) => +n.toFixed(3)), feetPx: [Math.round(fx), Math.round(fy)], heightPx: Math.round(fy - ty), headPx: [Math.round(tx), Math.round(ty)],
-    tris: mesh.geometry.index.count / 3, mat: m.type, maps: { map: m.map?.colorSpace, normal: m.normalMap?.colorSpace, rough: m.roughnessMap?.colorSpace, metal: m.metalnessMap?.colorSpace },
+    tris: mesh.geometry.index.count / 3, skinned: !!mesh.isSkinnedMesh, bones: mesh.skeleton?.bones.length ?? 0, mat: m.type, maps: { map: m.map?.colorSpace, normal: m.normalMap?.colorSpace, rough: m.roughnessMap?.colorSpace, metal: m.metalnessMap?.colorSpace },
     shadow: [mesh.castShadow, mesh.receiveShadow], calls: gl.info.render.calls, mem: { ...gl.info.memory },
   }
 })

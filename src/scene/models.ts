@@ -271,29 +271,3 @@ export function sheepGeometries() {
   return { wool: woolG, dark: darkG }
 }
 
-/**
- * Pickaxe for the mountain guy, vertex-coloured (one material). The handle runs up +y from the
- * grip at the origin (length `len`); the iron head crosses its top along z, both tips curving
- * down a little, so a swing about x drives the +z tip into the ground.
- */
-export function pickaxeGeometry(len = 0.21) {
-  // chunky on purpose: the figure is ~40 px tall on the board, a true-to-scale pick would vanish
-  const handle = new THREE.CylinderGeometry(0.011, 0.013, len, 7)
-  handle.translate(0, len / 2, 0)
-  paint(handle, solid('#a8763f'))
-  const half = 0.062
-  const head = new THREE.BoxGeometry(0.017, 0.022, half * 2, 1, 1, 8)
-  const p = head.attributes.position as THREE.BufferAttribute
-  for (let i = 0; i < p.count; i++) {
-    const z = p.getZ(i), k = Math.abs(z) / half
-    // taper to points and curve the tips toward the handle
-    p.setXYZ(i, p.getX(i) * (1 - 0.6 * k), p.getY(i) * (1 - 0.5 * k) - 0.02 * k * k, z)
-  }
-  head.computeVertexNormals()
-  head.translate(0, len, 0)
-  paint(head, (v, out) => out.set('#8a9097').lerp(new THREE.Color('#e4e8ec'), Math.min(1, Math.abs(v.z) / half)))
-  const collar = new THREE.CylinderGeometry(0.016, 0.016, 0.026, 7)
-  collar.translate(0, len - 0.004, 0)
-  paint(collar, solid('#55595e'))
-  return mergeGeometries([clean(handle), clean(head), clean(collar)])!
-}

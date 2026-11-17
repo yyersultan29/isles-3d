@@ -17,11 +17,11 @@ export const GUY_H = SETTLEMENT_H * 1.2
 /** Radius of his footprint on the ground (model is ~0.57 × 0.53 of its height across). */
 export const GUY_FOOT = 0.13
 
-/** The ore boulder he works on: its centre and ground height, and the yaw that faces it (relative to his rest yaw). */
+/** The ore boulder beside him (scenery): its centre and ground height, and the yaw that faces it (relative to his rest yaw). */
 export interface GuyRock { x: number; z: number; y: number; faceYaw: number }
 export interface GuySpot { tile: Tile; x: number; z: number; y: number; yaw: number; score: number; rock: GuyRock }
 
-/** Boulder footprint radius and its distance from his centre (where the pick lands, see PICK). */
+/** Boulder footprint radius and its distance from his centre. */
 export const ROCK_R = 0.075
 export const ROCK_D = 0.22
 
@@ -142,8 +142,8 @@ export const CLICK_LINES = () => [
   L('Build next to me, get ore.', 'Строй рядом со мной — будет руда.'),
   L('No ore, no city.', 'Без руды города не построишь.'),
   L("Careful, I'm on a cliff!", 'Осторожно, я на скале!'),
-  L('Tough rock, this one!', 'Крепкий камень попался!'),
-  L("A few more swings and it's ore!", 'Ещё пара ударов — и будет руда!'),
+  L('Great view from up here.', 'Отсюда отличный вид.'),
+  L('The mountains are my home.', 'Горы — мой дом.'),
 ]
 
 /** A random line other than the last one (index), so two clicks never repeat. */
@@ -170,7 +170,7 @@ export function guyReaction(events: readonly GameEvent[], s: GameState, tile: Ti
   const offer = (r: GuyReaction) => { if (!best || MOOD_RANK[r.mood] > MOOD_RANK[best.mood]) best = r }
   for (const e of events) {
     if (e.type === 'ROBBER_MOVED' && e.to === tile) offer({ mood: 'scared', say: L('Hey! This is my mountain!', 'Эй! Это моя гора!') })
-    else if (e.type === 'ROBBER_MOVED' && e.from === tile) offer({ mood: 'relief', say: L("He's gone. Back to work.", 'Ушёл. Можно работать.') })
+    else if (e.type === 'ROBBER_MOVED' && e.from === tile) offer({ mood: 'relief', say: L("He's gone. Phew.", 'Ушёл. Фух.') })
     else if (e.type === 'DICE_ROLLED' && e.dice[0] + e.dice[1] === token) {
       const n = e.dice[0] + e.dice[1]
       const homes = [...corners].filter((v) => s.buildings[v as VertexId]).length
@@ -195,69 +195,26 @@ const smooth = (x: number) => { const k = Math.min(1, Math.max(0, x)); return k 
 /** 0 → 1 over `rise` s, held, back to 0 over the last `rise` s of `len`. */
 const envelope = (s: number, rise: number, len: number) => smooth(s / rise) * smooth((len - s) / rise)
 
-// ---------- mining: bouts of swings at the boulder, then a rest ----------
-
-export const SWING_S = 1.15
-export const BOUT_SWINGS = 4
-const TURN_S = 0.5 // turning to the boulder before the first swing, and back after the last
-const BOUT_S = TURN_S + BOUT_SWINGS * SWING_S + TURN_S
-export const MINE_PERIOD = BOUT_S + 3.4
-/** Swing phase (guyRig.swingArms): 0 = arms at rest, pick held low in front; 1 = wound up over his head; 2 = the blow. */
-export const PICK = { rest: 0, up: 1, hit: 2 }
-const lerp = (a: number, b: number, k: number) => a + (b - a) * k
-
-/**
- * Mining state at ambient time t: `face` 0..1 (turned to the boulder), the swing phase `pick`
- * (PICK: rest → up → hit; the view turns it into arm angles), the body pitch, and `strikes`: how
- * many blows have landed so far (the view spawns chips when it goes up).
- */
-export function mineCycle(t: number, hit = PICK.hit) {
-  const n = Math.floor(t / MINE_PERIOD), c = t - n * MINE_PERIOD
-  const face = envelope(c, TURN_S, BOUT_S)
-  const w = c - TURN_S
-  let pick = PICK.rest, pitch = 0, strikes = n * BOUT_SWINGS
-  if (w >= 0 && w < BOUT_SWINGS * SWING_S) {
-    const i = Math.floor(w / SWING_S), p = w / SWING_S - i
-    const low = i === 0 ? PICK.rest : hit // the first swing starts from the resting pick
-    if (p < 0.5) pick = lerp(low, PICK.up, smooth(p / 0.5))
-    else if (p < 0.62) pick = PICK.up
-    else if (p < 0.75) { const k = (p - 0.62) / 0.13; pick = lerp(PICK.up, hit, k * k) }
-    else pick = hit - 0.12 * Math.sin((Math.PI * (p - 0.75)) / 0.25)
-    pitch = p < 0.62 ? -0.06 * smooth(p / 0.5) : lerp(-0.06, 0.14, smooth((p - 0.62) / 0.13)) * (p < 0.75 ? 1 : 1 - smooth((p - 0.75) / 0.25) * 0.6)
-    strikes += i + (p >= 0.75 ? 1 : 0)
-  } else if (w >= BOUT_SWINGS * SWING_S) {
-    strikes += BOUT_SWINGS
-    pick = lerp(hit, PICK.rest, smooth((w - BOUT_SWINGS * SWING_S) / TURN_S))
-  }
-  return { face, pick, pitch, strikes }
-}
-
 export interface GuyAct { mood: GuyMood | null; s: number; lookYaw?: number }
 
 /**
- * Pose at ambient time t (seconds), no skeleton needed. Idle: a slow breathing bob, the body
- * turning a little to look around, a slight lean, and mining bouts (`work` 0..1 scales them; the
- * view lowers it during reactions): he turns to `faceYaw` and swings the pick. On top, the current
- * reaction (`act.s` seconds after it started), with an arm gesture (`arms`, `armsK`): cheer = arms up, a jump with a full turn (no turn when
- * `calm`, reduced motion); click and relief = a small hop; scared = a hop back with a lean away;
- * sad = a slump; look = turn to `lookYaw` (relative to his rest facing). `shiver` (robber on his
- * tile) adds a fast tremble.
+ * Pose at ambient time t (seconds), no skeleton needed. Idle: he shifts his weight from foot to foot
+ * (a slow side-to-side sway: `x` and `lean`), turns a little to look around, and breathes (a small
+ * bob). On top, the current reaction (`act.s` seconds after it started): cheer = a jump with a full
+ * turn (no turn when `calm`, reduced motion); click and relief = a small hop; scared = a hop back with
+ * a lean away; sad = a slump; look = turn to `lookYaw` (relative to his rest facing). `shiver` (robber
+ * on his tile) adds a fast tremble.
  */
-export function guyPose(t: number, act: GuyAct = { mood: null, s: 0 }, calm = false, shiver = false, work = 0, faceYaw = 0, hit = PICK.hit) {
+export function guyPose(t: number, act: GuyAct = { mood: null, s: 0 }, calm = false, shiver = false) {
   const { mood, s } = act
   const live = mood !== null && s >= 0 && s < MOOD_S[mood]
   const k = live ? s / MOOD_S[mood!] : 0
-  let yaw = Math.sin(t * 0.45) * 0.28 + Math.sin(t * 1.3) * 0.05
-  let y = (Math.sin(t * 1.8) * 0.5 + 0.5) * 0.006
-  let pitch = 0, squash = 1 + Math.sin(t * 1.8) * 0.012, pick = PICK.rest, strikes = 0
-  const lean = Math.sin(t * 0.9) * 0.025
-  if (work > 0) {
-    const m = mineCycle(t, hit), f = m.face * work
-    yaw = lerp(yaw, faceYaw + wrap(yaw * 0.15), f) // a trace of the look-around stays while he works
-    pitch += m.pitch * work
-    pick = lerp(PICK.rest, m.pick, work)
-    strikes = m.strikes
-  }
+  const sway = Math.sin(t * 1.1) // weight shift, about one step every 3 s
+  const x = sway * 0.007
+  const lean = sway * 0.045
+  let yaw = Math.sin(t * 0.45) * 0.35 + Math.sin(t * 1.3) * 0.05
+  let y = Math.abs(Math.cos(t * 1.1)) * 0.004 + (Math.sin(t * 1.8) * 0.5 + 0.5) * 0.003 // lifts a little between steps
+  let pitch = 0, squash = 1 + Math.sin(t * 1.8) * 0.012
   if (live) {
     const arc = Math.sin(Math.PI * k)
     if (mood === 'cheer') { y += arc * 0.14; if (!calm) yaw += k * Math.PI * 2 }
@@ -267,11 +224,7 @@ export function guyPose(t: number, act: GuyAct = { mood: null, s: 0 }, calm = fa
     else if (mood === 'look' && act.lookYaw !== undefined) yaw += wrap(act.lookYaw - yaw) * envelope(s, 0.4, MOOD_S.look)
   }
   if (shiver) yaw += Math.sin(t * 40) * (calm ? 0.008 : 0.03)
-  // arm gesture for the view (guyRig.GESTURES), blended over the mining arms by armsK
-  let arms: 'cheer' | 'scared' | 'sad' | null = null, armsK = 0
-  if (live && (mood === 'cheer' || mood === 'scared' || mood === 'sad')) { arms = mood; armsK = envelope(s, 0.2, MOOD_S[mood]) }
-  else if (shiver) { arms = 'scared'; armsK = 0.6 }
-  return { y, yaw, pitch, lean, squash, pick, strikes, arms, armsK }
+  return { x, y, yaw, pitch, lean, squash }
 }
 
 // ---------- click target, shared with board picking ----------

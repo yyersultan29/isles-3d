@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TILES, VERTICES, hexDist, tileHeight } from '../board'
-import { BOUT_SWINGS, CLICK_LINES, GUY_FOOT, GUY_H, GUY_SPOT, MINE_PERIOD, PICK, ROCK_R, SETTLEMENT_H, guyPose, guyReaction, mineCycle, pickLine, robberClear, spotFree } from '../mountainGuyLogic'
+import { CLICK_LINES, GUY_FOOT, GUY_H, GUY_SPOT, ROCK_R, SETTLEMENT_H, guyPose, guyReaction, pickLine, robberClear, spotFree } from '../mountainGuyLogic'
 import type { GameEvent, GameState, VertexId } from '../../game'
 import { newGame } from '../../game/__tests__/helpers'
 
@@ -46,7 +46,7 @@ describe('mountain guy', () => {
     expect(pickGuySpot(TILES.filter((t) => t.biome !== 'mountain'))).toBeNull()
   })
 
-  describe('mining', () => {
+  describe('boulder', () => {
     it('has its boulder on free ground beside him, on the same quarry ledge', () => {
       const r = s.rock
       expect(spotFree(r.x - s.tile.x, r.z - s.tile.z, ROCK_R)).toBe(true)
@@ -54,24 +54,14 @@ describe('mountain guy', () => {
       expect(r.y).toBe(s.y)
       expect(tileHeight(s.tile, r.x, r.z)).toBeCloseTo(s.y, 5)
     })
-    it('lands BOUT_SWINGS blows per bout, never counting backwards', () => {
-      let last = 0
-      for (let t = 0; t < MINE_PERIOD * 3; t += 0.01) { const n = mineCycle(t).strikes; expect(n).toBeGreaterThanOrEqual(last); last = n }
-      expect(mineCycle(MINE_PERIOD * 3 - 0.01).strikes).toBe(BOUT_SWINGS * 3)
-    })
-    it('rests between bouts with the pick on his shoulder, facing his rest direction', () => {
-      const m = mineCycle(MINE_PERIOD - 0.5)
-      expect(m.face).toBe(0)
-      expect(m.pick).toBeCloseTo(PICK.rest)
-      const hits = Array.from({ length: 2000 }, (_, i) => mineCycle((i / 2000) * MINE_PERIOD).pick)
-      expect(Math.max(...hits)).toBeCloseTo(PICK.hit, 1)
-      expect(Math.min(...hits)).toBeCloseTo(PICK.rest, 1)
-      // after the first blow, swings run between wound-up and the blow, with a small recoil
-      const later = Array.from({ length: 400 }, (_, i) => mineCycle(0.5 + 1.15 * (1 + (i / 400) * 2)).pick)
-      expect(Math.min(...later)).toBeCloseTo(PICK.up, 1)
-    })
-    it('stops working (pick to rest) when work is 0, as during a reaction', () => {
-      for (let t = 0; t < MINE_PERIOD; t += 0.3) expect(guyPose(t, undefined, false, false, 0).pick).toBe(PICK.rest)
+  })
+
+  describe('idle', () => {
+    it('sways from foot to foot, back and forth, and stays on his spot', () => {
+      const xs = Array.from({ length: 600 }, (_, i) => guyPose(i * 0.02).x)
+      expect(Math.max(...xs)).toBeGreaterThan(0.005)
+      expect(Math.min(...xs)).toBeLessThan(-0.005)
+      for (const x of xs) expect(Math.abs(x)).toBeLessThan(GUY_FOOT * 0.1)
     })
   })
 
