@@ -8,7 +8,7 @@
 //   node <repo>/scripts/build-character.mjs <repo>/src/models/mountain-guy <repo>/public/models/mountain-guy.glb
 //
 // Steps: OBJ -> glTF (obj2gltf), weld, simplify to ~5k triangles (meshoptimizer, Permissive mode:
-// the Hyper3D UV atlas has seams everywhere and locks the plain simplifier at ~84k), one PBR
+// the Hyper3D UV atlas has seams everywhere and locks the plain simplifier at ~84k; UVs weighted in), one PBR
 // material (base colour sRGB; roughness -> G and metallic -> B of one linear map; normal map),
 // textures 1024 px WebP, quantize + meshopt compression (decoder ships with three, no CDN fetch).
 import { createRequire } from 'node:module'
@@ -16,7 +16,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { NodeIO } from '@gltf-transform/core'
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions'
-import { weld, simplify, prune, dedup, reorder, quantize, meshopt, textureCompress, getBounds } from '@gltf-transform/functions'
+import { weld, compactPrimitive, prune, dedup, reorder, quantize, meshopt, textureCompress, getBounds } from '@gltf-transform/functions'
 import { MeshoptSimplifier, MeshoptEncoder, MeshoptDecoder } from 'meshoptimizer'
 import sharp from 'sharp'
 
@@ -24,16 +24,26 @@ const require = createRequire(path.join(process.cwd(), 'x.js'))
 const obj2gltf = require('obj2gltf')
 const [, , dir, output, ratioArg = '0.01', errArg = '0.05'] = process.argv
 const SIZE = 1024
+const UV_WEIGHT = Number(process.env.UV_WEIGHT ?? 1)
 
 await Promise.all([MeshoptSimplifier.ready, MeshoptEncoder.ready, MeshoptDecoder.ready])
-const PERMISSIVE = new Proxy(MeshoptSimplifier, { get: (t, k) => (k === 'simplify' ? (i, p, st, n, e, f = []) => t.simplify(i, p, st, n, e, [...f, 'Permissive']) : t[k]) })
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder })
 
 const doc = await io.readBinary(new Uint8Array(await obj2gltf(path.join(dir, 'base.obj'), { binary: true })))
 const prims = () => doc.getRoot().listMeshes().flatMap((m) => m.listPrimitives())
 const tris = () => prims().reduce((n, p) => n + (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3, 0)
 console.log('triangles in :', tris())
-await doc.transform(weld(), simplify({ simplifier: PERMISSIVE, ratio: Number(ratioArg), error: Number(errArg) }))
+await doc.transform(weld())
+// UVs ride along as weighted attributes: Permissive mode may still collapse across a seam, but a collapse
+// that drags a vertex onto another UV island now costs error, so texels from the wrong island don't smear in
+for (const p of prims()) {
+  const pos = p.getAttribute('POSITION').getArray(), uv = p.getAttribute('TEXCOORD_0').getArray()
+  const idx = new Uint32Array(p.getIndices().getArray())
+  const target = Math.floor((idx.length * Number(ratioArg)) / 3) * 3
+  const [out] = MeshoptSimplifier.simplifyWithAttributes(idx, pos, 3, uv, 2, [UV_WEIGHT, UV_WEIGHT], null, target, Number(errArg), ['Permissive'])
+  p.getIndices().setArray(out)
+  compactPrimitive(p)
+}
 console.log('triangles out:', tris())
 
 const tex = (name, buf) => doc.createTexture(name).setImage(new Uint8Array(buf)).setMimeType('image/png')
