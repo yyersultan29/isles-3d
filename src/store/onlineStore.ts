@@ -13,7 +13,7 @@
 
 import { ENGINE_VERSION, RESOURCE_ORDER, createGame, validate } from '../game'
 import type { Action, EngineError, GameEvent, GameState, LegalAction, PlayerId, PlayerState, PublicGameState, ReplayFile, Result, ResourceCounts, Viewer } from '../game'
-import type { ClientMessage, RoomErrorCode, SeatInfo, ServerMessage, TimerInfo, TimerPreset } from '../net/protocol'
+import type { ClientMessage, LobbyBoard, RoomErrorCode, SeatInfo, ServerMessage, TimerInfo, TimerPreset } from '../net/protocol'
 import type { GameEventListener, GameStore, RejectionListener } from './gameStore'
 
 /** The part of WebSocket the store uses: the browser's WebSocket and `ws` both fit. */
@@ -49,6 +49,8 @@ export interface OnlineSession {
   errorCode: SessionErrorCode | null
   /** G5.5: the turn-timer preset (set by the host in the lobby) */
   preset: TimerPreset
+  /** B4: the board the host picked in the lobby */
+  board: LobbyBoard
   /** G5.5: the running turn timer, with `deadline` on this machine's clock (Date.now), or null */
   timer: (Omit<TimerInfo, 'remainingMs'> & { deadline: number }) | null
 }
@@ -64,6 +66,8 @@ export interface OnlineStore extends GameStore {
   reconnectNow(): void
   /** the host picks the turn-timer preset in the lobby */
   setTimer(preset: TimerPreset): void
+  /** B4: the host picks the board in the lobby */
+  setBoard(board: LobbyBoard): void
 }
 
 export interface OnlineOptions {
@@ -133,7 +137,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
   let seq = -1
   let clientSeq = 0
   const sent = new Map<number, Action>()
-  const session: OnlineSession = { status: 'connecting', roomId: o.roomId, me: null, host: false, token: o.token ?? null, seats: [], legal: [], error: null, errorCode: null, preset: 'normal', timer: null }
+  const session: OnlineSession = { status: 'connecting', roomId: o.roomId, me: null, host: false, token: o.token ?? null, seats: [], legal: [], error: null, errorCode: null, preset: 'normal', board: 'balanced', timer: null }
   let sessionSnap = { ...session }
   const listeners = new Set<() => void>()
   const eventListeners = new Set<GameEventListener>()
@@ -178,6 +182,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
         session.seats = m.seats
         session.host = !!session.me && session.me === m.host
         session.preset = m.timer
+        session.board = m.board
         sessionChanged()
         return
       case 'presence':
@@ -295,6 +300,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
     start: () => send({ type: 'start' }),
     close: () => { stopped = true; if (timer) clearTimeout(timer); if (noticeTimer) clearTimeout(noticeTimer); clearInterval(keepAlive); ws?.close() },
     setTimer: (preset) => send({ type: 'settings', timer: preset }),
+    setBoard: (board) => send({ type: 'settings', board }),
     reconnectNow: () => { if (timer && !stopped) { clearTimeout(timer); connect() } },
   }
 }

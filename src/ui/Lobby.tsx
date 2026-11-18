@@ -10,7 +10,9 @@ import { focusRing, panel } from './HUD'
 import { SEATS } from './gameView'
 import { useOnline, useSession } from '../store/GameProvider'
 import { inviteLink } from '../net/connect'
-import type { TimerPreset } from '../net/protocol'
+import type { LobbyBoard, TimerPreset } from '../net/protocol'
+import { BOARD_CHOICES, readBoardChoice, writeBoardChoice } from '../store/boardChoice'
+import { BOARD_NAMES } from './StartMenu'
 import type { SessionErrorCode } from '../store/onlineStore'
 import { COMPACT_SAFE, useViewport } from './layout'
 import { L } from './locale'
@@ -56,6 +58,15 @@ export function Lobby() {
   }, [covering, status])
   const allTaken = !!session && session.seats.length === 4 && session.seats.every((s) => s.taken)
   useEffect(() => { if (allTaken && session?.host) start.current?.focus() }, [allTaken, session?.host])
+  // B4: the host's room starts on the board they last picked (start menu or lobby)
+  const boardSent = useRef(false)
+  const lobbyHost = status === 'lobby' && !!session?.host
+  useEffect(() => {
+    if (!lobbyHost || boardSent.current) return
+    boardSent.current = true
+    const mine = readBoardChoice()
+    if (session!.board !== mine) online!.setBoard(mine)
+  }, [lobbyHost])
 
   if (!online || !session) return null
   const me = session.me
@@ -157,6 +168,7 @@ export function Lobby() {
                 )
               })}
             </ul>
+            <BoardChoiceRow host={session.host} board={session.board} onChange={(b) => { writeBoardChoice(b); online.setBoard(b) }} />
             <TimerChoice host={session.host} preset={session.preset} onChange={(t) => online.setTimer(t)} />
             {session.host && (
               <div className="mt-[14px] flex justify-end">
@@ -214,6 +226,24 @@ const PRESETS = (): { id: TimerPreset; label: string; hint: string }[] => [
   { id: 'fast', label: L('Fast', 'Быстро'), hint: L('45 s per turn', '45 с на ход') },
   { id: 'off', label: L('Off', 'Выкл.'), hint: L('no time limit', 'без ограничения') },
 ]
+
+/** B4: the board; the host picks it, everyone sees it. */
+function BoardChoiceRow({ host, board, onChange }: { host: boolean; board: LobbyBoard; onChange: (b: LobbyBoard) => void }) {
+  if (!host) return <p data-lobby-board={board} className="mt-[10px] text-[13px] text-[#a9a49b]">{L('Board', 'Карта')}: <span className="font-semibold text-[#ece8e0]">{BOARD_NAMES[board]()}</span></p>
+  return (
+    <div role="group" aria-label={L('Board', 'Карта')} data-lobby-board={board} className="mt-[12px] flex flex-wrap items-center gap-[8px]">
+      <span aria-hidden className="text-[13px] text-[#a9a49b]">{L('Board', 'Карта')}</span>
+      <div className="flex overflow-hidden rounded-[8px] ring-1 ring-white/15">
+        {BOARD_CHOICES.map((c) => (
+          <button key={c} type="button" aria-pressed={board === c} data-board={c} onClick={() => onChange(c)}
+            className={`h-[32px] px-[10px] text-[13px] font-semibold ${board === c ? 'bg-[#f2b544] text-[#2a1a06]' : 'bg-white/10 text-white hover:bg-white/20'} ${focusRing}`}>
+            {BOARD_NAMES[c]()}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 /** G5.5: the turn timer; the host picks it, everyone sees it. */
 function TimerChoice({ host, preset, onChange }: { host: boolean; preset: TimerPreset; onChange: (t: TimerPreset) => void }) {

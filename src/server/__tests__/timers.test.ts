@@ -116,6 +116,18 @@ describe('Room turn timers', () => {
     expect(last(send('a', { type: 'settings', timer: 'off' }), 'a', 'error')!.code).toBe('ALREADY_STARTED')
   })
 
+  it('B4: the host picks the board in the lobby; the game is created with it', () => {
+    const { r, send } = room()
+    expect(last(send('b', { type: 'settings', board: 'balanced' }), 'b', 'error')!.code).toBe('NOT_HOST')
+    const lobby = last(send('a', { type: 'settings', board: 'balanced' }), 'c', 'lobby')!
+    expect(lobby.board).toBe('balanced')
+    expect(lobby.timer).toBe('normal') // a board-only message keeps the timer
+    send('a', { type: 'start' })
+    expect(r.game!.settings.boardPreset).toBe('balanced')
+    expect(last(send('a', { type: 'settings', board: 'standard-fixed' }), 'a', 'error')!.code).toBe('ALREADY_STARTED')
+    expect(r.game!.settings.boardPreset).toBe('balanced')
+  })
+
   it('the actions clock survives builds and the robber interlude; a completed trade adds 15 s', () => {
     const { r, clock, send } = room()
     send('a', { type: 'start' })

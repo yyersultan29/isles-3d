@@ -8,7 +8,7 @@
 import { NEW_GAME_BOARD, apply, createGame, eventsFor, legalActions, viewFor } from '../game'
 import type { Action, EngineError, GameEvent, GameSettings, GameState, LegalAction, PlayerId, Viewer } from '../game'
 import { createRng, type Rng } from '../game/rng'
-import { parseClientMessage, type RoomErrorCode, type SeatInfo, type ServerMessage, type TimerInfo, type TimerPreset } from '../net/protocol'
+import { parseClientMessage, type RoomErrorCode, type SeatInfo, type ServerMessage, type LobbyBoard, type TimerInfo, type TimerPreset } from '../net/protocol'
 import { decisionOf, extendForTrade, limitFor, timeoutAction, type DecisionKind } from './timeouts'
 
 export type ConnId = string
@@ -83,7 +83,7 @@ export class Room {
     const who = this.conns.get(conn)
     if (!who) return [this.err(conn, 'NOT_JOINED', 'join the room first')]
     if (m.type === 'start') return this.start(conn, who)
-    if (m.type === 'settings') return this.setTimer(conn, who, m.timer)
+    if (m.type === 'settings') return this.setSettings(conn, who, m.timer, m.board)
     return this.act(conn, who, m.clientSeq, m.action)
   }
 
@@ -196,10 +196,11 @@ export class Room {
     return [...this.conns].map(([c, v]) => this.snapshot(c, v))
   }
 
-  private setTimer(conn: ConnId, who: Viewer, timer: TimerPreset): Outbound[] {
+  private setSettings(conn: ConnId, who: Viewer, timer?: TimerPreset, board?: LobbyBoard): Outbound[] {
     if (this.state) return [this.err(conn, 'ALREADY_STARTED', 'the game has started')]
     if (who !== this.host) return [this.err(conn, 'NOT_HOST', 'only the host can change settings')]
-    this.preset = timer
+    if (timer) this.preset = timer
+    if (board) this.settings.boardPreset = board
     return this.seatsToAll()
   }
 
@@ -303,7 +304,8 @@ export class Room {
   /** seats to everyone: `lobby` before the start, `presence` after */
   private seatsToAll(): Outbound[] {
     const seats = this.seatsInfo()
-    return [...this.conns.keys()].map((c): Outbound => ({ to: c, msg: this.state ? { type: 'presence', seats } : { type: 'lobby', seats, host: this.host, timer: this.preset } }))
+    // 'random' (a server option only) shows as balanced in the lobby
+    return [...this.conns.keys()].map((c): Outbound => ({ to: c, msg: this.state ? { type: 'presence', seats } : { type: 'lobby', seats, host: this.host, timer: this.preset, board: this.settings.boardPreset === 'standard-fixed' ? 'standard-fixed' : 'balanced' } }))
   }
 
   private err(conn: ConnId, code: RoomErrorCode, message: string): Outbound {

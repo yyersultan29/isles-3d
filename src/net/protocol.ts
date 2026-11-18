@@ -18,8 +18,8 @@ export type ClientMessage =
   | { type: 'join'; roomId: string; token?: string; claim?: boolean; resume?: string[] }
   /** the host starts the game once every seat is taken */
   | { type: 'start' }
-  /** G5.5: the host picks the turn-timer preset before the start */
-  | { type: 'settings'; timer: TimerPreset }
+  /** G5.5 / B4: the host picks the turn-timer preset and the board before the start (one or both) */
+  | { type: 'settings'; timer?: TimerPreset; board?: LobbyBoard }
   /** G5.7: keep-alive from an idle page (a free host sleeps after minutes without inbound messages); no reply */
   | { type: 'ping' }
   /** an intent; `clientSeq` (strictly increasing per seat) makes retries idempotent */
@@ -36,6 +36,9 @@ export interface SeatInfo { id: PlayerId; taken: boolean; connected: boolean; ab
 /** Turn-timer presets (§20): relaxed ×2, normal ×1, fast ×0.5, off */
 export type TimerPreset = 'relaxed' | 'normal' | 'fast' | 'off'
 
+/** B4: the boards a host can pick in the lobby (same as the start menu) */
+export type LobbyBoard = 'balanced' | 'standard-fixed'
+
 /** The running turn timer: who owes the decision and the time left when the message was sent. */
 export interface TimerInfo { seats: PlayerId[]; kind: 'placement' | 'roll' | 'discard' | 'robber' | 'actions'; remainingMs: number; totalMs: number }
 
@@ -47,7 +50,7 @@ export type ServerMessage =
    */
   | { type: 'welcome'; roomId: string; you: Viewer; token?: string; host: boolean; nextSeq: number }
   /** seats before the game starts (and on every change while in the lobby) */
-  | { type: 'lobby'; seats: SeatInfo[]; host: PlayerId | null; timer: TimerPreset }
+  | { type: 'lobby'; seats: SeatInfo[]; host: PlayerId | null; timer: TimerPreset; board: LobbyBoard }
   /** G5.4: who is connected, after the start (on every join and leave) */
   | { type: 'presence'; seats: SeatInfo[] }
   /** the full view on start, join and reconnect */
@@ -94,8 +97,10 @@ export function parseClientMessage(raw: string): ClientMessage | null {
     case 'ping':
       return { type: 'ping' }
     case 'settings':
-      if (m.timer !== 'relaxed' && m.timer !== 'normal' && m.timer !== 'fast' && m.timer !== 'off') return null
-      return { type: 'settings', timer: m.timer }
+      if (m.timer === undefined && m.board === undefined) return null
+      if (m.timer !== undefined && m.timer !== 'relaxed' && m.timer !== 'normal' && m.timer !== 'fast' && m.timer !== 'off') return null
+      if (m.board !== undefined && m.board !== 'balanced' && m.board !== 'standard-fixed') return null
+      return { type: 'settings', timer: m.timer as TimerPreset | undefined, board: m.board as LobbyBoard | undefined }
     case 'action':
       if (!Number.isSafeInteger(m.clientSeq) || (m.clientSeq as number) < 0) return null
       if (!isObj(m.action) || typeof m.action.type !== 'string') return null

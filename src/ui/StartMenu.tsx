@@ -45,7 +45,7 @@ const useMenuOpen = () => useSyncExternalStore((l) => { listeners.add(l); return
 const newSeed = () => Math.floor(Math.random() * 2 ** 31)
 const ORDER: PlayerId[] = ['p1', 'p2', 'p3', 'p4']
 const gold = 'border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] font-display font-semibold text-[#3a2208] shadow-[0_3px_0_#8a5410]'
-const BOARD_NAMES: Record<BoardChoice, () => string> = {
+export const BOARD_NAMES: Record<BoardChoice, () => string> = {
   balanced: () => L('New balanced', 'Новая сбалансированная'),
   'standard-fixed': () => L('Classic', 'Классическая'),
 }

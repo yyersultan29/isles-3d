@@ -33,6 +33,12 @@ describe('protocol envelope', () => {
       '{"type":"action","clientSeq":1,"action":"END_TURN"}', '{"type":"hack"}', 'x'.repeat(9000)])
       expect(parseClientMessage(bad)).toBeNull()
   })
+  it('B4: settings carry a timer, a board, or both; anything else is refused', () => {
+    expect(parseClientMessage('{"type":"settings","board":"balanced"}')).toEqual({ type: 'settings', board: 'balanced' })
+    expect(parseClientMessage('{"type":"settings","timer":"fast","board":"standard-fixed"}')).toEqual({ type: 'settings', timer: 'fast', board: 'standard-fixed' })
+    for (const bad of ['{"type":"settings"}', '{"type":"settings","board":"random"}', '{"type":"settings","board":1}', '{"type":"settings","timer":"slow","board":"balanced"}'])
+      expect(parseClientMessage(bad)).toBeNull()
+  })
 })
 
 describe('Room lobby', () => {
