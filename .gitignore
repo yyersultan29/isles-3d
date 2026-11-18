@@ -10,5 +10,5 @@ references/colonist-reference.png
 server-dist
 references/card-ref.png
 
-# Hyper3D source model (63 MB OBJ + textures); the game ships public/models/mountain-guy.glb, rebuilt by scripts/build-mountain-guy.mjs
+# Hyper3D source model (63 MB OBJ + textures); the game ships public/models/mountain-guy.glb, rebuilt by scripts/build-character.mjs
 src/models/

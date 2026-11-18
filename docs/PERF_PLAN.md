@@ -120,7 +120,7 @@ looks for speed (P4, P6) only if the owner wants them.
 - Re-measure his cost (3 runs each with and without). If it really is ~7%: textures 1024 → 512,
   keep only the base colour (the normal and roughness maps are invisible at ~36 px tall). The boulder
   and chips stop casting shadows into the shadow map (they're tiny).
-- Files: `scripts/build-mountain-guy.mjs` (rerun), `public/models/mountain-guy.glb`, `MountainGuy.tsx`.
+- Files: `scripts/build-character.mjs` (rerun), `public/models/mountain-guy.glb`, `MountainGuy.tsx`.
 
 ### P4 — Graphics setting with "Auto" *(changes the look on slow devices: owner decision)*
 - A visible Graphics option in the start menu and the in-game menu: **Auto** / High / Medium /

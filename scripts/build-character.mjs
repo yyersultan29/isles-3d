@@ -1,16 +1,18 @@
-// Builds public/models/mountain-guy.glb from the Hyper3D export in src/models/mountain-guy/
-// (base.obj + texture_diffuse/roughness/metallic/normal.png; shaded.png and texture_pbr.png unused).
+// Builds a character GLB (public/models/<name>.glb) from a Hyper3D export in src/models/<name>/
+// (base.obj + texture_diffuse/roughness/metallic/normal.png, optional texture_emissive.png;
+// shaded.png and texture_pbr.png unused).
 //
 // The tools are not project dependencies (sharp is native and heavy). Run from a scratch folder:
 //   npm i --no-save obj2gltf@3.2.0 @gltf-transform/core@4.5.1 @gltf-transform/extensions@4.5.1 \
 //     @gltf-transform/functions@4.5.1 meshoptimizer sharp
-//   node <repo>/scripts/build-mountain-guy.mjs <repo>/src/models/mountain-guy <repo>/public/models/mountain-guy.glb
+//   node <repo>/scripts/build-character.mjs <repo>/src/models/mountain-guy <repo>/public/models/mountain-guy.glb
 //
 // Steps: OBJ -> glTF (obj2gltf), weld, simplify to ~5k triangles (meshoptimizer, Permissive mode:
 // the Hyper3D UV atlas has seams everywhere and locks the plain simplifier at ~84k), one PBR
 // material (base colour sRGB; roughness -> G and metallic -> B of one linear map; normal map),
 // textures 1024 px WebP, quantize + meshopt compression (decoder ships with three, no CDN fetch).
 import { createRequire } from 'node:module'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { NodeIO } from '@gltf-transform/core'
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions'
@@ -41,11 +43,13 @@ const metal = await scaled('texture_metallic.png').extractChannel(0).raw().toBuf
 const mr = Buffer.alloc(SIZE * SIZE * 3)
 for (let i = 0; i < SIZE * SIZE; i++) { mr[i * 3] = 255; mr[i * 3 + 1] = rough[i]; mr[i * 3 + 2] = metal[i] }
 for (const m of doc.getRoot().listMaterials()) m.dispose()
-const mat = doc.createMaterial('mountain-guy')
+const mat = doc.createMaterial(path.basename(output, '.glb'))
   .setBaseColorTexture(tex('baseColor', await scaled('texture_diffuse.png').png().toBuffer()))
   .setMetallicRoughnessTexture(tex('metallicRoughness', await sharp(mr, { raw: { width: SIZE, height: SIZE, channels: 3 } }).png().toBuffer()))
   .setMetallicFactor(1).setRoughnessFactor(1)
   .setNormalTexture(tex('normal', await scaled('texture_normal.png').png().toBuffer()))
+if (existsSync(path.join(dir, 'texture_emissive.png')))
+  mat.setEmissiveTexture(tex('emissive', await scaled('texture_emissive.png').png().toBuffer())).setEmissiveFactor([1, 1, 1])
 for (const p of prims()) p.setMaterial(mat)
 
 await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 85 }), reorder({ encoder: MeshoptEncoder }), quantize(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }))

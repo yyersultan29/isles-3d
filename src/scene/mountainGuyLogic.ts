@@ -7,7 +7,7 @@ import { LEDGES, TILES, corner, groundHeight, hexDist, robberSpot, tileAt, tileH
 import type { GameEvent, GameState, TileId, VertexId } from '../game'
 import { L } from '../ui/locale'
 
-/** Model file under public/ (built from src/models/mountain-guy by scripts/build-mountain-guy.mjs). */
+/** Model file under public/ (built from src/models/mountain-guy by scripts/build-character.mjs). */
 export const GUY_MODEL = 'models/mountain-guy.glb'
 
 /** World height of a settlement (base ≈ 0.028 + walls 0.11 + roof 0.085, ×1.6 in BuildingPiece). */
