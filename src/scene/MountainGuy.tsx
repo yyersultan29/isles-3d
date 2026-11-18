@@ -10,7 +10,7 @@ import { useGame, useGameEvents } from '../store/GameProvider'
 
 /**
  * The "mountain guy" (see mountainGuyLogic.ts for where he stands and how he idles). One mesh, one
- * material from public/models/mountain-guy.glb (GLTFLoader + meshopt decoder via drei's useGLTF;
+ * material from public/models/mountain.glb (GLTFLoader + meshopt decoder via drei's useGLTF;
  * no Draco, so nothing is fetched from a CDN). The model has no skeleton: the idle is a whole-body
  * bob, look-around turn and lean. Clicks hit an invisible capsule proxy, never the mesh itself.
  * He reacts to game events on his tile (guyReaction) and says a line in a bubble; a click gets a

@@ -5,7 +5,7 @@
 // The tools are not project dependencies (sharp is native and heavy). Run from a scratch folder:
 //   npm i --no-save obj2gltf@3.2.0 @gltf-transform/core@4.5.1 @gltf-transform/extensions@4.5.1 \
 //     @gltf-transform/functions@4.5.1 meshoptimizer sharp
-//   node <repo>/scripts/build-character.mjs <repo>/src/models/mountain-guy <repo>/public/models/mountain-guy.glb
+//   node <repo>/scripts/build-character.mjs <repo>/src/models/mountain <repo>/public/models/mountain.glb
 //
 // Steps: OBJ -> glTF (obj2gltf), weld, simplify to ~5k triangles (meshoptimizer, Permissive mode:
 // the Hyper3D UV atlas has seams everywhere and locks the plain simplifier at ~84k; UVs weighted in), one PBR
