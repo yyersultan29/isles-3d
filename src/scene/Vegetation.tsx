@@ -9,6 +9,7 @@ import { oceanTime } from './Ocean'
 import { animTime } from './motion'
 import { usePieces } from './Pieces'
 import { GUY_SPOT, GUY_FOOT, ROCK_R } from './mountainGuyLogic'
+import { CHARACTER_SPOTS } from './characters'
 import { onSceneBoard } from './sceneBoard'
 
 export interface Inst { x: number; y: number; z: number; s: number; ry: number; sy?: number; rx?: number; rz?: number; tint?: THREE.Color }
@@ -43,6 +44,8 @@ function rebuildBlockers() {
   }
   // the mountain guy, his boulder and the strip toward the camera: wide enough that a mountain
   // outcrop (up to ~0.2 across, placed by its centre) can't cover his legs or the boulder
+  // the farmer, shepherd, …: the footprint and a strip toward the camera, so crops and bushes don't cover their legs
+  for (const { x, z, def } of CHARACTER_SPOTS) blockers.push([x, z, def.foot + 0.08], [x, z + 0.24, def.foot + 0.04])
   if (GUY_SPOT) { const { x, z, rock } = GUY_SPOT; blockers.push([x, z, GUY_FOOT + 0.14], [x, z + 0.28, 0.24], [x, z + 0.55, 0.22], [rock.x, rock.z, ROCK_R + 0.14], [rock.x, rock.z + 0.3, 0.2]) }
 }
 rebuildBlockers()

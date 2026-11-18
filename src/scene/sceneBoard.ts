@@ -5,6 +5,7 @@
 import { PORT_EDGES, STANDARD_FIXED, type Board } from '../game'
 import { BOARD_MODE, applySceneBoard } from './board'
 import { refreshGuySpot } from './mountainGuyLogic'
+import { refreshCharacterSpots } from './characters'
 
 type Layout = Readonly<Record<string, { terrain: string; token: number | null }>>
 const signature = (tiles: Layout, kinds: readonly string[]) =>
@@ -23,6 +24,7 @@ export function syncSceneBoard(board: Board): string {
   if (sig === current) return sig
   applySceneBoard(board.tiles, board.ports)
   refreshGuySpot()
+  refreshCharacterSpots()
   for (const h of hooks) h()
   current = sig
   return sig

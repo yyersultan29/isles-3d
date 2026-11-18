@@ -24,6 +24,7 @@ import { quality, useQuality } from './quality'
 import { motion } from './motion'
 import { ContextLossGuard } from './SceneGuard'
 import { MountainGuy } from './MountainGuy'
+import { Characters } from './CharacterFigures'
 import { FrameTicker } from './FrameTicker'
 import { syncSceneBoard } from './sceneBoard'
 import { useGame } from '../store/GameProvider'
@@ -393,6 +394,7 @@ export function World() {
           <Robber />
           {/* own boundary: the island never waits for the character's model file */}
           {!off.has('guy') && <Suspense fallback={null}><MountainGuy /></Suspense>}
+          {!off.has('chars') && <Characters />}
           <Buildings />
           <Smoke />
           {!qp.has('nohover') && <TileHover />}

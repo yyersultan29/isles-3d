@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
-import { Html, useGLTF } from '@react-three/drei'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { CLICK_LINES, GUY_FOOT, GUY_H, GUY_MODEL, GUY_SPOT, ROCK_R, guyPose, guyReaction, pickLine, setGuyHitTest, type GuyAct, type GuyMood, type GuySpot } from './mountainGuyLogic'
 import { rockGeometry } from './models'
+import { useCharacterModel } from './characterModel'
 import { animTime, motion } from './motion'
 import { useGame, useGameEvents } from '../store/GameProvider'
 
@@ -21,7 +22,6 @@ export function MountainGuy() {
   return GUY_SPOT ? <Guy spot={GUY_SPOT} /> : null
 }
 
-const URL = import.meta.env.BASE_URL + GUY_MODEL
 const BUBBLE_MS = 2800
 /** The ore boulder beside him: built once, vertex-coloured. */
 function buildProps() {
@@ -42,49 +42,15 @@ function buildProps() {
   return { rock, rockScale: rs, mat: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0.1 }) }
 }
 const noRaycast = () => {}
-/** Mount counter shared by every instance: a new board remounts him, and the old instance's deferred cleanup must not free the cached model the new one already uses. */
-let guyMounts = 0
 
 function Guy({ spot }: { spot: GuySpot }) {
-  const gltf = useGLTF(URL, false, true)
   const gl = useThree((s) => s.gl)
 
-  // the single mesh, its node transform (meshopt quantization lives there) and a fit to GUY_H, feet on y=0
-  const model = useMemo(() => {
-    let mesh: THREE.Mesh | undefined
-    gltf.scene.updateMatrixWorld(true)
-    gltf.scene.traverse((o) => { if (!mesh && (o as THREE.Mesh).isMesh) mesh = o as THREE.Mesh })
-    if (!mesh) throw new Error('mountain-guy.glb has no mesh')
-    const box = new THREE.Box3().setFromObject(mesh)
-    const s = GUY_H / (box.max.y - box.min.y)
-    const fit = new THREE.Matrix4().makeScale(s, s, s)
-      .premultiply(new THREE.Matrix4().makeTranslation(-((box.min.x + box.max.x) / 2) * s, -box.min.y * s, -((box.min.z + box.max.z) / 2) * s))
-      .multiply(mesh.matrixWorld)
-    const material = mesh.material as THREE.MeshStandardMaterial
-    // colour spaces: base colour is sRGB, the data maps are linear (GLTFLoader sets this; kept explicit)
-    if (material.map) { material.map.colorSpace = THREE.SRGBColorSpace; material.map.anisotropy = 4 }
-    for (const t of [material.normalMap, material.roughnessMap, material.metalnessMap]) if (t) t.colorSpace = THREE.NoColorSpace
-    return { geometry: mesh.geometry, material, fit }
-  }, [gltf])
+  const model = useCharacterModel(GUY_MODEL, GUY_H)
 
-  // free GPU memory when he leaves the scene, and drop the loader cache so a remount loads afresh.
-  // Deferred one tick and skipped if any instance mounted meanwhile: StrictMode (dev) runs a
-  // cleanup right after mount, and clearing the cache then made the next render suspend and remount.
+  // the boulder's geometry and material are his own (the model is freed by useCharacterModel)
   const props = useMemo(() => buildProps(), [])
-  useEffect(() => {
-    const id = ++guyMounts
-    return () => {
-      setTimeout(() => {
-        if (guyMounts !== id) return
-        const m = model.material
-        for (const t of new Set([m.map, m.normalMap, m.roughnessMap, m.metalnessMap])) t?.dispose()
-        m.dispose()
-        model.geometry.dispose()
-        useGLTF.clear(URL)
-        for (const x of [props.rock, props.mat]) x.dispose()
-      }, 0)
-    }
-  }, [model, props])
+  useEffect(() => () => { for (const x of [props.rock, props.mat]) x.dispose() }, [props])
 
   // current reaction: started at `t0` (ms); the pose reads it every frame, no React state
   const body = useRef<THREE.Group>(null)
