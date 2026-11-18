@@ -118,13 +118,21 @@ export function pickGuySpot(tiles: Tile[] = TILES): GuySpot | null {
   return best
 }
 
-export const GUY_SPOT: GuySpot | null = pickGuySpot()
-// his little quarry: a flat ledge under him and the boulder, at his feet' height
-if (GUY_SPOT) {
-  const { x, z, y, rock } = GUY_SPOT
-  rock.y = y
-  LEDGES.push({ x, z, r: GUY_FOOT + 0.02, y }, { x: rock.x, z: rock.z, r: ROCK_R + 0.03, y })
+export let GUY_SPOT: GuySpot | null = null
+/**
+ * (Re)picks his spot for the current TILES and cuts his little quarry: a flat ledge under him and the
+ * boulder, at his feet' height. Runs at load and again when the scene switches boards (sceneBoard.ts).
+ */
+export function refreshGuySpot() {
+  LEDGES.length = 0 // the ledges are his alone; the spot search must see the natural ground
+  GUY_SPOT = pickGuySpot()
+  if (GUY_SPOT) {
+    const { x, z, y, rock } = GUY_SPOT
+    rock.y = y
+    LEDGES.push({ x, z, r: GUY_FOOT + 0.02, y }, { x: rock.x, z: rock.z, r: ROCK_R + 0.03, y })
+  }
 }
+refreshGuySpot()
 
 /** Robber spot check used by tests: he never stands where the robber does. */
 export const robberClear = (s: GuySpot) => { const [rx, rz] = robberSpot(s.tile); return Math.hypot(s.x - rx, s.z - rz) > 0.22 + GUY_FOOT }

@@ -5,7 +5,7 @@
 // connection (never a player named in the message). Every outbound view goes through
 // viewFor/eventsFor for its recipient.
 
-import { apply, createGame, eventsFor, legalActions, viewFor } from '../game'
+import { NEW_GAME_BOARD, apply, createGame, eventsFor, legalActions, viewFor } from '../game'
 import type { Action, EngineError, GameEvent, GameSettings, GameState, LegalAction, PlayerId, Viewer } from '../game'
 import { createRng, type Rng } from '../game/rng'
 import { parseClientMessage, type RoomErrorCode, type SeatInfo, type ServerMessage, type TimerInfo, type TimerPreset } from '../net/protocol'
@@ -64,7 +64,7 @@ export class Room {
 
   constructor(o: RoomOptions) {
     this.id = o.id
-    this.settings = o.settings ?? {}
+    this.settings = { boardPreset: NEW_GAME_BOARD, ...o.settings }
     this.random32 = o.random32 ?? cryptoRandom32
     this.now = o.now ?? Date.now
     this.preset = o.timer ?? 'normal'

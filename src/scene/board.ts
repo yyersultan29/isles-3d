@@ -393,6 +393,21 @@ export function engineHarbors(ports: readonly { edge: EdgeId; kind: PortKind }[]
 
 export const HARBORS: Harbor[] = BOARD_MODE === 'demo' ? DEMO_HARBORS : engineHarbors(PORT_EDGES)
 
+/**
+ * Points the scene at another engine board (B2, docs/BOARD_GEN_PLAN.md): hex positions never change,
+ * so this only rewrites each tile's biome and number and each harbour's kind, in place. Callers
+ * remount the board-dependent scene afterwards (see sceneBoard.ts); module caches keyed by
+ * position or seed (mountain massifs, token textures, road geometry) stay valid.
+ */
+export function applySceneBoard(tiles: Readonly<Record<TileId, { terrain: Terrain; token: number | null }>>, ports: readonly { edge: EdgeId; kind: PortKind }[]) {
+  for (const t of TILES) {
+    const src = tiles[t.axial]
+    t.biome = TERRAIN_BIOME[src.terrain]
+    t.number = src.token
+  }
+  HARBORS.splice(0, HARBORS.length, ...engineHarbors(ports))
+}
+
 // ---------- island outline ----------
 
 /** Radius of the island plateau in direction theta (flat-top big hexagon, rounded). */

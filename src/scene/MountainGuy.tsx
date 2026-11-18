@@ -42,6 +42,8 @@ function buildProps() {
   return { rock, rockScale: rs, mat: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0.1 }) }
 }
 const noRaycast = () => {}
+/** Mount counter shared by every instance: a new board remounts him, and the old instance's deferred cleanup must not free the cached model the new one already uses. */
+let guyMounts = 0
 
 function Guy({ spot }: { spot: GuySpot }) {
   const gltf = useGLTF(URL, false, true)
@@ -66,15 +68,14 @@ function Guy({ spot }: { spot: GuySpot }) {
   }, [gltf])
 
   // free GPU memory when he leaves the scene, and drop the loader cache so a remount loads afresh.
-  // Deferred one tick and skipped if the effect ran again meanwhile: StrictMode (dev) runs a
+  // Deferred one tick and skipped if any instance mounted meanwhile: StrictMode (dev) runs a
   // cleanup right after mount, and clearing the cache then made the next render suspend and remount.
   const props = useMemo(() => buildProps(), [])
-  const mounts = useRef(0)
   useEffect(() => {
-    const id = ++mounts.current
+    const id = ++guyMounts
     return () => {
       setTimeout(() => {
-        if (mounts.current !== id) return
+        if (guyMounts !== id) return
         const m = model.material
         for (const t of new Set([m.map, m.normalMap, m.roughnessMap, m.metalnessMap])) t?.dispose()
         m.dispose()

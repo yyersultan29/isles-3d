@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useLayoutEffect, useRef } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, Lightformer } from '@react-three/drei'
 import { EffectComposer, Bloom, N8AO, Vignette, ToneMapping, SMAA } from '@react-three/postprocessing'
@@ -25,6 +25,8 @@ import { motion } from './motion'
 import { ContextLossGuard } from './SceneGuard'
 import { MountainGuy } from './MountainGuy'
 import { FrameTicker } from './FrameTicker'
+import { syncSceneBoard } from './sceneBoard'
+import { useGame } from '../store/GameProvider'
 
 // Debug override: ?cam=x,y,z&tgt=x,y,z
 const qp = new URLSearchParams(window.location.search)
@@ -299,6 +301,48 @@ function Effects() {
  * re-rendered every `quality.shadowEvery` frames (more rarely under reduced motion) instead of
  * every frame. Measured: the shadow pass is ~20% of the frame at 1440×900 DPR 2.
  */
+/**
+ * The board-dependent part of the scene (B2): points the scene modules at the game's board and keys
+ * the children by it, so a new game's board rebuilds terrain, trees, tokens, harbours and the guy.
+ * The island, ocean, lights and camera stay mounted; nothing else changes while the board is the same.
+ */
+function BoardScene({ children }: { children: ReactNode }) {
+  const board = useGame((s) => s.board)
+  const sig = useMemo(() => syncSceneBoard(board), [board])
+  const gl = useThree((s) => s.gl)
+  useEffect(() => { gl.shadowMap.needsUpdate = true }, [gl, sig])
+  return <BoardGroup key={sig}>{children}</BoardGroup>
+}
+
+/**
+ * Frees the GPU side of a board when it's replaced: every geometry, material and texture in the old
+ * subtree. Shared module caches (token and player materials, road geometry, the guy's model) are
+ * freed too, and three re-uploads them on next use, so nothing breaks; without this each new game
+ * left ~40 geometries and ~9 textures behind.
+ */
+function BoardGroup({ children }: { children: ReactNode }) {
+  const ref = useRef<THREE.Group>(null)
+  // layout cleanup: runs before React detaches the subtree, so the whole old board is still there
+  useLayoutEffect(() => {
+    const g = ref.current
+    return () => { if (g) disposeTree(g) }
+  }, [])
+  return <group ref={ref}>{children}</group>
+}
+
+function disposeTree(root: THREE.Object3D) {
+  const seen = new Set<{ dispose(): void }>()
+  const free = (x: { dispose(): void } | null | undefined) => { if (x && !seen.has(x)) { seen.add(x); x.dispose() } }
+  root.traverse((o) => {
+    const m = o as THREE.Mesh
+    if (m.geometry) free(m.geometry)
+    for (const mat of m.material ? ([] as THREE.Material[]).concat(m.material) : []) {
+      for (const v of Object.values(mat)) if (v instanceof THREE.Texture) free(v)
+      free(mat)
+    }
+  })
+}
+
 function ShadowThrottle() {
   const gl = useThree((s) => s.gl)
   const n = useRef(0)
@@ -342,18 +386,20 @@ export function World() {
       <Suspense fallback={null}>
         <Lights />
         <Island />
-        <Terrain />
-        <Vegetation />
-        <Tokens />
-        <Robber />
-        {/* own boundary: the island never waits for the character's model file */}
-        {!off.has('guy') && <Suspense fallback={null}><MountainGuy /></Suspense>}
-        <Buildings />
-        <Smoke />
-        {!qp.has('nohover') && <TileHover />}
-        {BOARD_MODE === 'game' && <Placement />}
-        {BOARD_MODE === 'game' && <Feedback />}
-        <Harbors />
+        <BoardScene>
+          <Terrain />
+          <Vegetation />
+          <Tokens />
+          <Robber />
+          {/* own boundary: the island never waits for the character's model file */}
+          {!off.has('guy') && <Suspense fallback={null}><MountainGuy /></Suspense>}
+          <Buildings />
+          <Smoke />
+          {!qp.has('nohover') && <TileHover />}
+          {BOARD_MODE === 'game' && <Placement />}
+          {BOARD_MODE === 'game' && <Feedback />}
+          <Harbors />
+        </BoardScene>
         <Ocean />
         <Ships />
         <Scenery />

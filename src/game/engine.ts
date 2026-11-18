@@ -35,7 +35,7 @@ function checkSettings(s: Partial<GameSettings>): string | null {
   if (!isInt(s.discardLimit, 2, 20)) return 'discardLimit must be an integer 2–20'
   if (!isInt(s.seed, 0, 0xffffffff)) return 'seed must be an integer 0–2^32−1'
   if (typeof s.friendlyRobber !== 'boolean') return 'friendlyRobber must be a boolean'
-  if (s.boardPreset !== 'standard-fixed' && s.boardPreset !== 'random') return 'unknown boardPreset'
+  if (s.boardPreset !== 'standard-fixed' && s.boardPreset !== 'random' && s.boardPreset !== 'balanced') return 'unknown boardPreset'
   return null
 }
 

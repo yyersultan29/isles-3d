@@ -68,7 +68,7 @@ export interface PendingTrade {
   responses: Partial<Record<PlayerId, 'accept' | 'reject'>>
 }
 
-export type BoardPreset = 'standard-fixed' | 'random'
+export type BoardPreset = 'standard-fixed' | 'random' | 'balanced'
 
 export interface GameSettings {
   /** default 10 */

@@ -3,7 +3,8 @@
 // not a freshly built array). Derived data goes through `useMemo` on `useGame((s) => s)`.
 
 import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import type { GameState, Viewer } from '../game'
+import { NEW_GAME_BOARD, type GameState, type Viewer } from '../game'
+import type { BoardPreset } from '../game/types'
 import type { OnlineSession, OnlineStore } from './onlineStore'
 import { createGameStore, type GameEventListener, type GameStore } from './gameStore'
 
@@ -15,8 +16,15 @@ export function initialSeed(search = typeof location === 'undefined' ? '' : loca
   return Number.isInteger(n) && n > 0 ? n >>> 0 : (Date.now() % 2 ** 31) >>> 0
 }
 
+/** Board for a fresh local game: `?preset=standard-fixed|random|balanced` for checks (B2), else the default. */
+const PRESETS: readonly BoardPreset[] = ['standard-fixed', 'random', 'balanced']
+function initialPreset(): BoardPreset {
+  const p = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('preset')
+  return PRESETS.find((x) => x === p) ?? NEW_GAME_BOARD
+}
+
 export function GameProvider({ store, children }: { store?: GameStore; children: ReactNode }) {
-  const [own] = useState(() => store ?? createGameStore({ seed: initialSeed(), boardPreset: 'standard-fixed' }))
+  const [own] = useState(() => store ?? createGameStore({ seed: initialSeed(), boardPreset: initialPreset() }))
   // dev-only handle for browser checks and debugging; absent from production builds
   useEffect(() => {
     if (!import.meta.env.DEV) return

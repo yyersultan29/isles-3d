@@ -9,37 +9,44 @@ import { oceanTime } from './Ocean'
 import { animTime } from './motion'
 import { usePieces } from './Pieces'
 import { GUY_SPOT, GUY_FOOT, ROCK_R } from './mountainGuyLogic'
+import { onSceneBoard } from './sceneBoard'
 
 export interface Inst { x: number; y: number; z: number; s: number; ry: number; sy?: number; rx?: number; rz?: number; tint?: THREE.Color }
 
 // ---------- exclusion: keep props off buildings / roads / harbours ----------
 const blockers: [number, number, number][] = []
-if (BOARD_MODE === 'demo') {
-  for (const b of BUILDINGS) {
-    const [x, z] = corner(tileAt(...b.tile), b.corner)
-    blockers.push([x, z, b.city ? 0.3 : 0.24])
+/** Fills the exclusion list from the current board; again whenever the scene switches boards (sceneBoard.ts). */
+function rebuildBlockers() {
+  blockers.length = 0
+  if (BOARD_MODE === 'demo') {
+    for (const b of BUILDINGS) {
+      const [x, z] = corner(tileAt(...b.tile), b.corner)
+      blockers.push([x, z, b.city ? 0.3 : 0.24])
+    }
+    for (const r of ROADS) {
+      const t = tileAt(...r.tile)
+      const a = corner(t, r.edge), b = corner(t, (r.edge + 1) % 6)
+      for (let i = 0; i <= 4; i++) blockers.push([a[0] + (b[0] - a[0]) * (i / 4), a[1] + (b[1] - a[1]) * (i / 4), 0.12])
+    }
+  } else {
+    // G4.2c: in a game any vertex may get a city and any edge a road, so keep props off all of them
+    for (const [x, z] of VERTICES) blockers.push([x, z, 0.3])
+    // the robber may stand on any tile (G4.5b): keep its spot clear, and the strip in front of it
+    // (towards the default camera, +z) so tall trees don't hide the figure
+    for (const t of TILES) { const [x, z] = robberSpot(t); blockers.push([x, z, 0.22], [x, z + 0.24, 0.2], [x, z + 0.42, 0.16]) }
+    for (const { a, b } of EDGES) for (let i = 1; i < 4; i++) blockers.push([a[0] + (b[0] - a[0]) * (i / 4), a[1] + (b[1] - a[1]) * (i / 4), 0.12])
   }
-  for (const r of ROADS) {
-    const t = tileAt(...r.tile)
-    const a = corner(t, r.edge), b = corner(t, (r.edge + 1) % 6)
-    for (let i = 0; i <= 4; i++) blockers.push([a[0] + (b[0] - a[0]) * (i / 4), a[1] + (b[1] - a[1]) * (i / 4), 0.12])
+  for (const h of HARBORS) {
+    const t = tileAt(...h.tile)
+    const a = corner(t, h.edge), b = corner(t, (h.edge + 1) % 6)
+    blockers.push([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0.3])
   }
-} else {
-  // G4.2c: in a game any vertex may get a city and any edge a road, so keep props off all of them
-  for (const [x, z] of VERTICES) blockers.push([x, z, 0.3])
-  // the robber may stand on any tile (G4.5b): keep its spot clear, and the strip in front of it
-  // (towards the default camera, +z) so tall trees don't hide the figure
-  for (const t of TILES) { const [x, z] = robberSpot(t); blockers.push([x, z, 0.22], [x, z + 0.24, 0.2], [x, z + 0.42, 0.16]) }
-  for (const { a, b } of EDGES) for (let i = 1; i < 4; i++) blockers.push([a[0] + (b[0] - a[0]) * (i / 4), a[1] + (b[1] - a[1]) * (i / 4), 0.12])
+  // the mountain guy, his boulder and the strip toward the camera: wide enough that a mountain
+  // outcrop (up to ~0.2 across, placed by its centre) can't cover his legs or the boulder
+  if (GUY_SPOT) { const { x, z, rock } = GUY_SPOT; blockers.push([x, z, GUY_FOOT + 0.14], [x, z + 0.28, 0.24], [x, z + 0.55, 0.22], [rock.x, rock.z, ROCK_R + 0.14], [rock.x, rock.z + 0.3, 0.2]) }
 }
-for (const h of HARBORS) {
-  const t = tileAt(...h.tile)
-  const a = corner(t, h.edge), b = corner(t, (h.edge + 1) % 6)
-  blockers.push([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0.3])
-}
-// the mountain guy, his boulder and the strip toward the camera: wide enough that a mountain
-// outcrop (up to ~0.2 across, placed by its centre) can't cover his legs or the boulder
-if (GUY_SPOT) { const { x, z, rock } = GUY_SPOT; blockers.push([x, z, GUY_FOOT + 0.14], [x, z + 0.28, 0.24], [x, z + 0.55, 0.22], [rock.x, rock.z, ROCK_R + 0.14], [rock.x, rock.z + 0.3, 0.2]) }
+rebuildBlockers()
+onSceneBoard(rebuildBlockers)
 export const blocked = (x: number, z: number, pad = 0) => blockers.some(([bx, bz, r]) => (x - bx) ** 2 + (z - bz) ** 2 < (r + pad) ** 2)
 
 /** Random point on the turf strip between the outer rails and the cliff lip, or null. */
@@ -158,8 +165,8 @@ function Pines() {
       if (noise2(Math.cos(th) * 3, Math.sin(th) * 3) < -0.1) continue
       push(x, z, -0.03, 0.2 + rnd() * 0.12, 0.3)
     }
-    return b
-  }, [])
+    return clearSight(b, geos, tokenSpots()).out
+  }, [geos])
   const { buildings } = usePieces()
   const shown = useMemo(() => clearRoofs(buckets, geos, buildings), [buckets, geos, buildings])
   return (
@@ -184,7 +191,19 @@ const ROOF_MID = 0.29
  */
 function clearRoofs(buckets: Inst[][], geos: THREE.BufferGeometry[], buildings: { tile: [number, number]; corner: number; city: boolean }[]) {
   if (!buildings.length) return buckets
-  const spots = buildings.map((b) => { const [x, z] = corner(tileAt(...b.tile), b.corner); return { x, z, half: b.city ? 0.3 : 0.22 } })
+  const spots = buildings.map((b) => { const [x, z] = corner(tileAt(...b.tile), b.corner); return { x, z, half: b.city ? 0.3 : 0.22, top: ROOF_MID } })
+  const r = clearSight(buckets, geos, spots)
+  if (import.meta.env.DEV) (window as unknown as { __islesVeg?: object }).__islesVeg = { trees: buckets.reduce((n, b) => n + b.length, 0), shrunk: r.shrunk, removed: r.removed }
+  return r.out
+}
+
+/** Number tokens get the same treatment once per board: a tile's own sightline strip is not enough
+ *  when a tall tree lands just beyond it (which trees grow where depends on the whole layout). */
+const TOKEN_TOP = 0.1 // token face above the ground (Pieces.tsx: lift 0.04 + face 0.0525)
+const tokenSpots = () => TILES.filter((t) => t.number).map((t) => ({ x: t.x, z: t.z, half: 0.27, top: tileHeight(t, t.x, t.z) + TOKEN_TOP }))
+
+/** Shrinks (or drops, below half size) every tree that would hide a spot's `top` from the board camera. */
+function clearSight(buckets: Inst[][], geos: THREE.BufferGeometry[], spots: { x: number; z: number; half: number; top: number }[]) {
   let shrunk = 0, removed = 0
   const out = buckets.map((items, i) => {
     const g = geos[i]
@@ -197,7 +216,7 @@ function clearRoofs(buckets: Inst[][], geos: THREE.BufferGeometry[], buildings: 
       for (const b of spots) {
         const dx = it.x - b.x, dz = it.z - b.z
         if (dz < -r * 0.5 || dz > 1.2 || Math.abs(dx) > b.half + r) continue
-        limit = Math.min(limit, ROOF_MID + Math.max(0, dz - r * 0.5) * SIGHT_SLOPE - (it.y - 0.02))
+        limit = Math.min(limit, b.top + Math.max(0, dz - r * 0.5) * SIGHT_SLOPE - (it.y - 0.02))
       }
       if (h <= limit) { res.push(it); continue }
       const f = limit / h
@@ -207,8 +226,7 @@ function clearRoofs(buckets: Inst[][], geos: THREE.BufferGeometry[], buildings: 
     }
     return res
   })
-  if (import.meta.env.DEV) (window as unknown as { __islesVeg?: object }).__islesVeg = { trees: buckets.reduce((n, b) => n + b.length, 0), shrunk, removed }
-  return out
+  return { out, shrunk, removed }
 }
 
 function InstGroup({ geo, mat, items, shadow = true, capacity }: { geo: THREE.BufferGeometry; mat: THREE.Material; items: Inst[]; shadow?: boolean; capacity?: number }) {

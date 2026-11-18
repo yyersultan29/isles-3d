@@ -21,7 +21,7 @@ import { BRAND_NAME } from '../brand'
 import { L, count as countOf, useLocale } from './locale'
 import { LangSwitch } from './LangSwitch'
 import { GraphicsSwitch } from './GraphicsSwitch'
-import type { GameState, PlayerId, ReplayFile } from '../game'
+import { NEW_GAME_BOARD, type GameState, type PlayerId, type ReplayFile } from '../game'
 
 /** Whether this page load starts at the menu: a plain URL does, any option skips it, except the
  *  language (`?lang=ru` is a link for new players and should still open the menu). */
@@ -112,7 +112,7 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
     setSeatNames(names)
     clearSave()
     quiet()
-    store.reset({ seed: newSeed(), boardPreset: 'standard-fixed' })
+    store.reset({ seed: newSeed(), boardPreset: NEW_GAME_BOARD })
     finish()
   }
   const goOnline = () => { window.location.href = `${window.location.pathname}?online` }
