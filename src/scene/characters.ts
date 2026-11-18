@@ -22,19 +22,16 @@ export interface CharacterDef {
   receiveShadow: boolean
   /** Tile types it may stand on; it stands on one of them per board. */
   biomes: Biome[]
-  /** Spot rule: the flattest free ground the camera can see, outside the token, corners and robber
-   * spot; between tiles, `frontBias` per world unit prefers tiles nearer the camera (+z). */
-  frontBias: number
   enabled: boolean
 }
 
 const H = GUY_H * 1.1 // a little taller than the mountain guy
 
 export const CHARACTERS: CharacterDef[] = [
-  { id: 'fermer', model: 'models/fermer.glb', targetHeight: H, foot: 0.15, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['wheat'], frontBias: 0.12, enabled: true },
-  { id: 'postuh', model: 'models/postuh.glb', targetHeight: H, foot: 0.14, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['pasture'], frontBias: 0.12, enabled: true },
+  { id: 'fermer', model: 'models/fermer.glb', targetHeight: H, foot: 0.15, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['wheat'], enabled: true },
+  { id: 'postuh', model: 'models/postuh.glb', targetHeight: H, foot: 0.14, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['pasture'], enabled: true },
   // shortcut: src/models/glina is a byte-for-byte copy of fermer, so it is off; give it its own GLB and enable it when a real model arrives
-  { id: 'glina', model: 'models/fermer.glb', targetHeight: H, foot: 0.15, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['hills'], frontBias: 0.12, enabled: false },
+  { id: 'glina', model: 'models/fermer.glb', targetHeight: H, foot: 0.15, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['hills'], enabled: false },
 ]
 
 /** The robber's figure: stands on its base disc (Pieces.tsx), where the game puts the robber; `rim` is a
@@ -71,17 +68,13 @@ export function characterSpot(def: CharacterDef, t: Tile): (CharacterSpot & { sc
   return best
 }
 
-export function pickCharacterSpots(tiles: Tile[] = TILES): CharacterSpot[] {
+/** Each character goes to a random tile of its type (a new pick on every board), on that tile's best spot. */
+export function pickCharacterSpots(tiles: Tile[] = TILES, rnd = Math.random): CharacterSpot[] {
   const out: CharacterSpot[] = []
   for (const def of CHARACTERS) {
     if (!def.enabled) continue
-    let best: CharacterSpot | null = null, bs = Infinity
-    for (const t of tiles) {
-      if (!def.biomes.includes(t.biome)) continue
-      const s = characterSpot(def, t)
-      if (s && s.score - t.z * def.frontBias < bs) { bs = s.score - t.z * def.frontBias; best = s }
-    }
-    if (best) out.push(best)
+    const spots = tiles.filter((t) => def.biomes.includes(t.biome)).map((t) => characterSpot(def, t)).filter((s) => s !== null)
+    if (spots.length) out.push(spots[Math.floor(rnd() * spots.length)])
   }
   return out
 }

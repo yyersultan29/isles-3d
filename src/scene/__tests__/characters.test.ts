@@ -22,6 +22,10 @@ const check = () => {
 
 describe('characters', () => {
   it('stand one per type on their tiles, inside the hex, off the token, corners and robber spot', () => check())
+  it('pick a random tile of their type', () => {
+    const tile = (r: number) => chars.pickCharacterSpots(undefined, () => r).map((s) => s.tile)
+    expect(tile(0)).not.toEqual(tile(0.999))
+  })
   it('are re-placed on every board', () => {
     for (const seed of [3, 11, 2026, 77]) {
       const r = createGame({ seed, boardPreset: 'balanced' })
