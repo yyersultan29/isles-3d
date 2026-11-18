@@ -39,7 +39,7 @@ export const CHARACTERS: CharacterDef[] = [
 
 /** The robber's figure: stands on its base disc (Pieces.tsx), where the game puts the robber; `rim` is a
  * fresnel edge light so the dark cloak reads on forest and desert alike. */
-export const ROBBER_FIGURE = { model: 'models/robber.glb', targetHeight: 0.5, rim: '#f3e7c6', rimStrength: 0.9 }
+export const ROBBER_FIGURE = { model: 'models/robber.glb', targetHeight: 0.5, rim: '#f3e7c6', rimStrength: 0.6 }
 
 export interface CharacterSpot { def: CharacterDef; tile: Tile; x: number; z: number; y: number; yaw: number }
 

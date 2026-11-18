@@ -166,7 +166,9 @@ function rimMaterial(base: THREE.MeshStandardMaterial, color: string, strength: 
   const rim = new THREE.Color(color)
   m.onBeforeCompile = (sh) => {
     sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-      totalEmissiveRadiance += vec3(${rim.r.toFixed(3)}, ${rim.g.toFixed(3)}, ${rim.b.toFixed(3)}) * ${strength.toFixed(3)} * pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 3.0);`)
+      // the face's true normal: the simplified mesh's vertex normals are ragged and lit whole facets
+      vec3 rimN = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition)));
+      totalEmissiveRadiance += vec3(${rim.r.toFixed(3)}, ${rim.g.toFixed(3)}, ${rim.b.toFixed(3)}) * ${strength.toFixed(3)} * pow(1.0 - abs(dot(rimN, normalize(vViewPosition))), 5.0);`)
   }
   m.customProgramCacheKey = () => `rim-${color}-${strength}`
   return m
