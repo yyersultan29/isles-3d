@@ -74,12 +74,12 @@
   },
   "games": [
     {
-      "heapMB": 66.4,
+      "heapMB": 78.2,
       "geometries": 153,
       "textures": 60
     },
     {
-      "heapMB": 79.6,
+      "heapMB": 79.9,
       "geometries": 153,
       "textures": 60
     },
@@ -89,7 +89,7 @@
       "textures": 60
     },
     {
-      "heapMB": 70.4,
+      "heapMB": 82.8,
       "geometries": 153,
       "textures": 60
     },
@@ -104,17 +104,12 @@
       "textures": 60
     },
     {
-      "heapMB": 71,
+      "heapMB": 71.1,
       "geometries": 153,
       "textures": 60
     },
     {
-      "heapMB": 71,
-      "geometries": 153,
-      "textures": 60
-    },
-    {
-      "heapMB": 73.7,
+      "heapMB": 71.1,
       "geometries": 153,
       "textures": 60
     },
@@ -125,6 +120,11 @@
     },
     {
       "heapMB": 71.3,
+      "geometries": 153,
+      "textures": 60
+    },
+    {
+      "heapMB": 71.4,
       "geometries": 153,
       "textures": 60
     }
@@ -140,11 +140,11 @@
     "board": "p4 f8 h9 h3 f2 p11 f8 f6 m10 f5 h10 m5 d f4 p6 f11 p9 m3 f12"
   },
   "fps_classic": [
-    51.7,
-    51.9
+    44.1,
+    43.1
   ],
   "fps_balanced": [
-    51.8,
-    51.6
+    43.1,
+    43
   ]
 }

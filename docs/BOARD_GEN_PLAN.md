@@ -1,6 +1,6 @@
 # B — A new, fair board every game: analysis and plan
 
-Status: **B1–B2 committed (`46eeaa8`), B3 committed (`50ee444`); B4 (online lobby choice) implemented, awaiting owner review** (2026-11-18); B5 not started. Checks: `scripts/b2-check.mjs`, `scripts/b3-check.mjs`, `scripts/b4-check.mjs [server]`
+Status: **B1–B4 committed (`46eeaa8`, `50ee444`, `a5d7198`); B5 (docs, metrics, regression) done, awaiting owner review** (2026-11-18). Checks: `scripts/b2-check.mjs`, `scripts/b3-check.mjs`, `scripts/b4-check.mjs [server]`, `npx tsx scripts/board-metrics.ts [preset] [seeds]`
 Original trigger: "сейчас карта статичный надо сделать бизнес сис анализ на
 расстановку точек там у colonist есть алгоритм по установке точек".
 
@@ -94,6 +94,34 @@ failures has a probability of about 10⁻¹³, so the fallback never fires in pr
 **Conclusion.** Turning `random` on as it is would be unfair in about 1 game in 7 (a starved
 resource), and nearly every board would have visible clumps. It needs balancing, not only
 switching on.
+
+### 2.2 Result: the `balanced` preset (measured in B5)
+
+Script: `npx tsx scripts/board-metrics.ts balanced 20000`, 2026-11-18. The same script on `random`
+reproduces the §2.1 figures exactly, so the two tables are comparable.
+
+| Metric | `random`, average | `balanced`, average |
+|---|---|---|
+| Adjacent pairs with the same number | 1.47 | **0** |
+| Adjacent same-resource pairs | 5.9 | **0.008** |
+| 2 next to 12 | 0.25 | **0** |
+| Resource balance (max − min pips per tile) | 1.69 | **0.88** |
+| Poorest resource's total pips | 8.0 | **9.4** |
+| Best corner | 12.5 | 12.4 |
+
+| Problem | `random` | `balanced` |
+|---|---|---|
+| Some identical numbers touch | 82% | **0%** |
+| 3 or more same-resource clumps | 97% | **0%** |
+| 2 and 12 touch | 25% | **0%** |
+| One resource starved (≤ 6 pips) | 15% | **0%** |
+| 6/8 on 3 or more resources | — | 99.9% |
+
+Generation time (N1): median 2.43 ms, p99 2.92 ms, max 6.68 ms (target ≤ 30 ms). `random`: 0.07 ms median.
+
+Frame budget (N3, `scripts/perf-budget.mjs`, seed 7, 1440×900): `standard-fixed` vs `balanced`
+scene fps idle 30/30, pointer 50/48, orbit 60/60, unfocused 4/4; main-thread load within 0.6
+percentage points in every state; no errors. Always-render fps (B2): 51.7 vs 51.8.
 
 ## 3. Requirements
 

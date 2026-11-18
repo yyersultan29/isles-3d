@@ -163,9 +163,10 @@ Hex sides and the corners they join (v1.2 adds the corner pairs):
 ### 2.4 Board generation [DESIGN]
 
 - `generateBoard(rng, preset)` is deterministic: a seeded PRNG (mulberry32, copied into the engine so it doesn't import `src/scene/noise.ts`), then Fisher–Yates shuffles.
-- Presets: `standard-fixed` (§2.6, used for tests and as the default first), `random`.
+- Presets: `standard-fixed` (§2.6, used for tests), `random`, and `balanced` (the default for new games since project B, `docs/BOARD_GEN_PLAN.md`).
 - Random-board constraints (Colonist's generator is undocumented): terrain and token multisets as in §2.1; the desert has no token; **6 and 8 tokens are never adjacent** [STANDARD variable-setup rule]; optionally no equal tokens adjacent. Reject and reshuffle with a bounded retry count (200), then fall back to `standard-fixed`.
-- Ports: the 9 edges in §2.6 are fixed; `random` shuffles only the port kinds.
+- Ports: the 9 edges in §2.6 are fixed; `random` and `balanced` shuffle only the port kinds.
+- `balanced` (project B): builds `BALANCED_CANDIDATES` (64) candidates and keeps the lowest `boardBalance` score (first on ties). Each candidate: terrain shuffle, then `TERRAIN_SWAPS` (40) random two-hex swaps kept only if they reduce adjacent same-terrain pairs; tokens placed by backtracking (high pips first) so that 6/8, 2/12 and equal numbers are **never** adjacent; port-kind shuffle. Score = 3·same-terrain pairs + 4·max(0, 9 − poorest resource pips) + 2·pip-per-tile spread + 2·max(0, 3 − resources with a 6/8) + 2:1 ports next to their own resource on a 6/8. If no candidate succeeds, fall back to `standard-fixed`. Measured on 20,000 seeds: no adjacent equal numbers, every resource ≥ 9 pips, ~2.4 ms median generation.
 - (v1.2) Iterate tiles in a fixed canonical order when assigning shuffled terrain and tokens: sort by `r`, then `q`. The result must not depend on object key order.
 
 ### 2.5 Current 3D demo board vs the standard board (code audit)
@@ -238,7 +239,7 @@ interface GameSettings {
   vpToWin: number          // default 10 [OFFICIAL]; Colonist allows other targets (1v1 uses 15 [BLOG-1V1])
   discardLimit: number     // default 7: players with MORE than this discard on a 7 [OFFICIAL]; 1v1 allows 9 [BLOG-1V1]
   friendlyRobber: boolean  // default false. When on, players with < 3 public VP can't be blocked or robbed [BLOG-1V1]
-  boardPreset: 'standard-fixed' | 'random'
+  boardPreset: 'standard-fixed' | 'random' | 'balanced'
   seed: number             // uint32
 }
 ```
@@ -586,7 +587,8 @@ decide legality.
 
 (v1.2) **RNG consumption order is part of the replay format.** `createGame` consumes in this
 order: board terrain shuffle, token shuffle (with retries), port-kind shuffle (`random` preset
-only), seating-order shuffle, dev-deck shuffle. After that: 2 draws per `ROLL`, 1 per steal.
+only; `balanced` instead consumes, for each of its 64 candidates in turn: terrain shuffle, 40 swap
+pairs, token shuffle plus the per-step hex shuffles of the backtracking, port-kind shuffle), seating-order shuffle, dev-deck shuffle. After that: 2 draws per `ROLL`, 1 per steal.
 Changing this order is a breaking change and bumps `schemaVersion`. No `Math.random`, `Date.now`
 or locale-dependent call may appear in `src/game`.
 
@@ -696,7 +698,7 @@ are decided at the start of G1.
 3. Whether Colonist allows trading or building before the roll — we chose no. **Decided 2026-11-11: no.**
 4. Friendly Robber default for 4-player rooms; we chose off. **Decided 2026-11-11: off.**
 5. Board generator constraints (6/8 adjacency, port placement) — undocumented.
-6. Whether the scene keeps its showcase layout or renders generated boards (§2.5). **Decided 2026-11-11: the showcase stays as a `demo` scene preset; games use `standard-fixed`/`random`, rendered in G4.**
+6. Whether the scene keeps its showcase layout or renders generated boards (§2.5). **Decided 2026-11-11: the showcase stays as a `demo` scene preset; games use `standard-fixed`/`random`, rendered in G4.** (2026-11-18: new games default to `balanced`, project B.)
 7. Test runner: the project has none. **Decided 2026-11-11: add `vitest` as a dev dependency in G1.**
 8. (v1.2) Whether Colonist shows discarded cards and Monopoly/Year of Plenty details to all players. We chose public (§17). **Decided 2026-11-11: public.**
 9. (v1.2) Seating order method on Colonist. We chose a seeded shuffle. **Decided 2026-11-11: seeded shuffle.**
