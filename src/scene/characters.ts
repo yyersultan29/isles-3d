@@ -37,8 +37,9 @@ export const CHARACTERS: CharacterDef[] = [
   { id: 'glina', model: 'models/fermer.glb', targetHeight: H, foot: 0.15, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['hills'], frontBias: 0.12, enabled: false },
 ]
 
-/** The robber's figure: stands on its base disc (Pieces.tsx), where the game puts the robber. */
-export const ROBBER_FIGURE = { model: 'models/robber.glb', targetHeight: 0.5, outline: '#f3e7c6', outlineWidth: 0.009 }
+/** The robber's figure: stands on its base disc (Pieces.tsx), where the game puts the robber; `rim` is a
+ * fresnel edge light so the dark cloak reads on forest and desert alike. */
+export const ROBBER_FIGURE = { model: 'models/robber.glb', targetHeight: 0.5, rim: '#f3e7c6', rimStrength: 0.9 }
 
 export interface CharacterSpot { def: CharacterDef; tile: Tile; x: number; z: number; y: number; yaw: number }
 

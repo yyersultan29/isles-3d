@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { animTime, motion } from './motion'
 import * as THREE from 'three'
@@ -9,6 +9,9 @@ import { StaticBatch } from './StaticBatch'
 import { mulberry32 } from './noise'
 import { useGame, useGameStore } from '../store/GameProvider'
 import { buildingKey, roadKey, useArrivals } from './arrivals'
+import { ROBBER_FIGURE } from './characters'
+import { useCharacterModel } from './characterModel'
+import { LoadGuard, noRaycast } from './CharacterFigures'
 
 // ---------------- Number tokens ----------------
 const TOKEN_R = 0.27
@@ -134,12 +137,55 @@ export function Robber() {
   })
   useEffect(() => () => { for (const g of Object.values(geo)) g.dispose() }, [geo])
 
+  // the procedural cloak stays as the loading / load-failure fallback, so the robber is never missing
+  const cloak = (
+    <>
+      <mesh geometry={geo.body} material={robberMat} castShadow receiveShadow raycast={noRaycast} />
+      <mesh geometry={geo.face} material={BASE_EDGE} raycast={noRaycast} />
+      <mesh geometry={geo.eyes} material={GLOW} raycast={noRaycast} />
+    </>
+  )
   return (
     <group ref={ref} userData={{ piece: 'robber' }}>
-      <mesh geometry={geo.base} material={baseMat} castShadow receiveShadow />
-      <mesh geometry={geo.body} material={robberMat} castShadow receiveShadow />
-      <mesh geometry={geo.face} material={BASE_EDGE} />
-      <mesh geometry={geo.eyes} material={GLOW} />
+      <mesh geometry={geo.base} material={baseMat} castShadow receiveShadow raycast={noRaycast} />
+      <LoadGuard id="robber" fallback={cloak}>
+        <Suspense fallback={cloak}><RobberFigure /></Suspense>
+      </LoadGuard>
+      {/* click / hover target: a plain cylinder instead of the 5k-triangle model */}
+      <mesh position-y={ROBBER_FIGURE.targetHeight / 2 + BASE_H} userData={{ piece: 'robber-proxy' }}>
+        <cylinderGeometry args={[0.13, 0.13, ROBBER_FIGURE.targetHeight + BASE_H, 12]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+    </group>
+  )
+}
+
+/** The model's material plus a pale fresnel rim (emissive, so it shows in shade too): the dark figure reads on any tile. */
+function rimMaterial(base: THREE.MeshStandardMaterial, color: string, strength: number) {
+  const m = base.clone()
+  const rim = new THREE.Color(color)
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      totalEmissiveRadiance += vec3(${rim.r.toFixed(3)}, ${rim.g.toFixed(3)}, ${rim.b.toFixed(3)}) * ${strength.toFixed(3)} * pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 3.0);`)
+  }
+  m.customProgramCacheKey = () => `rim-${color}-${strength}`
+  return m
+}
+
+function RobberFigure() {
+  const { targetHeight, rim, rimStrength } = ROBBER_FIGURE
+  const model = useCharacterModel(ROBBER_FIGURE.model, targetHeight)
+  // a clone shares the textures; only the clone's program is disposed here, the loader frees the rest
+  const material = useMemo(() => rimMaterial(model.material, rim, rimStrength), [model, rim, rimStrength])
+  useEffect(() => () => material.dispose(), [material])
+  const body = useRef<THREE.Group>(null)
+  useFrame(() => {
+    // idle: a slow, wary look around
+    if (body.current) body.current.rotation.y = motion.reduced ? 0 : Math.sin(animTime.value * 0.6) * 0.18 + Math.sin(animTime.value * 1.7) * 0.03
+  })
+  return (
+    <group ref={body} position-y={BASE_H}>
+      <mesh geometry={model.geometry} material={material} matrix={model.fit} matrixAutoUpdate={false} castShadow receiveShadow raycast={noRaycast} />
     </group>
   )
 }

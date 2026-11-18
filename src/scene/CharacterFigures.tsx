@@ -23,14 +23,14 @@ export function Characters() {
   )
 }
 
-class LoadGuard extends Component<{ id: string; children: ReactNode }, { failed: boolean }> {
+export class LoadGuard extends Component<{ id: string; fallback?: ReactNode; children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
   static getDerivedStateFromError() { return { failed: true } }
-  componentDidCatch(error: unknown) { console.error(`[characters] "${this.props.id}" failed to load; its tile stays empty.`, error) }
-  render() { return this.state.failed ? null : this.props.children }
+  componentDidCatch(error: unknown) { console.error(`[characters] "${this.props.id}" failed to load; ${this.props.fallback ? 'drawing its fallback' : 'its tile stays empty'}.`, error) }
+  render() { return this.state.failed ? (this.props.fallback ?? null) : this.props.children }
 }
 
-const noRaycast = () => {}
+export const noRaycast = () => {}
 const phaseOf = (id: string) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) / 997 * Math.PI * 2
 
 function Character({ spot }: { spot: CharacterSpot }) {
