@@ -29,6 +29,7 @@ const H = GUY_H * 1.1 // a little taller than the mountain guy
 
 export const CHARACTERS: CharacterDef[] = [
   { id: 'fermer', model: 'models/fermer.glb', targetHeight: H, foot: 0.15, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['wheat'], enabled: true },
+  { id: 'wood-master', model: 'models/wood-master.glb', targetHeight: H, foot: 0.15, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['forest'], enabled: true },
   { id: 'postuh', model: 'models/postuh.glb', targetHeight: H, foot: 0.14, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['pasture'], enabled: true },
   // shortcut: src/models/glina is a byte-for-byte copy of fermer, so it is off; give it its own GLB and enable it when a real model arrives
   { id: 'glina', model: 'models/fermer.glb', targetHeight: H, foot: 0.15, offset: [0, 0, 0], yaw: 0, castShadow: true, receiveShadow: true, biomes: ['hills'], enabled: false },
