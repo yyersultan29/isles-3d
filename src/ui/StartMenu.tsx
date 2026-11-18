@@ -16,12 +16,13 @@ import { clearNotices } from './noticeQueue'
 import { useGameStore } from '../store/GameProvider'
 import { clearSave, readSave, resumable, startAutosave } from '../store/autosave'
 import { readNames, writeNames, type Names } from '../store/names'
+import { BOARD_CHOICES, readBoardChoice, writeBoardChoice, type BoardChoice } from '../store/boardChoice'
 import { setDevOpen, setPanel, setPlacementMode, setSeen, setTradeOpen } from '../store/ui'
 import { BRAND_NAME } from '../brand'
 import { L, count as countOf, useLocale } from './locale'
 import { LangSwitch } from './LangSwitch'
 import { GraphicsSwitch } from './GraphicsSwitch'
-import { NEW_GAME_BOARD, type GameState, type PlayerId, type ReplayFile } from '../game'
+import { type GameState, type PlayerId, type ReplayFile } from '../game'
 
 /** Whether this page load starts at the menu: a plain URL does, any option skips it, except the
  *  language (`?lang=ru` is a link for new players and should still open the menu). */
@@ -44,6 +45,10 @@ const useMenuOpen = () => useSyncExternalStore((l) => { listeners.add(l); return
 const newSeed = () => Math.floor(Math.random() * 2 ** 31)
 const ORDER: PlayerId[] = ['p1', 'p2', 'p3', 'p4']
 const gold = 'border-2 border-[#ffe7a6] bg-[linear-gradient(180deg,#ffe08a_0%,#f4b33a_45%,#d98a16_100%)] font-display font-semibold text-[#3a2208] shadow-[0_3px_0_#8a5410]'
+const BOARD_NAMES: Record<BoardChoice, () => string> = {
+  balanced: () => L('New balanced', 'Новая сбалансированная'),
+  'standard-fixed': () => L('Classic', 'Классическая'),
+}
 const plain = 'bg-white/10 font-semibold text-white hover:bg-white/20'
 
 /**
@@ -63,6 +68,7 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
     return file && state ? { file, state } : null
   })
   const [names, setNames] = useState<Names>(readNames)
+  const [board, setBoard] = useState<BoardChoice>(() => readBoardChoice())
   const saving = useRef<(() => void) | null>(null)
   const first = useRef<HTMLButtonElement>(null)
   const card = useRef<HTMLElement>(null)
@@ -112,7 +118,8 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
     setSeatNames(names)
     clearSave()
     quiet()
-    store.reset({ seed: newSeed(), boardPreset: NEW_GAME_BOARD })
+    writeBoardChoice(board)
+    store.reset({ seed: newSeed(), boardPreset: board })
     finish()
   }
   const goOnline = () => { window.location.href = `${window.location.pathname}?online` }
@@ -165,6 +172,17 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
                   className="h-[30px] min-w-0 flex-1 bg-transparent text-[14.5px] text-white outline-none placeholder:text-[#a9a49a]" />
               </label>
             ))}
+          </div>
+          <div role="group" aria-label={L('Board', 'Карта')} className="mt-[8px] flex flex-wrap items-center gap-[6px]">
+            <span aria-hidden className="text-[12px] text-[#a9a49b]">{L('Board', 'Карта')}</span>
+            <div className="flex overflow-hidden rounded-[8px] ring-1 ring-white/15">
+              {BOARD_CHOICES.map((c) => (
+                <button key={c} type="button" aria-pressed={board === c} data-board={c} onClick={() => setBoard(c)}
+                  className={`h-[28px] px-[9px] text-[12.5px] font-bold ${board === c ? 'bg-[#f2b544] text-[#2a1a06]' : 'bg-white/5 text-[#d6d2ca] hover:bg-white/15'} ${focusRing}`}>
+                  {BOARD_NAMES[c]()}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="mt-[10px] flex items-center justify-between gap-[10px]">
             <span className="text-[12.5px] text-[#d6d2ca]">{save || live ? L('Ends the game above', 'Завершит игру выше') : ''}</span>

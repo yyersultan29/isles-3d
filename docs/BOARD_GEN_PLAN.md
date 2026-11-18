@@ -1,6 +1,6 @@
 # B — A new, fair board every game: analysis and plan
 
-Status: **B1 (engine) and B2 (scene) implemented, awaiting owner review** (2026-11-18); B3–B4 not started. Checks: `scripts/b2-check.mjs` → `screenshots/milestones/b2/`
+Status: **B1–B2 committed (`46eeaa8`); B3 (menu choice) implemented, awaiting owner review** (2026-11-18); B4 not started. Checks: `scripts/b2-check.mjs`, `scripts/b3-check.mjs`
 Original trigger: "сейчас карта статичный надо сделать бизнес сис анализ на
 расстановку точек там у colonist есть алгоритм по установке точек".
 

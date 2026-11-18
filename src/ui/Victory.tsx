@@ -8,8 +8,8 @@ import { focusRing, panel } from './HUD'
 import { L } from './locale'
 import { awardName } from './words'
 import { useGameView } from './gameView'
-import { NEW_GAME_BOARD } from '../game'
 import { useGameStore, useOnline } from '../store/GameProvider'
+import { readBoardChoice } from '../store/boardChoice'
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 31)
 
@@ -24,7 +24,7 @@ export function Victory({ compact = false }: { compact?: boolean }) {
   useEffect(() => { if (!final) setHidden(false) }, [final])
   if (!final) return null
   const w = final.rows[0]
-  const newGame = () => store.reset({ seed: newSeed(), boardPreset: NEW_GAME_BOARD })
+  const newGame = () => store.reset({ seed: newSeed(), boardPreset: readBoardChoice() })
 
   if (hidden) return (
     <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ bottom: compact ? 160 : 140 }}>
