@@ -1191,6 +1191,25 @@ engine or protocol changes.
   - After deploy (2026-11-16): `?lang=ru|en` no longer skips the start menu (a language link for new players opens the menu in that language); other URL options still skip it.
   - Open: owner review of G9 in a browser; phone-only gaps stay in G8 (top bar without points/awards at 390 px, small rings).
 
+### G10 — First game without a friend explaining (UX)
+
+Approved by the owner on 2026-11-19 after an outside game critique (8/10 atmosphere, 6/10 first contact). One step at a
+time, each checked before the next; no camera, engine or protocol changes.
+
+- [x] **G10.1 The primary action is never covered.** At 1280×720 and 1440×750 the build panel covered "End turn" (the
+  dice sat at a fixed `top-[420px]`, the panel was pinned to the bottom); G9 checks measured text overflow, not panels
+  over each other. Players, dice and build panel are now one right column: the dice stay where they were on tall screens
+  (a spacer up to 56 px shrinks first), and on a short screen the build panel scrolls (focusable, wheel works).
+  Checks (2026-11-19): a scripted game to turn 10 in Russian at 1280×720, 1440×750, 1440×900: "End turn" bottom is above
+  the panel top at every size (before: covered at the first two), 1440×900 unchanged; 323 unit tests, build; g6-audit axe 0
+  at 1280×720 and 1440×900; g9-awards no errors; g9-exit at 1280×720 and 1440×750: Russian text clean, 0 overflow, axe 0,
+  no page errors.
+  Limit: on a short screen the last build row (development card) is behind the scroll.
+- [ ] **G10.2 Preview of the first settlement** with "Place here", or undo until the settlement + road pair is done.
+- [ ] **G10.3 Bank trade around ready deals** (4 grain → 1 wood) and the reason before the choice ("3 grain short").
+- [ ] **G10.4 Corner rings explained** (resources and numbers of a corner, not just "gold is best") and points as "3 / 10".
+- [ ] **G10.5 Tutorial or solo play against bots** — a separate decision after G10.1–4.
+
 ## 6. Suggested code organization (adapt to actual repo)
 
 ```text

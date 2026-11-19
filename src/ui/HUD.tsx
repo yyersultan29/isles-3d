@@ -143,7 +143,7 @@ export const seatLabel = (p: SeatView) => L(
 function Players() {
   const { seats } = useGameView()
   return (
-    <ul aria-label={L('Players', 'Игроки')} className="absolute right-[18px] top-[66px] flex w-[228px] flex-col gap-[7px]">
+    <ul aria-label={L('Players', 'Игроки')} className="mr-[4px] flex w-[228px] shrink-0 flex-col gap-[7px]">
       {seats.map((p) => (
         <li
           key={p.id}
@@ -273,7 +273,7 @@ function DiceArea() {
     gsap.fromTo(el.children, { y: -18, rotate: -25 }, { y: 0, rotate: 0, duration: 0.7, ease: 'bounce.out', stagger: 0.08 }),
   )
   return (
-    <div className="absolute right-[14px] top-[420px] w-[232px]">
+    <div className="relative mt-[22px] w-[232px] shrink-0">
       <div ref={ref} aria-label={rolled ? L(`Dice: ${a} and ${b}, total ${a + b}`, `Кубики: ${a} и ${b}, сумма ${a + b}`) : L('Dice not rolled yet', 'Кубики ещё не брошены')} role="img" className={`relative z-10 mx-auto flex w-[150px] justify-between drop-shadow-[0_10px_8px_rgba(0,0,0,0.55)] transition-opacity ${rolled ? '' : 'opacity-70'}`}>
         <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg) rotateZ(-4deg)" />
         <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg) rotateZ(6deg)" color="red" />
@@ -658,13 +658,14 @@ function BuildPanel() {
   const setup = useSetup()
   // G9.5: during setup the panel is one line; the costs come back with the first turn
   if (setup) return (
-    <section aria-labelledby="build-title" className={`absolute bottom-[42px] right-[16px] flex w-[246px] items-baseline justify-between rounded-[12px] px-[16px] py-[10px] ${panel} ${setBack(setup)}`}>
+    <section aria-labelledby="build-title" className={`mr-[2px] mt-auto flex w-[246px] shrink-0 items-baseline justify-between rounded-[12px] px-[16px] py-[10px] ${panel} ${setBack(setup)}`}>
       <h2 id="build-title" className="font-display text-[20px] font-medium text-[#f4efe6]">{L('Build', 'Стройка')}</h2>
       <span className="text-[13px] text-[#d6d2ca]">{L('after setup', 'после расстановки')}</span>
     </section>
   )
+  // focusable and wheel-scrollable: on a short screen it scrolls, and with every row disabled the keyboard could not reach the rest
   return (
-    <section aria-labelledby="build-title" className={`absolute bottom-[42px] right-[16px] w-[246px] rounded-[12px] px-[10px] pb-[8px] pt-[12px] ${panel}`}>
+    <section tabIndex={0} aria-labelledby="build-title" className={`pointer-events-auto mr-[2px] mt-auto min-h-0 w-[246px] overflow-y-auto rounded-[12px] px-[10px] pb-[8px] pt-[12px] ${focusRing} ${panel}`}>
       <h2 id="build-title" className="mb-[8px] px-[6px] font-display text-[20px] font-medium text-[#f4efe6]">{L('Build', 'Стройка')}</h2>
       <BuildRows />
     </section>
@@ -775,10 +776,15 @@ export const HUD = memo(function HUD() {
           <Notices align="start" events={false} max={1} className="w-full" />
           <GameLog />
         </div>
-        <Players />
-        <DiceArea />
+        {/* G10.1: one right column, so on a short screen the build panel scrolls instead of covering the
+            primary action (it hid "End turn" at 1280×720); the spacer keeps the dice where they were on tall screens */}
+        <div className="absolute bottom-[42px] right-[14px] top-[66px] flex flex-col items-end">
+          <Players />
+          <div aria-hidden className="max-h-[56px] min-h-[10px] flex-1" />
+          <DiceArea />
+          <BuildPanel />
+        </div>
         <ResourceCards />
-        <BuildPanel />
         <BottomLeft />
         <GameDialogs className="absolute bottom-[132px] left-1/2 -translate-x-[54%]" />
         <BoardPicker className="absolute inset-x-0 bottom-[132px]" />
