@@ -145,6 +145,25 @@ export const seatLabel = (p: SeatView) => L(
   `${p.name}: ${p.vp} из ${p.win} победных очков, ${count(p.cards, '', '', 'карта ресурсов', 'карты ресурсов', 'карт ресурсов')}, ${count(p.devCards, '', '', 'карта развития', 'карты развития', 'карт развития')}, сыграно рыцарей: ${p.knights}${p.longestRoad ? `, ${awardName('longestRoad')}` : ''}${p.largestArmy ? `, ${awardName('largestArmy')}` : ''}${p.active ? ', сейчас ходит' : ''}${p.away ? ', нет связи' : ''}${p.auto ? ', играет автоматически' : ''}`,
 )
 
+/** What the bank still holds: each resource and the development-card deck (online the deck is a count). */
+function BankStock({ className = '' }: { className?: string }) {
+  const bank = useGame((s) => s.bank)
+  const deck = useGame((s) => s.deck.length)
+  const label = L(`Bank: ${RESOURCE_ORDER.map((r) => `${resName(r)} ${bank[r]}`).join(', ')}, development cards ${deck}`,
+    `Банк: ${RESOURCE_ORDER.map((r) => `${resName(r)} ${bank[r]}`).join(', ')}, карты развития ${deck}`)
+  return (
+    <div role="group" aria-label={label} data-bank-stock className={`flex items-center gap-[8px] rounded-[14px] py-[5px] pl-[10px] pr-[12px] ${glass} ${className}`}>
+      <span aria-hidden className="text-[13px] font-semibold text-[#e9e4da]">{L('Bank', 'Банк')}</span>
+      {RESOURCE_ORDER.map((r) => { const I = RES_ICON[r]; return (
+        <span key={r} aria-hidden title={`${resName(r)}: ${bank[r]}`} className={`flex items-center gap-[2px] text-[14px] font-bold text-white ${bank[r] ? '' : 'opacity-45'}`}>
+          <span className="block h-[20px] w-[22px] [&>svg]:h-full [&>svg]:w-full"><I /></span>{bank[r]}
+        </span>
+      ) })}
+      <span aria-hidden title={L(`Development cards: ${deck}`, `Карты развития: ${deck}`)} className={`flex items-center gap-[3px] border-l border-white/20 pl-[8px] text-[14px] font-bold text-white ${deck ? '' : 'opacity-45'}`}><DevCardIco />{deck}</span>
+    </div>
+  )
+}
+
 function Players() {
   const { seats } = useGameView()
   return (
@@ -770,6 +789,7 @@ export const HUD = memo(function HUD() {
         style={{ width: `${100 / s}vw`, height: `${100 / s}vh`, transform: `scale(${s})` }}
       >
         <Brand />
+        <BankStock className="absolute left-[22px] top-[72px]" />
         <div className="absolute right-[18px] top-[14px] flex gap-[10px]">
           <MenuButton />
           <FullscreenButton />
