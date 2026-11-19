@@ -174,13 +174,17 @@ function Players() {
           aria-label={seatLabel(p)}
           aria-current={p.active ? 'true' : undefined}
           className={`relative flex min-h-[62px] items-center gap-[10px] overflow-hidden rounded-[14px] py-[6px] pl-[6px] pr-[10px] transition-transform ${glass} ${p.active ? '-translate-x-[8px]' : ''}`}
-          style={{ boxShadow: `inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '66'}, inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px rgba(0,0,0,.4)` }}
+          style={{
+            // tinted in the seat colour; the active seat glows
+            backgroundImage: `linear-gradient(180deg, ${p.color}${p.active ? '55' : '38'}, rgba(22,28,38,.62) 85%)`,
+            boxShadow: `inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'dd' : '77'}, inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px rgba(0,0,0,.4)${p.active ? `, 0 0 16px ${p.color}99` : ''}`,
+          }}
         >
-          <div className={`h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[12px] ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
+          <div className={`h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
             <Avatar i={p.avatar} className="h-full w-full" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
+            <div className="mb-[8px] flex items-center gap-[6px] text-[16px] font-bold leading-none" style={{ color: `color-mix(in srgb, ${p.color} 62%, white)` }}>{p.name}{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
             <div aria-hidden className="flex items-center gap-[7px] text-[14px] text-[#ece8e0] leading-none [&>span]:gap-[3px]">
               <span title={L('Victory points', 'Победные очки')} className="flex items-center gap-[4px]"><Trophy />{p.vp}<span className="-ml-[2px] text-[11px] text-[#c4bfb6]">/{p.win}</span></span>
               <span title={L('Resource cards', 'Карты ресурсов')} className="flex items-center gap-[4px]"><CardsIco />{p.cards}</span>
