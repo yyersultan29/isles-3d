@@ -3,7 +3,7 @@
 //   ?room=<id>       join that room: take a free seat, or watch when all four are taken
 //   &server=host:port  the game server (default: the server this build was made for, VITE_GAME_SERVER,
 //                      else this page's host, port 8787)
-// The seat token is kept per browser tab (sessionStorage), so a reload of the tab rejoins the same
+// The seat token is kept per browser tab (sessionStorage) and per server, so a reload of the tab rejoins the same
 // seat, while four tabs of one browser are four different players. G5.4: the browser also remembers
 // every token it held in the room (localStorage); a reopened tab offers them and the server gives
 // back a seat whose player is away, never one another tab is using.
@@ -59,11 +59,14 @@ export async function createRoomFromUrl(onWaiting?: (seconds: number) => void, w
   }
 }
 
-const tokenKey = (room: string) => `isles3d.seat.${room}`
+// Tokens are kept per server AND room: a link with someone else's `&server=` must never be handed a
+// token this browser got from the real server (it could take the seat there).
+const where = (room: string) => `${serverAddress().ws.toLowerCase()}|${room}`
+const tokenKey = (room: string) => `isles3d.seat.${where(room)}`
 const readToken = (room: string) => { try { return sessionStorage.getItem(tokenKey(room)) ?? undefined } catch { return undefined } }
 const writeToken = (room: string, t: string) => { try { sessionStorage.setItem(tokenKey(room), t) } catch { /* private mode: no rejoin */ } }
 
-const heldKey = (room: string) => `isles3d.held.${room}`
+const heldKey = (room: string) => `isles3d.held.${where(room)}`
 const readHeld = (room: string): string[] => {
   try { const v = JSON.parse(localStorage.getItem(heldKey(room)) ?? '[]'); return Array.isArray(v) ? v.filter((t) => typeof t === 'string').slice(-4) : [] } catch { return [] }
 }

@@ -50,3 +50,26 @@ describe('keep-alive', () => {
     expect(sent.length).toBe(after) // stopped with the store
   })
 })
+
+describe('seat tokens', () => {
+  const storage = () => { const m = new Map<string, string>(); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) } }
+  const joinSent = (search: string) => {
+    page(search)
+    const sent: string[] = []
+    let open = () => {}
+    vi.stubGlobal('WebSocket', class { readyState = 1; send(d: string) { sent.push(d) } close() {} addEventListener(t: string, f: () => void) { if (t === 'open') open = f } })
+    const store = onlineStoreFromUrl()!
+    open()
+    store.close()
+    return JSON.parse(sent[0])
+  }
+  it('a link to another server is never offered the tokens kept for the real one', () => {
+    vi.stubGlobal('sessionStorage', storage()); vi.stubGlobal('localStorage', storage())
+    sessionStorage.setItem('isles3d.seat.wss://example.test:8787/ws|r1', 'secret')
+    localStorage.setItem('isles3d.held.wss://example.test:8787/ws|r1', '["old"]')
+    expect(joinSent('?room=r1')).toMatchObject({ token: 'secret' })
+    const evil = joinSent('?room=r1&server=evil.test')
+    expect(evil.token).toBeUndefined()
+    expect(evil.resume).toBeUndefined()
+  })
+})
