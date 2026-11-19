@@ -625,11 +625,11 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
             data-trade-for={tradable ? kind : undefined}
             aria-keyshortcuts={BUILD_KEY[kind]}
             onClick={() => choose(kind, enabled)}
-            className={`group relative flex w-full items-start gap-[10px] rounded-[10px] border-b border-white/10 py-[6px] pl-[6px] pr-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : enabled ? 'shadow-[inset_3px_0_0_#f2b544]' : ''} ${focusRing}`}
+            className={`group relative flex w-full items-start gap-[10px] rounded-[10px] border-b border-white/10 py-[6px] pl-[6px] pr-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : enabled ? 'bg-gradient-to-r from-[#4fbf6a]/20 to-[#4fbf6a]/[0.04] shadow-[inset_3px_0_0_#5fd37a,inset_0_0_0_1px_rgba(95,211,122,.28)] hover:from-[#4fbf6a]/30' : ''} ${focusRing}`}
           >
             <span aria-hidden className={`relative mt-[2px] w-[28px] shrink-0 ${enabled || tradable ? '' : 'opacity-50'}`}>
               {BUILD_ICON[kind]}
-              {many > 0 && <span className="absolute -right-[7px] -top-[9px] rounded-full bg-[#f2b544] px-[4px] text-[11px] font-bold leading-[15px] text-[#2a1a06] shadow-[0_1px_3px_rgba(0,0,0,.5)]">×{many}</span>}
+              {many > 0 && <span className="absolute -right-[7px] -top-[9px] rounded-full bg-[#5fd37a] px-[4px] text-[11px] font-bold leading-[15px] text-[#0c2a14] shadow-[0_1px_3px_rgba(0,0,0,.5)]">×{many}</span>}
             </span>
             <span aria-hidden className="min-w-0 flex-1">
               <span className={`block pr-[26px] text-[14px] font-semibold leading-[18px] ${enabled ? 'text-white' : 'text-[#cfcac1]'}`}>{pieceName(kind)}</span>
@@ -637,7 +637,7 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
                 {kinds.map((r) => {
                   const I = RES_ICON[r]; const need = cost[r]!; const have = counts[r]; const short = need - have
                   return (
-                    <span key={r} className={`flex h-[24px] items-center gap-[2px] rounded-[9px] pl-[3px] pr-[6px] text-[12px] font-bold leading-none ${short > 0 ? 'border border-dashed border-[#ff9b8a]/80 bg-[#8a2a22]/45 text-[#ffd8cf]' : 'border border-white/15 bg-black/25 text-[#f1f5e6]'}`}>
+                    <span key={r} className={`flex h-[24px] items-center gap-[2px] rounded-[9px] pl-[3px] pr-[6px] text-[12px] font-bold leading-none ${short > 0 ? 'border border-dashed border-[#ff9b8a]/80 bg-[#8a2a22]/45 text-[#ffd8cf]' : enabled ? 'border border-[#5fd37a]/45 bg-[#173a22]/55 text-[#e6f8e9]' : 'border border-white/15 bg-black/25 text-[#f1f5e6]'}`}>
                       <span className="block h-[16px] w-[18px] [&>svg]:h-full [&>svg]:w-full"><I /></span>
                       {Math.min(have, 99)}/{need}
                     </span>
@@ -649,7 +649,7 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
             </span>
             {tradable
               ? <span aria-hidden className="absolute right-[6px] top-[4px] grid h-[24px] w-[24px] place-items-center rounded-full bg-[#f2b544]/20 text-[#f2b544] ring-1 ring-[#f2b544]/60"><TradeIco size={15} /></span>
-              : <span aria-hidden className={`absolute right-[6px] top-[5px] text-[#ece8e0] transition-transform group-hover:translate-x-[2px] ${enabled ? '' : 'opacity-40'}`}><Arrow /></span>}
+              : <span aria-hidden className={`absolute right-[6px] top-[5px] transition-transform group-hover:translate-x-[2px] ${enabled ? 'text-[#7fe39a]' : 'text-[#ece8e0] opacity-40'}`}><Arrow /></span>}
           </button>
         )
       })}
