@@ -61,6 +61,8 @@ export interface Limits {
   joinTimeoutMs: number
   /** a room with no connection for this long is removed (lobby, finished game, or anything left) */
   emptyRoomMs: number
+  /** bytes waiting to go out to one socket; a client that slow is dropped and rejoins with a snapshot */
+  maxBuffered: number
 }
 
 export const DEFAULT_LIMITS: Limits = {
@@ -78,4 +80,5 @@ export const DEFAULT_LIMITS: Limits = {
   connsPerRoom: 24,
   joinTimeoutMs: 10_000,
   emptyRoomMs: 10 * 60_000,
+  maxBuffered: 1024 * 1024,
 }

@@ -98,14 +98,20 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
     log({ ev: 'room.removed', room: id, reason, rooms: rooms.size })
   }
 
+  // the seat token rejoins after a drop and the server answers with a full snapshot, so nothing is lost
+  const send = (ws: WebSocket, msg: ServerMessage) => {
+    if (ws.readyState !== ws.OPEN) return
+    if (ws.bufferedAmount > L.maxBuffered) { log({ ev: 'limit', what: 'ws.slow' }); ws.terminate(); return }
+    ws.send(JSON.stringify(msg))
+  }
   const deliver = (out: Outbound[]) => {
     for (const { to, msg, close } of out) {
       const ws = sockets.get(to)
-      if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg))
+      if (ws) send(ws, msg)
       if (ws && close) { unbind(to); ws.close(4000, 'replaced') }
     }
   }
-  const reply = (ws: WebSocket, msg: ServerMessage) => { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg)) }
+  const reply = send
   const bind = (conn: ConnId, room: Room) => { roomOf.set(conn, room); members.get(room)?.add(conn); emptySince.delete(room) }
   function unbind(conn: ConnId) {
     const room = roomOf.get(conn)

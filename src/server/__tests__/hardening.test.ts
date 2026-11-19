@@ -140,6 +140,15 @@ describe('server hardening G5.6', () => {
     await connect(url) // the game socket still opens
   })
 
+  it('a client that falls behind on outgoing data is dropped, not buffered without end', async () => {
+    const logs: LogEntry[] = []
+    const { url } = await boot({ limits: { maxBuffered: -1 }, log: (e) => logs.push(e) }) // every send counts as behind
+    const a = await connect(url)
+    a.ws.send(JSON.stringify({ type: 'join', roomId: 'nope' }))
+    await a.closed
+    expect(logs).toContainEqual(expect.objectContaining({ what: 'ws.slow' }))
+  })
+
   it('a socket that never joins is closed after the join deadline', async () => {
     const { url } = await boot({ limits: { joinTimeoutMs: 60 } })
     const idle = await connect(url)
