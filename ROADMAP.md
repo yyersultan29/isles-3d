@@ -1217,6 +1217,7 @@ time, each checked before the next; no camera, engine or protocol changes.
 - [x] **G10.4 Corner rings explained** (resources and numbers of a corner, not just "gold is best") and points as "3 / 10".
   Done: the setup legend says what a ring measures ("Ring = the dots on the numbers around a corner: more dots, more often it pays; gold is the most. Click a corner to see its tiles"); the corner's own tiles and dots come from the G10.2 preview. Player cards show points as "2/10" (desktop and compact; the goal comes from the game settings) and the screen-reader label says "2 of 10 victory points". Checked: setup at 1440×900, 1280×720, 844×390, 390×844 in EN and RU, no page errors; tests, build, g6-audit axe 0. Limit: in portrait under 560px the seat chips show only avatars (as before), so the score is read from the label or the menu there.
 - [ ] **G10.5 Tutorial or solo play against bots** — a separate decision after G10.1–4.
+  2026-11-19: the owner decided against a tutorial (not needed for now). Solo play against bots stays open, not started.
 
 ## 6. Suggested code organization (adapt to actual repo)
 
