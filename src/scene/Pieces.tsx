@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { animTime, motion } from './motion'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { TILES, tileHeight, corner, tileAt, tileByAxial, robberSpot, BOARD_MODE, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight, scenePieces, type Building, type Road } from './board'
+import { TILES, tileHeight, corner, tileAt, tileByAxial, robberSpot, BOARD_MODE, BUILDINGS, ROADS, PLAYER_COLORS, Player, groundHeight, scenePieces, piecesKey, type Building, type Road } from './board'
 import { tokenTexture } from './textures'
 import { StaticBatch } from './StaticBatch'
 import { mulberry32 } from './noise'
@@ -671,17 +671,21 @@ const DEMO_PIECES = { buildings: BUILDINGS.map((b, i) => ({ ...b, turn: i % 2 })
 
 /**
  * The pieces on the board (G4.2c): engine state in a game, the showcase set on `?board=demo`.
- * Recomputed only when the engine replaces `buildings` or `roads` (on an action, never per frame).
+ * Every action (a roll, a trade) and every online snapshot hands over new `buildings`/`roads`
+ * objects; the result keeps its identity until the pieces really change, so the scene
+ * (vegetation clearing, instance buffers, smoke) doesn't redo its work for nothing.
  */
 export function usePieces(): { buildings: Building[]; roads: Road[] } {
   const buildings = useGame((s) => s.buildings)
   const roads = useGame((s) => s.roads)
-  return useMemo(() => (BOARD_MODE === 'demo' ? DEMO_PIECES : scenePieces(buildings, roads)), [buildings, roads])
+  const last = useRef<{ key: string; pieces: { buildings: Building[]; roads: Road[] } } | null>(null)
+  return useMemo(() => {
+    const pieces = BOARD_MODE === 'demo' ? DEMO_PIECES : scenePieces(buildings, roads)
+    const key = piecesKey(pieces)
+    if (last.current?.key !== key) last.current = { key, pieces }
+    return last.current.pieces
+  }, [buildings, roads])
 }
-
-/** Stable key of a piece set: StaticBatch re-merges when it changes. */
-const piecesKey = ({ buildings, roads }: { buildings: Building[]; roads: Road[] }) =>
-  buildings.map((b) => `${b.tile}:${b.corner}:${b.player}:${b.city ? 'c' : 's'}`).join('|') + '/' + roads.map((r) => `${r.tile}:${r.edge}:${r.player}`).join('|')
 
 const buildingYaw = (b: Building, x: number, z: number) => Math.atan2(x, z) + Math.PI / 2 + (b.turn ?? 0) * 0.3
 

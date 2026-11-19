@@ -1,7 +1,7 @@
 // G4.2a: the scene draws exactly the engine's standard-fixed board.
 import { describe, expect, it } from 'vitest'
 import { apply, buildTopology, createGame, legalActions, type Action, hexCorners, sceneToAxial, PORT_EDGES, STANDARD_FIXED, type TileId } from '../../game'
-import { BOARD_MODE, HARBORS, PLAYER_COLOR_OF, corner, edgeToScene, scenePieces, tileAt, vertexToScene, PORT_HARBOR_KIND, TERRAIN_BIOME, TILES, engineLayout, tileByAxial } from '../board'
+import { BOARD_MODE, HARBORS, PLAYER_COLOR_OF, corner, edgeToScene, scenePieces, piecesKey, tileAt, vertexToScene, PORT_HARBOR_KIND, TERRAIN_BIOME, TILES, engineLayout, tileByAxial } from '../board'
 
 describe('G4.2a scene board from the engine', () => {
   it('defaults to the game board outside a browser query', () => {
@@ -90,5 +90,18 @@ describe('G4.2a scene board from the engine', () => {
     const colours = new Set(Object.values(s.buildings).map((b) => PLAYER_COLOR_OF[b!.owner]))
     expect(new Set(pieces.buildings.map((b) => b.player))).toEqual(colours)
     expect(scenePieces({}, {})).toEqual({ buildings: [], roads: [] })
+  })
+})
+
+describe('piece identity', () => {
+  it('a roll hands the scene new objects but the same pieces; a build changes them', async () => {
+    const { newGame, playSetup, act } = await import('../../game/__tests__/helpers')
+    const s = playSetup(newGame(3))
+    const rolled = act(s, { type: 'ROLL' })
+    expect(rolled.buildings).not.toBe(s.buildings) // why usePieces compares by key
+    expect(piecesKey(scenePieces(rolled.buildings, rolled.roads))).toBe(piecesKey(scenePieces(s.buildings, s.roads)))
+    const fresh = newGame(3)
+    const placed = act(fresh, legalActions(fresh, fresh.order[0])[0] as Action)
+    expect(piecesKey(scenePieces(placed.buildings, placed.roads))).not.toBe(piecesKey(scenePieces(fresh.buildings, fresh.roads)))
   })
 })

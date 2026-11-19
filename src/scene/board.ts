@@ -352,6 +352,10 @@ export function scenePieces(
   return { buildings: bs, roads: rs }
 }
 
+/** Stable key of a piece set: StaticBatch re-merges, and usePieces hands out a new set, only when it changes. */
+export const piecesKey = ({ buildings, roads }: { buildings: Building[]; roads: Road[] }) =>
+  buildings.map((b) => `${b.tile}:${b.corner}:${b.player}:${b.city ? 'c' : 's'}`).join('|') + '/' + roads.map((r) => `${r.tile}:${r.edge}:${r.player}`).join('|')
+
 export const PLAYER_COLORS: Record<Player, { wall: string; roof: string }> = {
   red: { wall: '#c8302a', roof: '#8e1b17' },
   blue: { wall: '#2850c8', roof: '#1a318a' },
