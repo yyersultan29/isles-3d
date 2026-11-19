@@ -13,6 +13,7 @@ import { getPlacementMode, getTradeOpen, setTradeOpen } from '../store/ui'
 import { L, onLocale } from './locale'
 import { LangSwitch } from './LangSwitch'
 import { GraphicsSwitch } from './GraphicsSwitch'
+import { Rules } from './Rules'
 
 export type Shortcut = BuildKind | 'trade' | 'confirm'
 
@@ -97,7 +98,8 @@ export function HelpButton({ className = '', align = 'right' }: { className?: st
         <span aria-hidden className="text-[20px] font-bold">?</span>
       </IconButton>
       {open && (
-        <section id="help-panel" aria-labelledby="help-title" className={`pointer-events-auto absolute top-[calc(100%+8px)] ${align === 'right' ? 'right-0' : 'left-0'} z-[3] max-h-[calc(100dvh-72px)] w-[260px] overflow-y-auto rounded-[12px] px-[12px] pb-[10px] pt-[10px] text-left ${panel}`}>
+        <section id="help-panel" aria-labelledby="help-title" className={`pointer-events-auto absolute top-[calc(100%+8px)] ${align === 'right' ? 'right-0' : 'left-0'} z-[30] max-h-[calc(100dvh-72px)] w-[300px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-[12px] px-[12px] pb-[10px] pt-[10px] text-left ${panel}`}>
+          <Rules className="mb-[10px]" />
           <h2 id="help-title" className="mb-[6px] font-display text-[17px] font-semibold text-[#f4efe6]">{L('Keyboard shortcuts', 'Горячие клавиши')}</h2>
           <dl className="grid grid-cols-[auto_1fr] items-center gap-x-[10px] gap-y-[5px] text-[13px] text-[#d6d2ca]">
             {SHORTCUT_KEYS().map(([k, d]) => (

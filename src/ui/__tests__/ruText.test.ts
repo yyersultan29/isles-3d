@@ -39,3 +39,11 @@ it('golden games read in Russian: no English words in the log or the notices', (
   expect(lines).toBeGreaterThan(500)
   expect([...bad]).toEqual([])
 })
+
+it('the rules read in Russian and quote the real costs', async () => {
+  const { ruleLines } = await import('../Rules')
+  setLocale('ru')
+  const lines = ruleLines()
+  expect(lines.filter((t) => /[A-Za-z]{2,}/.test(t))).toEqual([])
+  expect(lines.join(' ')).toContain('город — 2 зерна, 3 руды')
+})

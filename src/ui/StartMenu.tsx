@@ -7,6 +7,7 @@
 // any option (`?seed=`, `?menu=0`, …) skips it, as the test drivers and the showcase need. Autosave
 // starts once a choice is made, as Resume did, so a stray click can't overwrite the saved game.
 
+import { Rules } from './Rules'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { Avatar } from './icons'
@@ -96,7 +97,7 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
       if (!c) return
       if (e.key === 'Escape' && live) { e.preventDefault(); closeMenu(); return }
       if (e.key !== 'Tab') return
-      const items = [...c.querySelectorAll<HTMLElement>('button, input')].filter((x) => !(x as HTMLButtonElement).disabled)
+      const items = [...c.querySelectorAll<HTMLElement>('button, input, summary')].filter((x) => !(x as HTMLButtonElement).disabled)
       const i = items.indexOf(document.activeElement as HTMLElement)
       e.preventDefault()
       items[(i + (e.shiftKey ? -1 : 1) + items.length) % items.length]?.focus()
@@ -207,6 +208,7 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
           <button onClick={goOnline} data-menu-online className={`h-[40px] shrink-0 rounded-[10px] px-[14px] text-[14.5px] ${plain} ${focusRing}`}>{L('Create room', 'Создать комнату')}</button>
         </div>
 
+        <Rules className="mt-[12px]" />
         <GraphicsSwitch className="mt-[12px] px-[2px]" />
       </section>
     </div>,
