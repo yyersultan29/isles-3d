@@ -133,7 +133,7 @@ describe('agreement with the engine over whole bot games', () => {
       })
     }
     expect(checked).toBeGreaterThan(500)
-  })
+  }, 30_000) // three whole bot games: slow when the suite runs in parallel
 })
 
 describe('tradesText and sameDraft (G6.4)', () => {
