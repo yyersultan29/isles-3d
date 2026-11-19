@@ -9,7 +9,7 @@ import { SIMPLEX_GLSL, addWind } from './shaders'
 import { oceanTime } from './Ocean'
 import { animTime, motion } from './motion'
 
-/** Large faceted sea-cliff mass with grassy top. */
+/** Large sea-cliff mass with a grassy top, smooth-shaded and painted like the island's own cliff (Island.tsx). */
 function cliffGeometry(seed: number, sx: number, sy: number, sz: number) {
   let g: THREE.BufferGeometry = new THREE.IcosahedronGeometry(1, 26)
   g.deleteAttribute('normal')
@@ -20,31 +20,34 @@ function cliffGeometry(seed: number, sx: number, sy: number, sz: number) {
     let x = p.getX(i), y = p.getY(i), z = p.getZ(i)
     const n = fbm(x * 1.6 + seed, z * 1.6 + y * 1.3, 5)
     const ang = Math.atan2(z, x)
-    const strata = noise2(ang * 9 + seed, y * 10) * 0.08 + noise2(ang * 30 + seed, y * 4) * 0.05 + noise2(x * 9 + seed, z * 9 + y * 9) * 0.04 + Math.abs(noise2(ang * 16, y * 26)) * 0.05
-    const f = 1 + n * 0.35 + strata
+    // vertical columns, boulder bulges and soft strata ledges (each band leans out a little at its top)
+    const cols = noise2(ang * 9 + seed, y * 3) * 0.07 + noise2(ang * 22 + seed, y * 2) * 0.03
+    const band = ((y * 7 + noise2(ang * 3, seed) * 0.6) % 1 + 1) % 1
+    const ledge = smoothstep(0.75, 1, band) * 0.035 * smoothstep(0.9, 0.2, Math.abs(y))
+    const f = 1 + n * 0.32 + cols + ledge
     x *= f * sx
     z *= f * sz
     // flat-ish top plateau, steep sides
     y = y > 0 ? Math.pow(y, 0.45) * sy * (0.85 + 0.15 * n) : y * sy * 0.6
     p.setXYZ(i, x, y, z)
   }
-  g = g.toNonIndexed()
   g.computeVertexNormals()
-  const pp = g.attributes.position as THREE.BufferAttribute
   const nn = g.attributes.normal as THREE.BufferAttribute
-  const col = new Float32Array(pp.count * 3)
-  const rock = new THREE.Color('#7f7466'), dark = new THREE.Color('#3b342e'), light = new THREE.Color('#ab9f8d')
-  const grass = new THREE.Color('#5c7f2a'), wet = new THREE.Color('#1f1d1c')
+  const col = new Float32Array(p.count * 3)
+  const rock = new THREE.Color('#8a8073'), dark = new THREE.Color('#463d36'), light = new THREE.Color('#b9ad99')
+  const grass = new THREE.Color('#4c6a24'), grassLight = new THREE.Color('#7f8f3c'), moss = new THREE.Color('#465e22'), wet = new THREE.Color('#2f2b28')
   const c = new THREE.Color()
-  for (let i = 0; i < pp.count; i += 3) {
-    const y = (pp.getY(i) + pp.getY(i + 1) + pp.getY(i + 2)) / 3
-    const ny = nn.getY(i)
-    const n = noise2(pp.getX(i) * 4, pp.getZ(i) * 4 + y * 3) * 0.5 + 0.5
-    c.lerpColors(dark, rock, n)
-    c.lerp(light, smoothstep(0.7, 0.95, n) * 0.6)
-    c.lerp(grass, smoothstep(0.72, 0.9, ny) * smoothstep(sy * 0.55, sy * 0.8, y) * (0.5 + n * 0.5))
-    c.lerp(wet, smoothstep(0.15, -0.05, y + 0.0))
-    for (let k = 0; k < 3; k++) c.toArray(col, (i + k) * 3)
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), ny = nn.getY(i)
+    const n = noise2(x * 4, z * 4 + y * 3) * 0.5 + 0.5
+    const strata = Math.sin(y * 18 + noise2(x * 2, z * 2) * 2.5) * 0.5 + 0.5
+    c.lerpColors(dark, rock, Math.min(1, n * 0.7 + strata * 0.35))
+    c.lerp(light, smoothstep(0.7, 0.95, strata) * 0.45 * (0.6 + n * 0.4)) // pale beds
+    c.lerp(moss, smoothstep(0.35, 0.7, ny) * 0.5) // ledges catch moss
+    c.lerp(grass, smoothstep(0.62, 0.85, ny) * smoothstep(sy * 0.5, sy * 0.75, y))
+    c.lerp(grassLight, smoothstep(0.85, 0.98, ny) * smoothstep(sy * 0.6, sy * 0.85, y) * n * 0.6)
+    c.lerp(wet, smoothstep(0.15, -0.05, y))
+    c.toArray(col, i * 3)
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3))
   return g
@@ -88,7 +91,7 @@ function Waterfall({ position }: { position: [number, number, number] }) {
       {/* mist at the bottom */}
       {[0, 1, 2, 3].map((i) => (
         <mesh key={i} position={[(i - 1.5) * 0.18, -1.12, 0.1]}>
-          <sphereGeometry args={[0.18 + i * 0.02, 10, 8]} />
+          <sphereGeometry args={[0.18 + i * 0.02, 20, 14]} />
           <meshStandardMaterial color="#e8f2f6" transparent opacity={0.35} roughness={1} depthWrite={false} />
         </mesh>
       ))}
@@ -132,11 +135,11 @@ function Birds() {
   )
 }
 
-/** Out-of-focus foreground foliage framing the bottom corners. */
+/** Foreground foliage framing the bottom corners. */
 function Foreground() {
-  const geo = useMemo(() => bushGeometry(17), [])
+  const geo = useMemo(() => bushGeometry(17, 3), [])
   const mat = useMemo(() => {
-    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, flatShading: true })
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 })
     m.onBeforeCompile = (s) => addWind(s, oceanTime, 0.01)
     return m
   }, [])
@@ -204,7 +207,7 @@ export function Scenery() {
     <group>
       {CLIFFS.map((c, i) => (
         <mesh key={i} geometry={geos[i]} position={c.p as unknown as [number, number, number]} rotation-y={c.ry} castShadow receiveShadow>
-          <meshStandardMaterial vertexColors roughness={0.95} flatShading />
+          <meshStandardMaterial vertexColors roughness={0.95} />
         </mesh>
       ))}
       <CliffTrees />

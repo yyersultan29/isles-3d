@@ -134,24 +134,31 @@ export function broadleafGeometry(seed: number) {
 }
 
 /** Round broadleaf bush / deciduous tree crown. */
-export function bushGeometry(seed: number) {
+/** `detail` > 1 is for bushes seen up close (the foreground frame): a denser, leafier smooth shell. */
+export function bushGeometry(seed: number, detail = 1) {
   const rnd = mulberry32(seed)
   const parts: THREE.BufferGeometry[] = []
-  for (let i = 0; i < 4; i++) {
-    const s = new THREE.IcosahedronGeometry(0.22 + rnd() * 0.1, 1)
+  const leafy = detail > 1 ? 1 : 0
+  for (let i = 0; i < 4 + leafy * 3; i++) {
+    const s = new THREE.IcosahedronGeometry((0.22 + rnd() * 0.1) * (1 - leafy * 0.18), detail)
     const p = s.attributes.position as THREE.BufferAttribute
     for (let k = 0; k < p.count; k++) {
-      const f = 1 + 0.18 * noise2(p.getX(k) * 9 + i, p.getZ(k) * 9 + p.getY(k) * 5)
+      const f = 1 + 0.18 * noise2(p.getX(k) * 9 + i, p.getZ(k) * 9 + p.getY(k) * 5) + leafy * 0.07 * noise2(p.getX(k) * 34 + i, p.getY(k) * 34 + p.getZ(k) * 20)
       p.setXYZ(k, p.getX(k) * f, p.getY(k) * f * 0.85, p.getZ(k) * f)
     }
-    s.translate((rnd() - 0.5) * 0.3, 0.2 + rnd() * 0.12, (rnd() - 0.5) * 0.3)
+    s.translate((rnd() - 0.5) * (0.3 + leafy * 0.12), 0.2 + rnd() * (0.12 + leafy * 0.1), (rnd() - 0.5) * (0.3 + leafy * 0.12))
     parts.push(clean(s))
   }
   let g = mergeGeometries(parts)!
   g = mergeVertices(g)
   g.computeVertexNormals()
   const lo = new THREE.Color('#2d4f1d'), hi = new THREE.Color('#77a23e')
-  paint(g, (v, out) => out.lerpColors(lo, hi, Math.min(1, Math.max(0, v.y * 1.8 - 0.2))))
+  const mid = new THREE.Color('#4a7428')
+  paint(g, (v, out) => {
+    out.lerpColors(lo, hi, Math.min(1, Math.max(0, v.y * 1.8 - 0.2)))
+    // up close: darker leaf clusters break up the single gradient
+    if (leafy) out.lerp(mid, Math.max(0, noise2(v.x * 14, v.z * 14 + v.y * 9)) * 0.55)
+  })
   return g.toNonIndexed()
 }
 
