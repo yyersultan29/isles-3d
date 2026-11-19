@@ -166,7 +166,8 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
       socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`)
     }
     const address = clientAddress(req)
-    if (new URL(req.url ?? '/', 'http://x').pathname !== '/ws') return refuse('404 Not Found', 'ws.path')
+    // plain string compare: new URL() throws on a malformed target (`//[/ws`) and that would end the process
+    if ((req.url ?? '/').split('?')[0] !== '/ws') return refuse('404 Not Found', 'ws.path')
     if (!originAllowed(req.headers.origin)) return refuse('403 Forbidden', 'ws.origin')
     if (!connects.take(address)) return refuse('429 Too Many Requests', 'ws.connect')
     if (sockets.size >= L.maxSockets) return refuse('503 Service Unavailable', 'ws.max')

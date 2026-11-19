@@ -127,6 +127,19 @@ describe('server hardening G5.6', () => {
     expect(third.got.some((m) => m.type === 'welcome')).toBe(false)
   })
 
+  it('a malformed upgrade target is refused and the server goes on', async () => {
+    const { base, url } = await boot()
+    const { connect: tcp } = await import('node:net')
+    const answer = await new Promise<string>((resolve, reject) => {
+      const sock = tcp(server!.port, '127.0.0.1', () => sock.write('GET //[/ws HTTP/1.1\r\nHost: x\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n'))
+      let got = ''
+      sock.on('data', (d) => { got += d }).on('end', () => resolve(got)).on('error', reject)
+    })
+    expect(answer).toMatch(/^HTTP\/1.1 404/)
+    expect((await fetch(`${base}/health`)).status).toBe(200)
+    await connect(url) // the game socket still opens
+  })
+
   it('a socket that never joins is closed after the join deadline', async () => {
     const { url } = await boot({ limits: { joinTimeoutMs: 60 } })
     const idle = await connect(url)
