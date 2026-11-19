@@ -41,7 +41,7 @@ export default function App() {
       {online ? <Lobby key={locale} /> : <PassDevice key={locale} />}
       {/* the showcase board (?board=demo) and online games have no saved games */}
       {/* G9.3: a plain URL opens the start menu (which offers the saved game); any URL option keeps the old card */}
-      {BOARD_MODE === 'game' && !online && <StartMenu atStart={atStart} />}
+      {BOARD_MODE === 'game' && !online && <StartMenu atStart={atStart} noWebGL={!webgl} />}
       {BOARD_MODE === 'game' && !online && !atStart && <Resume />}
       <FpsMeter />
     </GameProvider>

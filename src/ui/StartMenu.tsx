@@ -31,6 +31,7 @@ export function menuAtStart() {
   if (typeof window === 'undefined') return false
   const q = new URLSearchParams(window.location.search)
   q.delete('lang')
+  q.delete('nowebgl') // test flag: a real browser without WebGL has a plain URL and gets the menu
   return q.size === 0
 }
 
@@ -45,7 +46,7 @@ const emit = () => { for (const l of [...listeners]) l() }
 export function openMenu() { open = true; emit() }
 function closeMenu() { open = false; pending = false; emit() }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
-const useMenuOpen = () => useSyncExternalStore(subscribe, () => open)
+export const useMenuOpen = () => useSyncExternalStore(subscribe, () => open)
 /** True until the first menu choice of a plain page load (see `pending`). */
 export const useBeforeGame = () => useSyncExternalStore(subscribe, () => pending)
 
@@ -56,6 +57,10 @@ export const BOARD_NAMES: Record<BoardChoice, () => string> = {
   balanced: () => L('New balanced', 'Новая сбалансированная'),
   'standard-fixed': () => L('Classic', 'Классическая'),
 }
+const BOARD_NOTES: Record<BoardChoice, () => string> = {
+  balanced: () => L('A new layout each game; red 6 and 8, rare 2 and 12, and equal numbers never touch.', 'Каждый раз новая раскладка; красные 6 и 8, редкие 2 и 12 и одинаковые числа не соседствуют.'),
+  'standard-fixed': () => L('The same layout every game, good for learning.', 'Одна и та же раскладка в каждой партии — удобно для обучения.'),
+}
 const plain = 'bg-white/10 font-semibold text-white hover:bg-white/20'
 
 /**
@@ -63,7 +68,7 @@ const plain = 'bg-white/10 font-semibold text-white hover:bg-white/20'
  * autosave; otherwise Resume.tsx owns the load-time choice and autosave, and the menu only opens from
  * the Menu button, over a live game.
  */
-export function StartMenu({ atStart }: { atStart: boolean }) {
+export function StartMenu({ atStart, noWebGL = false }: { atStart: boolean; noWebGL?: boolean }) {
   const store = useGameStore()
   const isOpen = useMenuOpen()
   useLocale()
@@ -141,6 +146,8 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
           <h2 id="menu-title" className="font-display text-[28px] font-semibold leading-tight text-[#f4efe6]">{BRAND_NAME} <span className="text-[#f2b544]">3D</span></h2>
           <LangSwitch />
         </div>
+        {/* the 3D view's own notice hides behind the menu, so the menu says it */}
+        {noWebGL && <p role="alert" className="mt-[8px] rounded-[8px] bg-[#b8322b]/25 px-[10px] py-[6px] text-[13px] text-[#ffd9d2] ring-1 ring-[#b8322b]/60">{L('This browser cannot show the 3D island (no WebGL 2). Try an up-to-date Chrome, Edge, Firefox or Safari, or turn on hardware acceleration.', 'Этот браузер не может показать 3D-остров (нет WebGL 2). Попробуйте свежий Chrome, Edge, Firefox или Safari либо включите аппаратное ускорение.')}</p>}
 
         {(save || live) && (
           <div className="mt-[12px] rounded-[12px] bg-white/[0.05] p-[12px]">
@@ -190,6 +197,7 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
                 </button>
               ))}
             </div>
+            <p data-board-note className="w-full text-[12px] text-[#a9a49b]">{BOARD_NOTES[board]()}</p>
           </div>
           <div className="mt-[10px] flex items-center justify-between gap-[10px]">
             <span className="text-[12.5px] text-[#d6d2ca]">{save || live ? L('Ends the game above', 'Завершит игру выше') : ''}</span>

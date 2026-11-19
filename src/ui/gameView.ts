@@ -93,7 +93,9 @@ export function seats(s: GameState): SeatView[] {
 }
 
 /** One line telling everyone what the game is waiting for. */
-export function phaseText(s: GameState): string {
+const BUILD_TYPES = new Set(['BUILD_ROAD', 'BUILD_SETTLEMENT', 'BUILD_CITY', 'BUY_DEV'])
+
+export function phaseText(s: GameState, me: Me = null): string {
   const who = SEATS[s.order[s.active]].name
   switch (s.phase.kind) {
     case 'setup': {
@@ -104,7 +106,14 @@ export function phaseText(s: GameState): string {
         : L(`${who}: place a road next to your settlement`, `${who}: поставьте дорогу рядом с поселением`)
     }
     case 'preRoll': return L(`${who}: roll the dice`, `${who}: бросьте кубики`)
-    case 'actions': return L(`${who}: build, trade or end your turn`, `${who}: стройте, торгуйте или завершите ход`)
+    case 'actions': {
+      // only for the viewer's own turn: online, it would tell the others that this hand affords nothing
+      const p = s.order[s.active]
+      const canBuild = mine(me, p) && legalActions(s, p).some((a) => BUILD_TYPES.has(a.type))
+      return mine(me, p) && !canBuild
+        ? L(`${who}: nothing to build yet — trade or end your turn`, `${who}: строить пока нечего — обменяйтесь или завершите ход`)
+        : L(`${who}: build, trade or end your turn`, `${who}: стройте, торгуйте или завершите ход`)
+    }
     case 'discard': {
       const pending = s.phase.pending
       const list = s.order.filter((p) => pending[p]).map((p) => `${SEATS[p].name} ${pending[p]}`).join(', ')
@@ -135,7 +144,10 @@ export function primaryAction(s: GameState, me: Me = null): { label: string; sho
   // disabled hints: [desktop label, compact label]
   // G7.6: never a bare "Place": the hint says where the action is
   const hint: Record<string, [string, string]> = {
-    setup: [L('On the board', 'На поле'), L('On board', 'На поле')], discard: [L('Discarding…', 'Сброс карт…'), L('Wait', 'Ждите')],
+    setup: s.phase.kind === 'setup' && s.phase.step === 'road'
+      ? [L('Pick a road', 'Выберите дорогу'), L('Road', 'Дорога')]
+      : [L('Pick a corner', 'Выберите угол'), L('Corner', 'Угол')],
+    discard: [L('Discarding…', 'Сброс карт…'), L('Wait', 'Ждите')],
     moveRobber: [L('Move the robber', 'Разбойник'), L('Robber', 'Разбойник')], steal: [L('Pick who to rob', 'Кого ограбить'), L('Rob', 'Грабёж')],
     roadBuilding: [L('Free roads', 'Дороги'), L('Roads', 'Дороги')],
   }
@@ -160,7 +172,7 @@ export function useGameView() {
 export function gameView(s: GameState, me: Me = null) {
   const self = me && me !== 'spectator' ? me : s.order[s.active]
   return {
-    seats: seats(s), phase: phaseText(s), primary: primaryAction(s, me), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s, me), build: buildOptions(s, me),
+    seats: seats(s), phase: phaseText(s, me), primary: primaryAction(s, me), dice: s.dice, phaseKind: s.phase.kind, hand: handOf(s, me), build: buildOptions(s, me),
     active: s.order[s.active], turn: s.turn, discard: discardPrompt(s, me), steal: stealPrompt(s, me), bank: bankView(s, me), offer: offerView(s, me), dev: devView(s, me),
     final: finalScores(s), opponents: s.order.filter((p) => p !== self), me,
   }

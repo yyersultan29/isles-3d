@@ -4,7 +4,7 @@ import { COSTS } from '../game/rules/build'
 import { DEFAULT_SETTINGS } from '../game'
 import { L } from './locale'
 import { resList } from './words'
-import { focusRing } from './HUD'
+import { CardsIco, DevCardIco, KnightIco, Trophy, focusRing } from './HUD'
 
 export const ruleLines = () => {
   const win = DEFAULT_SETTINGS.vpToWin
@@ -33,6 +33,13 @@ export function Rules({ className = '' }: { className?: string }) {
       <ol className="list-decimal space-y-[5px] pb-[9px] pl-[28px] pr-[10px] text-[13px] leading-snug text-[#d6d2ca]">
         {ruleLines().map((t) => <li key={t}>{t}</li>)}
       </ol>
+      <p className="px-[10px] pb-[4px] text-[12px] font-semibold text-[#a9a49b]">{L('On the player cards:', 'На карточках игроков:')}</p>
+      <ul className="grid grid-cols-2 gap-x-[10px] gap-y-[4px] px-[10px] pb-[10px] text-[12.5px] text-[#d6d2ca] [&>li]:flex [&>li]:items-center [&>li]:gap-[5px] [&_svg]:shrink-0">
+        <li><Trophy />{L('victory points', 'победные очки')}</li>
+        <li><CardsIco />{L('resource cards', 'карты ресурсов')}</li>
+        <li><DevCardIco />{L('development cards', 'карты развития')}</li>
+        <li><KnightIco />{L('knights played', 'сыграно рыцарей')}</li>
+      </ul>
     </details>
   )
 }

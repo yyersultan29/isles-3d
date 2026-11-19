@@ -1,6 +1,7 @@
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import { useThree } from '@react-three/fiber'
 import { L, useLocale } from '../ui/locale'
+import { useMenuOpen } from '../ui/StartMenu'
 
 /**
  * WebGL failure handling (V8). The HUD stays usable; only the 3D view is replaced by a notice.
@@ -72,11 +73,12 @@ export function SceneStatusNotice({ initial }: { initial: Status }) {
     window.addEventListener(EVENT, f)
     return () => window.removeEventListener(EVENT, f)
   }, [])
+  const menu = useMenuOpen()
   if (status === 'ok') return null
   const [title, body] = TEXT()[status]
   return (
     <div role="alert" className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_50%_40%,#1d3a52,#0b2236_70%)] p-6 font-ui text-[#f4efe6]">
-      <div className="max-w-[420px] rounded-[12px] border border-[#c9a45c]/35 bg-[rgba(12,14,19,0.9)] px-6 py-5 text-center shadow-[0_10px_30px_rgba(0,0,0,0.55)]">
+      {!menu && <div className="max-w-[420px] rounded-[12px] border border-[#c9a45c]/35 bg-[rgba(12,14,19,0.9)] px-6 py-5 text-center shadow-[0_10px_30px_rgba(0,0,0,0.55)]">
         <h2 className="mb-2 font-display text-[20px] font-semibold">{title}</h2>
         <p className="mb-4 text-[14px] leading-relaxed text-[#d6d2ca]">{body}</p>
         {status !== 'unsupported' && (
@@ -87,7 +89,7 @@ export function SceneStatusNotice({ initial }: { initial: Status }) {
             {L('Reload', 'Перезагрузить')}
           </button>
         )}
-      </div>
+      </div>}
     </div>
   )
 }

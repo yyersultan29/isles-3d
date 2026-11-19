@@ -25,6 +25,15 @@ describe('G4.4a HUD view', () => {
     expect(phaseText(fixture({ phase: { kind: 'gameOver', winner: 'p3' } }))).toBe('White wins!')
   })
 
+  it('an empty hand in actions says there is nothing to build, but only to its owner', () => {
+    const broke = fixture()
+    expect(phaseText(broke)).toBe('Red: nothing to build yet — trade or end your turn')
+    expect(phaseText(broke, 'p1')).toMatch(/nothing to build/)
+    expect(phaseText(broke, 'p2')).toBe('Red: build, trade or end your turn') // online: others don't learn the hand
+    const rich = fixture({ hands: { p1: { ore: 3, grain: 2 } }, buildings: [['0,0,N', 'p1']] })
+    expect(phaseText(rich)).toBe('Red: build, trade or end your turn')
+  })
+
   it('the main button rolls in preRoll, ends the turn in actions, and is disabled otherwise', () => {
     const pre = fixture({ phase: { kind: 'preRoll' } })
     expect(primaryAction(pre)).toEqual({ label: 'Roll Dice', short: 'Roll', action: { type: 'ROLL' }, player: 'p1' })
