@@ -11,7 +11,7 @@ import { animTime, motion } from './motion'
 import { hitsGuy } from './mountainGuyLogic'
 import { useGame, useGameStore, useSeat } from '../store/GameProvider'
 import { cornerBand, cornerPips, keepsPlacing, placementTargets } from '../store/placement'
-import { setPlacementMode, usePlacementMode } from '../store/ui'
+import { getPendingCorner, setPendingCorner, setPlacementMode, usePlacementMode } from '../store/ui'
 import { getCursor, setProjector } from '../store/boardCursor'
 import type { Action } from '../game'
 
@@ -142,6 +142,9 @@ export function Placement() {
       down = null
       const { spot } = pick(e)
       if (!spot || !targets.player) return
+      // G10.2: in setup the first click on a corner only previews the settlement; the same corner again builds
+      if (spot.action.type === 'PLACE_SETTLEMENT' && getPendingCorner() !== spot.at) { setPendingCorner(spot.at); return }
+      setPendingCorner(null)
       const r = store.dispatch(targets.player, spot.action)
       // G6.5: the build mode stays on while another of the same build is legal; a rejection shows
       // as a HUD notice (ui/Notices.tsx)
@@ -184,16 +187,26 @@ export function Placement() {
     })
     return () => setProjector(null)
   }, [byAt, camera, gl])
+  // a previewed corner that is no longer a target (placed, another turn, game left) is dropped
+  useEffect(() => { const p = getPendingCorner(); if (p && !byAt.has(p)) setPendingCorner(null) }, [byAt])
 
   // gentle pulse (steady under reduced motion) and the hover marker
   const hoverRing = useRef<THREE.Mesh>(null)
   const hoverDot = useRef<THREE.Mesh>(null)
   const hoverBar = useRef<THREE.Mesh>(null)
   const hoverHex = useRef<THREE.Mesh>(null)
+  const pendingRef = useRef<THREE.Group>(null)
   useFrame(() => {
     mats.base.opacity = motion.reduced ? 0.8 : 0.62 + 0.28 * (0.5 + 0.5 * Math.sin(animTime.value * 3.2))
     const key = getCursor()
     const { spot, kind } = hover.current.spot ? hover.current : (key && byAt.get(key)) || hover.current
+    const pend = getPendingCorner()
+    const ps = pend ? byAt.get(pend)?.spot : undefined
+    const pg = pendingRef.current
+    if (pg) {
+      pg.visible = !!ps
+      if (ps) { pg.position.set(ps.x, MARK_Y + 0.001, ps.z); pg.scale.setScalar(ps.pips !== undefined ? ringScale(ps.pips) : 1) }
+    }
     const g = hoverRef.current
     if (!g) return
     g.visible = !!spot
@@ -216,6 +229,11 @@ export function Placement() {
       <instancedMesh ref={ringRef} args={[geo.ring, mats.base, cap(54)]} count={0} frustumCulled={false} renderOrder={5} />
       <instancedMesh ref={barRef} args={[geo.bar, mats.base, cap(72)]} count={0} frustumCulled={false} renderOrder={5} />
       <instancedMesh ref={hexRef} args={[geo.hex, mats.base, cap(19)]} count={0} frustumCulled={false} renderOrder={5} />
+      {/* G10.2: the previewed settlement: a solid disc in the player's colour inside the ring */}
+      <group ref={pendingRef} visible={false}>
+        <mesh geometry={geo.ring} material={mats.hover} scale={1.6} renderOrder={6} />
+        <mesh geometry={geo.dot} material={mats.fill} scale={2.1} renderOrder={7} />
+      </group>
       <group ref={hoverRef} visible={false}>
         <mesh ref={hoverRing} geometry={geo.ring} material={mats.hover} scale={1.45} renderOrder={6} />
         <mesh ref={hoverDot} geometry={geo.dot} material={mats.fill} scale={1.3} renderOrder={7} />

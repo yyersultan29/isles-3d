@@ -1205,7 +1205,13 @@ time, each checked before the next; no camera, engine or protocol changes.
   at 1280×720 and 1440×900; g9-awards no errors; g9-exit at 1280×720 and 1440×750: Russian text clean, 0 overflow, axe 0,
   no page errors.
   Limit: on a short screen the last build row (development card) is behind the scroll.
-- [ ] **G10.2 Preview of the first settlement** with "Place here", or undo until the settlement + road pair is done.
+- [x] **G10.2 Preview of the first settlement** with "Place here", or undo until the settlement + road pair is done.
+  Done as a preview: in setup a mouse click on a corner shows a settlement disc there and a panel with the corner's
+  tiles, port and dots, "Place here" and "Another corner" (Esc too); a second click on the same corner builds. The
+  keyboard picker already names the corner before Enter, so it places directly. Checked by mouse at 1440×900, 1280×720
+  and 390×844: first click builds nothing, another corner moves the preview, Esc clears it, "Place here" builds and
+  moves to the road. 323 tests, build, g6-audit at 1280×720 (axe 0) and g9-setup clean.
+  Limit: settlements built during the game (build menu) still place on one click.
 - [ ] **G10.3 Bank trade around ready deals** (4 grain → 1 wood) and the reason before the choice ("3 grain short").
 - [ ] **G10.4 Corner rings explained** (resources and numbers of a corner, not just "gold is best") and points as "3 / 10".
 - [ ] **G10.5 Tutorial or solo play against bots** — a separate decision after G10.1–4.

@@ -9,6 +9,7 @@ import { Notices } from './Notices'
 import { CompactLogButton } from './LogPanel'
 import { Victory } from './Victory'
 import { BoardPicker } from './BoardPicker'
+import { SetupConfirm } from './SetupConfirm'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
 import { L } from './locale'
 
@@ -125,6 +126,7 @@ export function CompactHUD() {
       </div>
       <GameDialogs compact className="absolute inset-x-[8px] flex justify-center" style={{ bottom: short ? 8 : COMPACT_SAFE.bottom + 4 }} />
       <BoardPicker className="absolute inset-x-[8px]" style={{ bottom: COMPACT_SAFE.bottom + 4 }} />
+      <SetupConfirm compact className="absolute inset-x-[8px]" style={{ bottom: COMPACT_SAFE.bottom + 4 }} />
       <Victory compact />
     </div>
   )
