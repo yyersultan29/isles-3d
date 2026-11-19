@@ -18,7 +18,7 @@ import { costText, useGameView, type BuildKind, type SeatView } from './gameView
 import { changeDraft, clearDraft, draftCovered, draftEmpty, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePanel, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 import { useGame, useGameStore, useGameEvents, useOnline } from '../store/GameProvider'
-import { openMenu } from './StartMenu'
+import { openMenu, useBeforeGame } from './StartMenu'
 import { BOARD_MODE } from '../scene/board'
 import { affordable, shortfall, tradesText, type Shortfall } from './tradePlan'
 import { HelpButton, useShortcuts } from './shortcuts'
@@ -754,6 +754,7 @@ export const HUD = memo(function HUD() {
   const { compact } = useViewport()
   usePlacementAutoReset()
   useShortcuts()
+  if (useBeforeGame()) return null
   if (compact) return <CompactHUD />
   return (
     <div className="pointer-events-none fixed inset-0 z-[20] select-none overflow-hidden font-ui">

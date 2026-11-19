@@ -28,6 +28,7 @@ import { Characters } from './CharacterFigures'
 import { FrameTicker } from './FrameTicker'
 import { syncSceneBoard } from './sceneBoard'
 import { useGame } from '../store/GameProvider'
+import { useBeforeGame } from '../ui/StartMenu'
 
 // Debug override: ?cam=x,y,z&tgt=x,y,z
 const qp = new URLSearchParams(window.location.search)
@@ -362,6 +363,7 @@ function ShadowThrottle() {
 export function World() {
   const controls = useRef<OrbitControlsImpl>(null)
   const q = useQuality()
+  const beforeGame = useBeforeGame()
   return (
     <Canvas
       // PERF P1: FrameTicker renders each frame, at the rate the frame budget picks (60 acting / 30 watching / 4 unfocused);
@@ -398,7 +400,7 @@ export function World() {
           <Buildings />
           <Smoke />
           {!qp.has('nohover') && <TileHover />}
-          {BOARD_MODE === 'game' && <Placement />}
+          {BOARD_MODE === 'game' && !beforeGame && <Placement />}
           {BOARD_MODE === 'game' && <Feedback />}
           <Harbors />
         </BoardScene>

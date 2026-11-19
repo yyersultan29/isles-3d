@@ -36,11 +36,17 @@ export function menuAtStart() {
 // ---------------------------------------------------------------- open / closed
 
 let open = false
+// the load-time menu is up and nothing is chosen yet: the game behind it is a placeholder, so the HUD
+// and the placement rings stay hidden (two instructions at once confused first-time players)
+let pending = menuAtStart()
 const listeners = new Set<() => void>()
 const emit = () => { for (const l of [...listeners]) l() }
 export function openMenu() { open = true; emit() }
-function closeMenu() { open = false; emit() }
-const useMenuOpen = () => useSyncExternalStore((l) => { listeners.add(l); return () => { listeners.delete(l) } }, () => open)
+function closeMenu() { open = false; pending = false; emit() }
+const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
+const useMenuOpen = () => useSyncExternalStore(subscribe, () => open)
+/** True until the first menu choice of a plain page load (see `pending`). */
+export const useBeforeGame = () => useSyncExternalStore(subscribe, () => pending)
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 31)
 const ORDER: PlayerId[] = ['p1', 'p2', 'p3', 'p4']
@@ -126,7 +132,7 @@ export function StartMenu({ atStart }: { atStart: boolean }) {
 
   const shown = save ? seats(save.state) : null
   return createPortal(
-    <div className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-[#08121c]/55 px-[12px] py-[16px] font-ui text-[#f4efe6]">
+    <div className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-[#08121c]/35 px-[12px] py-[16px] font-ui text-[#f4efe6]">
       <section ref={card} role="dialog" aria-modal="true" aria-labelledby="menu-title" data-start-menu
         className={`w-full max-w-[440px] rounded-[16px] px-[18px] pb-[16px] pt-[16px] ${panel} animate-[notice-in_.25s_ease-out]`}
         style={{ boxShadow: 'inset 0 0 0 2px #f2b544aa, 0 18px 50px rgba(0,0,0,.65)' }}>
