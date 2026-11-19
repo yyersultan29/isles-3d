@@ -35,10 +35,16 @@ function hullGeometry() {
   const p = g.attributes.position as THREE.BufferAttribute
   const col = new Float32Array(p.count * 3)
   const c1 = new THREE.Color('#7a4a26'), c2 = new THREE.Color('#5a341a'), trim = new THREE.Color('#3b2412')
+  const wale = new THREE.Color('#b8955a'), bottom = new THREE.Color('#3a2219')
   const c = new THREE.Color()
   for (let i = 0; i < p.count; i++) {
     const y = p.getY(i)
-    c.copy(Math.floor((y + 0.1) * 60) % 2 ? c1 : c2)
+    // narrow strakes with a thin dark seam between them
+    const k = (y + 0.1) * 90
+    c.copy(Math.floor(k) % 2 ? c1 : c2)
+    if (k % 1 < 0.12) c.multiplyScalar(0.7)
+    if (y > 0.088 && y < 0.1) c.copy(wale)
+    if (y < -0.03) c.copy(bottom)
     if (y > 0.12) c.copy(trim)
     c.toArray(col, i * 3)
   }
@@ -58,10 +64,42 @@ function sailGeometry(w: number, h: number, tri = false) {
     p.setX(i, x)
   }
   g.computeVertexNormals()
+  // cloth panels: vertical seams, a darker bolt rope at the edges, two reef bands, soft dirt at the foot
+  const uv = g.attributes.uv as THREE.BufferAttribute
+  const col = new Float32Array(p.count * 3)
+  const cloth = new THREE.Color('#efe3c6'), seam = new THREE.Color('#c9b78f'), c = new THREE.Color()
+  for (let i = 0; i < p.count; i++) {
+    const u = uv.getX(i), v = uv.getY(i)
+    c.copy(cloth)
+    if (Math.abs(((u * 5) % 1) - 0.5) > 0.42) c.lerp(seam, 0.6)
+    if (Math.abs(v - 0.62) < 0.02 || Math.abs(v - 0.78) < 0.02) c.lerp(seam, 0.5)
+    if (u < 0.04 || u > 0.96 || v < 0.04 || v > 0.97) c.lerp(seam, 0.8)
+    c.lerp(seam, (1 - v) * 0.25)
+    c.toArray(col, i * 3)
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3))
   return g
 }
 
-const sailMat = new THREE.MeshStandardMaterial({ color: '#efe3c6', roughness: 0.9, side: THREE.DoubleSide })
+/** Shrouds, stays and the gaff's peak halyard, in ship space (mast at x 0.02, bowsprit tip at x 0.66). */
+const rigging = (() => {
+  const top: [number, number, number] = [0.02, 0.87, 0]
+  const ends: [number, number, number][] = [
+    [-0.06, 0.15, 0.15], [0.1, 0.15, 0.15], [-0.06, 0.15, -0.15], [0.1, 0.15, -0.15], // shrouds
+    [0.66, 0.22, 0], // forestay
+    [-0.48, 0.2, 0], // backstay
+  ]
+  const pos: number[] = []
+  for (const e of ends) pos.push(...top, ...e)
+  pos.push(0.02, 0.8, 0, -0.38, 0.72, 0) // peak halyard to the gaff end
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  return g
+})()
+const ropeMat = new THREE.LineBasicMaterial({ color: '#2a1d14', transparent: true, opacity: 0.75 })
+const glowMat = new THREE.MeshStandardMaterial({ color: '#3a2412', emissive: '#ffb45a', emissiveIntensity: 1.4 })
+
+const sailMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide })
 sailMat.onBeforeCompile = (s) => {
   s.uniforms.uTime = shipTime
   s.vertexShader = s.vertexShader
@@ -103,6 +141,19 @@ function Ship({ scale = 1, flagColor = '#c8302a' }: { scale?: number; flagColor?
         <cylinderGeometry args={[0.006, 0.006, 0.34, 5]} />
         <meshStandardMaterial color="#4a2e18" />
       </mesh>
+      {/* gaff at the head of the mainsail */}
+      <mesh position={[-0.17, 0.72, 0]} rotation-z={Math.PI / 2 - 0.08} castShadow>
+        <cylinderGeometry args={[0.005, 0.006, 0.44, 5]} />
+        <meshStandardMaterial color="#4a2e18" />
+      </mesh>
+      {/* lit cabin windows (a thin band through the cabin shows on both sides) and the stern lantern */}
+      <mesh position={[-0.3, 0.185, 0]} material={glowMat}>
+        <boxGeometry args={[0.1, 0.022, 0.184]} />
+      </mesh>
+      <mesh position={[-0.5, 0.26, 0]} material={glowMat}>
+        <boxGeometry args={[0.025, 0.035, 0.025]} />
+      </mesh>
+      <lineSegments geometry={rigging} material={ropeMat} />
       <mesh geometry={main} material={sailMat} position={[-0.17, 0.47, 0]} rotation-y={0.18} castShadow />
       <mesh geometry={jib} material={sailMat} position={[0.2, 0.4, 0]} rotation-y={-0.12} castShadow />
       <mesh position={[0.05, 0.9, 0]}>
