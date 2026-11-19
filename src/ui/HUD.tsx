@@ -137,8 +137,8 @@ function AwardLines({ seat }: { seat: SeatView }) {
 }
 
 export const seatLabel = (p: SeatView) => L(
-  `${p.name}: ${p.vp} victory points, ${p.cards} resource cards, ${p.devCards} development cards, ${p.knights} ${p.knights === 1 ? 'knight' : 'knights'} played${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}${p.auto ? ', played automatically' : ''}`,
-  `${p.name}: ${count(p.vp, '', '', 'победное очко', 'победных очка', 'победных очков')}, ${count(p.cards, '', '', 'карта ресурсов', 'карты ресурсов', 'карт ресурсов')}, ${count(p.devCards, '', '', 'карта развития', 'карты развития', 'карт развития')}, сыграно рыцарей: ${p.knights}${p.longestRoad ? `, ${awardName('longestRoad')}` : ''}${p.largestArmy ? `, ${awardName('largestArmy')}` : ''}${p.active ? ', сейчас ходит' : ''}${p.away ? ', нет связи' : ''}${p.auto ? ', играет автоматически' : ''}`,
+  `${p.name}: ${p.vp} of ${p.win} victory points, ${p.cards} resource cards, ${p.devCards} development cards, ${p.knights} ${p.knights === 1 ? 'knight' : 'knights'} played${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}${p.auto ? ', played automatically' : ''}`,
+  `${p.name}: ${p.vp} из ${p.win} победных очков, ${count(p.cards, '', '', 'карта ресурсов', 'карты ресурсов', 'карт ресурсов')}, ${count(p.devCards, '', '', 'карта развития', 'карты развития', 'карт развития')}, сыграно рыцарей: ${p.knights}${p.longestRoad ? `, ${awardName('longestRoad')}` : ''}${p.largestArmy ? `, ${awardName('largestArmy')}` : ''}${p.active ? ', сейчас ходит' : ''}${p.away ? ', нет связи' : ''}${p.auto ? ', играет автоматически' : ''}`,
 )
 
 function Players() {
@@ -159,7 +159,7 @@ function Players() {
           <div className="min-w-0 flex-1">
             <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
             <div aria-hidden className="flex items-center gap-[9px] text-[14px] text-[#ece8e0] leading-none [&>span]:gap-[3px]">
-              <span title={L('Victory points', 'Победные очки')} className="flex items-center gap-[4px]"><Trophy />{p.vp}</span>
+              <span title={L('Victory points', 'Победные очки')} className="flex items-center gap-[4px]"><Trophy />{p.vp}<span className="text-[#a9a49b]">/{p.win}</span></span>
               <span title={L('Resource cards', 'Карты ресурсов')} className="flex items-center gap-[4px]"><CardsIco />{p.cards}</span>
               <span title={L('Development cards in hand', 'Карты развития на руке')} className="flex items-center gap-[4px]"><DevCardIco />{p.devCards}</span>
               <span title={L('Knights played', 'Сыграно рыцарей')} className={`flex items-center gap-[4px] ${p.knights ? '' : 'opacity-45'}`}><KnightIco />{p.knights}</span>
@@ -365,8 +365,8 @@ export function SetupNote({ compact = false, className = '' }: { compact?: boole
         <span className="h-[15px] w-[15px] rounded-full border-[3px] border-[#ffc23d]" />
       </span>
       {compact
-        ? L('Bigger ring, richer corner', 'Крупнее кольцо — богаче угол')
-        : L('Bigger ring, more resources; gold rings are the best corners. Building and trading start after setup.', 'Чем больше кольцо, тем больше ресурсов; золотые — лучшие углы. Стройка и торговля — после расстановки.')}
+        ? L('Ring = dots on the numbers around · tap to check', 'Кольцо = точки на числах · тап — подробнее')
+        : L('Ring = the dots on the numbers around a corner: more dots, more often it pays; gold is the most. Click a corner to see its tiles.', 'Кольцо — это точки на числах вокруг угла: больше точек — чаще доход; золотое — больше всех. Клик по углу покажет его гексы.')}
     </p>
   )
   return (

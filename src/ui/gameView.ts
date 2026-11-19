@@ -53,6 +53,8 @@ export interface SeatView {
   color: string
   avatar: number
   vp: number
+  /** points that win the game (G10.4: cards show "3 / 10") */
+  win: number
   cards: number
   devCards: number
   knights: number
@@ -81,7 +83,7 @@ export function seats(s: GameState): SeatView[] {
     const p = s.players.find((x) => x.id === id)!
     return {
       id, ...SEATS[id],
-      vp: publicVP(s, id),
+      vp: publicVP(s, id), win: s.settings.vpToWin,
       cards: count(p.resources),
       devCards: p.devCards.length,
       knights: p.playedKnights,

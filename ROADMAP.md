@@ -1214,7 +1214,8 @@ time, each checked before the next; no camera, engine or protocol changes.
   Limit: settlements built during the game (build menu) still place on one click.
 - [x] **G10.3 Bank trade around ready deals** (4 grain → 1 wood) and the reason before the choice ("3 grain short").
   Done: with nothing picked, Bank / ports opens on "Ready trades (one click)": one row per pile at its rate (ports count), a button per resource the bank has; a click trades 1 and closes the panel. With no deal it says up front which pile is closest and how many short ("The bank takes 3 of one kind: 1 wood short"). The block hides once a card is picked, so the manual grids work as before. Checked: tradePlan tests (readyDeals / noDealReason), 2 grain → 1 wood via a 2:1 port dispatched at 1440×900, 1280×720, 390×844, no page errors; g6-audit axe 0, flows ok; g7-refusals unchanged.
-- [ ] **G10.4 Corner rings explained** (resources and numbers of a corner, not just "gold is best") and points as "3 / 10".
+- [x] **G10.4 Corner rings explained** (resources and numbers of a corner, not just "gold is best") and points as "3 / 10".
+  Done: the setup legend says what a ring measures ("Ring = the dots on the numbers around a corner: more dots, more often it pays; gold is the most. Click a corner to see its tiles"); the corner's own tiles and dots come from the G10.2 preview. Player cards show points as "2/10" (desktop and compact; the goal comes from the game settings) and the screen-reader label says "2 of 10 victory points". Checked: setup at 1440×900, 1280×720, 844×390, 390×844 in EN and RU, no page errors; tests, build, g6-audit axe 0. Limit: in portrait under 560px the seat chips show only avatars (as before), so the score is read from the label or the menu there.
 - [ ] **G10.5 Tutorial or solo play against bots** — a separate decision after G10.1–4.
 
 ## 6. Suggested code organization (adapt to actual repo)
