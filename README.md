@@ -1,12 +1,33 @@
-# Isles 3D — visual recreation
+# Isles 3D
 
-A real-time React Three Fiber recreation of `references/colonist-reference.png`. It's visual only: there's no gameplay, networking or rules.
+A browser board game about settling a hexagonal island, played on a stylised 3D miniature diorama.
+Four players, on one device (pass-the-device) or online, in English or Russian.
 
+**Play:** https://yyersultan29.github.io/isles-3d/
+
+## What's in it
+- The full base game: setup placement, dice and production, the robber and discards, roads, settlements and
+  cities, bank and port trades, player trades, development cards, Longest Road, Largest Army, and victory at 10 points.
+- A balanced random board or the classic layout.
+- Hot-seat play with a pass-the-device screen that hides the next player's cards, autosave and resume.
+- Online rooms on a small Node WebSocket server: the server runs the same rules engine, rolls the dice and
+  validates every move; turn timers; reconnect to the same seat.
+- A game log, keyboard play for every action, screen-reader announcements, graphics quality levels.
+
+## How to play, in short
+1. Each player places two settlements and two roads. The second settlement gives its first resources.
+2. On your turn, roll the dice. Every tile with that number pays its resource to the settlements (1) and cities (2) on its corners.
+3. Spend resources to build: roads, settlements, cities, development cards. Trade with the bank, ports or other players.
+4. A 7 moves the robber: it blocks a tile and steals a card; players with more than 7 cards discard half.
+5. Settlements are worth 1 point, cities 2, Longest Road and Largest Army 2 each. The first to 10 points wins.
+
+## Run locally
 ```bash
 npm install
 npm run dev          # http://localhost:5173
+npm test             # rules engine, store, UI logic and server tests (vitest)
 npm run build        # tsc + vite production build
-npm run server       # local game server (G5): http://127.0.0.1:8787, WebSocket at /ws; PORT/HOST override, ORIGINS=https://a,https://b limits the pages allowed to connect; logs are JSON lines
+npm run server       # local game server: http://127.0.0.1:8787, WebSocket at /ws; PORT/HOST override, ORIGINS=https://a,https://b limits the pages allowed to connect; logs are JSON lines
 npm run shot -- http://localhost:5173/ shots/out.png 2000 1130   # headless Chrome screenshot (dev server must be running)
 ```
 
@@ -38,48 +59,26 @@ Debug URL params:
 - `?nofx` turns off post-processing.
 - `?off=ao,bloom` turns off individual effects.
 
-The visual spec and plan are in `VISUAL_SPEC.md`. The latest render is `references/render-latest.png`.
+Product and design docs: `GAME_DESIGN.md` (rules), `UX_PRODUCT_SPEC.md`, `VISUAL_SPEC.md`, milestones in `ROADMAP.md`.
 
 ## Structure
-| File | Contents |
+| Path | Contents |
 |---|---|
-| `src/scene/board.ts` | Board layout (3-4-5-4-3, same as the reference), hex maths, per-biome height functions, player pieces, harbours, island outline |
-| `src/scene/Terrain.tsx` | Subdivided, displaced hex surfaces with vertex colour per biome. Mountains and hills are faceted. Wooden rails and brass rivets |
-| `src/scene/Island.tsx` | Rocky cliff ring with strata, a grassy lip and a wet waterline band |
-| `src/scene/Ocean.tsx` | PBR water with procedural swell normals, depth colouring and wave crests, plus an animated foam band that follows the cliff outline |
-| `src/scene/Vegetation.tsx` | Instanced pines (3 variants), about 14k wheat stalks, grass tufts, bushes, rocks and sheep. Wind sway runs in the shader |
-| `src/scene/Pieces.tsx` | Number tokens (lathe disc + canvas texture), robber, settlements and cities with lit windows, roads, flickering lanterns |
-| `src/scene/Harbors.tsx` | Piers (ramp + deck, planks, posts, rope rails), parchment trade signs, lantern point lights |
-| `src/scene/Ships.tsx` | Lofted hulls, billowing cloth sails, bobbing and drifting |
-| `src/scene/Scenery.tsx` | Corner sea cliffs, waterfall, foreground foliage, seagulls |
-| `src/scene/World.tsx` | Camera, golden-hour lighting, Lightformer environment, post-processing (N8AO, bloom, ACES, vignette, SMAA) |
-| `src/ui/*` | HUD (Tailwind) and hand-drawn SVG resource icons and avatars |
-| `src/brand.ts` | HUD brand name |
+| `src/game/` | Pure rules engine: state, actions, events, per-viewer projections, seeded RNG, replays. No React or Three.js |
+| `src/store/` | Local and online game stores, autosave, placement targets, UI state |
+| `src/ui/` | HUD in React + Tailwind: start menu, players, dice, hand, build, trades, dev cards, game log, notices, i18n |
+| `src/scene/` | The React Three Fiber scene: terrain, island, ocean, vegetation, pieces, harbours, ships, characters, camera and lighting, frame budget |
+| `src/server/`, `src/net/` | Game server (rooms, timers, limits) and the client–server protocol |
+| `scripts/` | Screenshot, playthrough, performance and asset-build scripts |
 
-## Assets — transparency note
-No external GLB/GLTF files are used. Every model is built in code: lofted, lathed, extruded and noise-displaced geometry, merged and vertex-coloured, and instanced where repeated. So there are no third-party licences to record. Models that would gain the most from authored GLB replacements:
-
-1. **Buildings.** The settlements and cities are simple gabled forms. The reference has more ornate timber-and-stone miniatures.
-2. **Ships.** The hull and rigging are simplified.
-3. **Mountains.** These are a faceted heightfield. A sculpted rock mesh would read closer to the reference's massive snow-capped peaks.
-4. **Sheep and pines.** They're stylised and good at board scale, but basic up close.
-5. **Corner cliffs and foreground foliage.** These are displaced blobs and work only because they're blurred at the frame edges.
-
-Good CC0 sources include Kenney (kenney.nl), Quaternius (quaternius.com) and Poly Haven (polyhaven.com). The instancing code in `Vegetation.tsx` takes any `BufferGeometry`, so a loaded GLB mesh can be dropped in with `useGLTF`.
-
-## Known differences from the reference
-- The reference is a painted concept, so its micro-detail, such as individual wheat ears and rock texture, can't be matched exactly with real-time procedural geometry.
-- Avatars are stylised SVG faces, not painted portraits.
-- At 16:10 and 16:9 the south harbour sign sits behind the card tray, and the east 2:1 sign sits behind the dice panel. They're visible at 4:3.
-- The decorative corner cliffs and waterfall are mostly outside the frame or behind the HUD at 16:10 and 16:9. They only show on narrow or 4:3 windows, or when you orbit the camera.
-- The ocean has sun glints and wave crests, but it lacks the reference's painterly highlights and reads slightly flatter.
-- Trees are procedural, not hand-modelled: six tiered conifers with lobed, drooping branches and two broadleaf variants. The reference's painted trees still have finer needle detail.
+## Assets
+Almost everything is generated in code (procedural meshes, canvas textures, inline SVG). The exceptions are a few
+character models in `public/models/`, built from owner-supplied AI-generated exports by `scripts/build-character.mjs`.
+Sources and licence notes are in `ASSETS.md`.
 
 ## Framing
-`CameraRig` in `World.tsx` keeps a fixed 43° camera angle. On every resize it solves for camera distance and pan so the board fills the screen area the HUD doesn't cover:
-- The hex corners must stay clear of the left nav, the right HUD column and the card tray.
-- The harbour signs must stay below the top edge.
-- The west signs and the island rim must stay on screen. You can override the framing for testing with `?cam=x,y,z&tgt=x,y,z`.
+`CameraRig` in `World.tsx` keeps a fixed 43° camera angle and, on every resize, solves the camera distance and pan so
+the board fills the area the HUD doesn't cover, with the harbour signs and island rim on screen.
 
 ## Deploy
 Live at **https://yyersultan29.github.io/isles-3d/**.
