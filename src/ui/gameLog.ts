@@ -87,7 +87,7 @@ export function logLines(events: readonly GameEvent[], tiles?: Record<TileId, Ti
         out.push({ kind: 'robber', player: e.by, text: L(`${name(e.by)} moved the robber to ${tileName(tiles, e.to)}`, `${name(e.by)} ставит разбойника: ${tileName(tiles, e.to)}`) })
         break
       case 'CARD_STOLEN': // never which resource: the device may be shared
-        out.push({ kind: 'steal', player: e.to, text: L(`${name(e.to)} stole a card from ${name(e.from)}`, `${name(e.to)} крадёт карту у ${name(e.from)}`) })
+        out.push({ kind: 'steal', player: e.to, text: L(`${name(e.to)} stole a card from ${name(e.from)}`, `${name(e.to)} крадёт карту у игрока ${name(e.from)}`) })
         break
       case 'BUILT':
         out.push({
@@ -117,7 +117,7 @@ export function logLines(events: readonly GameEvent[], tiles?: Record<TileId, Ti
         out.push({ kind: 'trade', player: e.by, text: L(`${name(e.by)} traded ${resList(e.gave)} for ${resList(e.got)} with the bank`, `${name(e.by)} меняет с банком ${resList(e.gave)} на ${resList(e.got)}`) })
         break
       case 'TRADE_COMPLETED':
-        out.push({ kind: 'trade', player: e.from, text: L(`${name(e.from)} gave ${resList(e.gave)} to ${name(e.with)} for ${resList(e.got)}`, `${name(e.from)} отдаёт ${name(e.with)} ${resList(e.gave)} за ${resList(e.got)}`) })
+        out.push({ kind: 'trade', player: e.from, text: L(`${name(e.from)} gave ${resList(e.gave)} to ${name(e.with)} for ${resList(e.got)}`, `${name(e.from)} отдаёт игроку ${name(e.with)} ${resList(e.gave)} за ${resList(e.got)}`) })
         break
       case 'AWARD_CHANGED':
         if (e.to) out.push({ kind: 'award', player: e.to, text: L(`${name(e.to)} takes ${awardName(e.award)}${e.from ? ` from ${name(e.from)}` : ''} (+2 points)`, `${name(e.to)} получает «${awardName(e.award)}»${e.from ? ` (раньше — ${name(e.from)})` : ''}: +2 очка`) })

@@ -178,7 +178,7 @@ export function PhaseBanner({ className = '' }: { className?: string }) {
   const active = seats.find((x) => x.active)
   // G4.6b: the roll is part of the same announcement as the phase it leads to
   const rolled = dice && active && (phaseKind === 'actions' || phaseKind === 'discard' || phaseKind === 'moveRobber' || phaseKind === 'steal')
-    ? `${active.name} rolled ${dice[0] + dice[1]} (${dice[0]} and ${dice[1]}). ` : ''
+    ? L(`${active.name} rolled ${dice[0] + dice[1]} (${dice[0]} and ${dice[1]}). `, `${active.name}: выпало ${dice[0] + dice[1]} (${dice[0]} и ${dice[1]}). `) : ''
   return (
     <div role="status" aria-live="polite" className={`pointer-events-none flex items-center rounded-full px-[18px] py-[7px] text-[15px] font-semibold text-[#f4efe6] ${panel} ${className}`}
       style={active ? { boxShadow: `inset 0 0 0 1.5px ${active.color}aa, 0 8px 22px rgba(0,0,0,.5)` } : undefined}>

@@ -39,7 +39,7 @@ export function eventNotices(events: readonly GameEvent[]): Omit<Notice, 'id'>[]
         break
       }
       case 'CARD_STOLEN':
-        out.push({ kind: 'warn', text: L(`${name(e.to)} stole a card from ${name(e.from)}.`, `${name(e.to)} крадёт карту у ${name(e.from)}.`), color: SEATS[e.to].color }) // never which one
+        out.push({ kind: 'warn', text: L(`${name(e.to)} stole a card from ${name(e.from)}.`, `${name(e.to)} крадёт карту у игрока ${name(e.from)}.`), color: SEATS[e.to].color }) // never which one
         break
       case 'AWARD_CHANGED':
         if (e.to) out.push({ kind: 'good', text: L(`${name(e.to)} takes ${awardName(e.award)}${e.from ? ` from ${name(e.from)}` : ''}!`, `${name(e.to)} получает «${awardName(e.award)}»${e.from ? ` (раньше — ${name(e.from)})` : ''}!`), color: SEATS[e.to].color })
@@ -63,7 +63,7 @@ export function eventNotices(events: readonly GameEvent[]): Omit<Notice, 'id'>[]
         out.push({ kind: 'info', text: L(`${name(e.by)} traded ${counts(e.gave)} for ${counts(e.got)} with the bank.`, `${name(e.by)} меняет с банком ${counts(e.gave)} на ${counts(e.got)}.`), color: SEATS[e.by].color })
         break
       case 'TRADE_COMPLETED':
-        out.push({ kind: 'good', text: L(`${name(e.from)} traded ${counts(e.gave)} to ${name(e.with)} for ${counts(e.got)}.`, `${name(e.from)} отдаёт ${name(e.with)} ${counts(e.gave)} за ${counts(e.got)}.`), color: SEATS[e.from].color })
+        out.push({ kind: 'good', text: L(`${name(e.from)} traded ${counts(e.gave)} to ${name(e.with)} for ${counts(e.got)}.`, `${name(e.from)} отдаёт игроку ${name(e.with)} ${counts(e.gave)} за ${counts(e.got)}.`), color: SEATS[e.from].color })
         break
       case 'GAME_WON':
         out.push({ kind: 'good', text: L(`${name(e.by)} wins with ${e.totals[e.by]} points!`, `${name(e.by)} побеждает: ${count(e.totals[e.by], '', '', 'очко', 'очка', 'очков')}!`), color: SEATS[e.by].color })
