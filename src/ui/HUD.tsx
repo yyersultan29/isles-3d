@@ -46,6 +46,10 @@ function useHudScale() {
 export const panel =
   'bg-[linear-gradient(180deg,rgba(28,32,40,0.88),rgba(12,14,19,0.9))] backdrop-blur-md border border-[#c9a45c]/35 shadow-[0_10px_30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]'
 
+/** Frosted glass for the right column (players, build): the board shows through, blurred, under a light rim. */
+export const glass =
+  'bg-[linear-gradient(180deg,rgba(120,138,158,0.30),rgba(22,28,38,0.55))] backdrop-blur-lg border border-white/25 shadow-[0_12px_32px_rgba(0,0,0,0.40),inset_0_1px_0_rgba(255,255,255,0.28)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]'
+
 function Brand() {
   return (
     <div className="absolute left-[18px] top-[8px] flex items-center gap-3 rounded-[14px] pr-5 pl-1.5 py-1.5 bg-[linear-gradient(90deg,rgba(10,12,16,0.75),rgba(10,12,16,0.0))]">
@@ -150,16 +154,16 @@ function Players() {
           key={p.id}
           aria-label={seatLabel(p)}
           aria-current={p.active ? 'true' : undefined}
-          className={`relative flex min-h-[62px] items-center gap-[10px] overflow-hidden rounded-[8px] py-[6px] pl-[6px] pr-[10px] transition-transform ${panel} ${p.active ? '-translate-x-[8px]' : ''}`}
-          style={{ boxShadow: `inset ${p.active ? 5 : 3}px 0 0 ${p.color}, inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '55'}, 0 8px 22px rgba(0,0,0,.5)` }}
+          className={`relative flex min-h-[62px] items-center gap-[10px] overflow-hidden rounded-[14px] py-[6px] pl-[6px] pr-[10px] transition-transform ${glass} ${p.active ? '-translate-x-[8px]' : ''}`}
+          style={{ boxShadow: `inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '66'}, inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px rgba(0,0,0,.4)` }}
         >
-          <div className={`h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[7px] ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
+          <div className={`h-[50px] w-[50px] shrink-0 overflow-hidden rounded-[12px] ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
             <Avatar i={p.avatar} className="h-full w-full" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="mb-[8px] flex items-center gap-[6px] text-[15px] font-semibold leading-none text-white">{p.name}{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
-            <div aria-hidden className="flex items-center gap-[9px] text-[14px] text-[#ece8e0] leading-none [&>span]:gap-[3px]">
-              <span title={L('Victory points', 'Победные очки')} className="flex items-center gap-[4px]"><Trophy />{p.vp}<span className="text-[#a9a49b]">/{p.win}</span></span>
+            <div aria-hidden className="flex items-center gap-[7px] text-[14px] text-[#ece8e0] leading-none [&>span]:gap-[3px]">
+              <span title={L('Victory points', 'Победные очки')} className="flex items-center gap-[4px]"><Trophy />{p.vp}<span className="-ml-[2px] text-[11px] text-[#c4bfb6]">/{p.win}</span></span>
               <span title={L('Resource cards', 'Карты ресурсов')} className="flex items-center gap-[4px]"><CardsIco />{p.cards}</span>
               <span title={L('Development cards in hand', 'Карты развития на руке')} className="flex items-center gap-[4px]"><DevCardIco />{p.devCards}</span>
               <span title={L('Knights played', 'Сыграно рыцарей')} className={`flex items-center gap-[4px] ${p.knights ? '' : 'opacity-45'}`}><KnightIco />{p.knights}</span>
@@ -595,7 +599,7 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
             data-trade-for={tradable ? kind : undefined}
             aria-keyshortcuts={BUILD_KEY[kind]}
             onClick={() => choose(kind, enabled)}
-            className={`group relative flex w-full items-start gap-[10px] rounded-[8px] border-b border-white/5 py-[5px] pl-[6px] pr-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : enabled ? 'shadow-[inset_3px_0_0_#f2b544]' : ''} ${focusRing}`}
+            className={`group relative flex w-full items-start gap-[10px] rounded-[10px] border-b border-white/10 py-[6px] pl-[6px] pr-[6px] text-left transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:hover:bg-transparent ${selected ? 'bg-[#f2b544]/15 ring-1 ring-[#f2b544]/70' : enabled ? 'shadow-[inset_3px_0_0_#f2b544]' : ''} ${focusRing}`}
           >
             <span aria-hidden className={`relative mt-[2px] w-[28px] shrink-0 ${enabled || tradable ? '' : 'opacity-50'}`}>
               {BUILD_ICON[kind]}
@@ -607,7 +611,7 @@ export function BuildRows({ onChosen }: { onChosen?: () => void }) {
                 {kinds.map((r) => {
                   const I = RES_ICON[r]; const need = cost[r]!; const have = counts[r]; const short = need - have
                   return (
-                    <span key={r} className={`flex h-[21px] items-center gap-[1px] rounded-[6px] pl-[1px] pr-[4px] text-[12px] font-bold leading-none ${short > 0 ? 'border border-dashed border-[#ff9b8a] bg-[#c8302a]/20 text-[#ffd2c8]' : 'border border-transparent bg-white/[0.08] text-[#eaf2d8]'}`}>
+                    <span key={r} className={`flex h-[24px] items-center gap-[2px] rounded-[9px] pl-[3px] pr-[6px] text-[12px] font-bold leading-none ${short > 0 ? 'border border-dashed border-[#ff9b8a]/80 bg-[#8a2a22]/45 text-[#ffd8cf]' : 'border border-white/15 bg-black/25 text-[#f1f5e6]'}`}>
                       <span className="block h-[16px] w-[18px] [&>svg]:h-full [&>svg]:w-full"><I /></span>
                       {Math.min(have, 99)}/{need}
                     </span>
@@ -660,14 +664,14 @@ function BuildPanel() {
   const setup = useSetup()
   // G9.5: during setup the panel is one line; the costs come back with the first turn
   if (setup) return (
-    <section aria-labelledby="build-title" className={`mr-[2px] mt-auto flex w-[246px] shrink-0 items-baseline justify-between rounded-[12px] px-[16px] py-[10px] ${panel} ${setBack(setup)}`}>
+    <section aria-labelledby="build-title" className={`mr-[2px] mt-auto flex w-[246px] shrink-0 items-baseline justify-between rounded-[18px] px-[16px] py-[10px] ${glass} ${setBack(setup)}`}>
       <h2 id="build-title" className="font-display text-[20px] font-medium text-[#f4efe6]">{L('Build', 'Стройка')}</h2>
       <span className="text-[13px] text-[#d6d2ca]">{L('after setup', 'после расстановки')}</span>
     </section>
   )
   // focusable and wheel-scrollable: on a short screen it scrolls, and with every row disabled the keyboard could not reach the rest
   return (
-    <section tabIndex={0} aria-labelledby="build-title" className={`pointer-events-auto mr-[2px] mt-auto min-h-0 w-[246px] overflow-y-auto rounded-[12px] px-[10px] pb-[8px] pt-[12px] ${focusRing} ${panel}`}>
+    <section tabIndex={0} aria-labelledby="build-title" className={`pointer-events-auto mr-[2px] mt-auto min-h-0 w-[246px] overflow-y-auto rounded-[18px] px-[10px] pb-[8px] pt-[12px] ${focusRing} ${glass}`}>
       <h2 id="build-title" className="mb-[8px] px-[6px] font-display text-[20px] font-medium text-[#f4efe6]">{L('Build', 'Стройка')}</h2>
       <BuildRows />
     </section>
