@@ -17,12 +17,12 @@ import { RESOURCES, focusRing, panel } from './HUD'
 import { ResourceBackdrop } from './cards/ResourceArt'
 import { ResourceItem } from './cards/ResourceItems'
 import { SEATS, proposeCheck, useGameView, type Counts } from './gameView'
-import { bankQuote, noPayReason, payOptions, sameDraft, shortfall, tradesText } from './tradePlan'
+import { bankQuote, noDealReason, noPayReason, payOptions, readyDeals, sameDraft, shortfall, tradesText } from './tradePlan'
 import { useGame, useGameStore } from '../store/GameProvider'
 import { changeDraft, clearDraft, setBuildGoal, setPlacementMode, setTradeMode, setTradeOpen, useBuildGoal, useTradeDraft, useTradeMode, type TradeMode } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 import { L } from './locale'
-import { resList, resName } from './words'
+import { resCount, resList, resName } from './words'
 
 // G9.4: resource words in the current language
 export const NAME = new Proxy({} as Record<Resource, string>, { get: (_, r: string) => resName(r as Resource) })
@@ -140,9 +140,30 @@ function ComposePanel({ compact }: { compact: boolean }) {
   const names = (ids: PlayerId[]) => ids.length === opponents.length ? L('everyone', 'всем') : ids.map((x) => SEATS[x].name).join(L(' and ', ' и '))
   const playersResult = offerReason ?? L(`Offer ${text(give)} to ${names(to)} for ${text(want)}`, `Предложить ${names(to)}: ${text(give)} за ${text(want)}`)
   const kept = giving || wanted.length > 0
+  // G10.3: with nothing picked, the bank panel starts from the trades the hand can make now (one
+  // click each), or says up front what is short
+  const deals = mode === 'bank' && !kept ? readyDeals(s, me) : []
+  const noDeal = mode === 'bank' && !kept ? noDealReason(s, me) : null
 
   return (
     <>
+      {mode === 'bank' && !kept && (
+        <div role="group" aria-label={L('Ready trades', 'Готовые обмены')} data-ready-deals className="mb-[10px] flex flex-col gap-[6px] border-b border-white/10 pb-[10px]">
+          <p className="text-[13px] text-[#d6d2ca]">{L('Ready trades', 'Готовые обмены')} <span className="text-[#a9a49b]">({L('one click', 'в один клик')})</span></p>
+          {deals.map((d) => { const G = RESOURCES.find((x) => x.key === d.give)!; return (
+            <div key={d.give} className="flex flex-wrap items-center gap-[6px]">
+              <span className="flex w-[104px] items-center gap-[3px] text-[14px] font-semibold text-white"><G.Icon aria-hidden className="h-[24px] w-[26px] shrink-0" />{resCount(d.rate, d.give)} →</span>
+              {d.gets.map((x) => { const X = RESOURCES.find((y) => y.key === x)!; const label = L(`Trade ${resCount(d.rate, d.give)} for 1 ${NAME[x]}`, `Обменять ${resCount(d.rate, d.give)} на 1 (${NAME[x]})`); return (
+                <button key={x} data-ready-deal aria-label={label} title={label} onClick={() => bankTrade({ type: 'BANK_TRADE', give: d.give, get: x, count: 1 })}
+                  className={`flex h-[32px] items-center gap-[2px] rounded-[8px] bg-gradient-to-b ${X.bg} pl-[2px] pr-[7px] text-[12px] font-bold text-white ring-1 ring-[#f2cf84]/50 hover:brightness-110 ${focusRing}`}>
+                  <X.Icon aria-hidden className="h-[24px] w-[26px]" />{compact ? '' : NAME[x]}
+                </button>
+              ) })}
+            </div>
+          ) })}
+          {noDeal && <p data-no-deal className="text-[14px] font-semibold text-[#f2cf84]">{noDeal}</p>}
+        </div>
+      )}
       <p className="mb-[4px] text-[13px] text-[#d6d2ca]">{L('You give', 'Вы отдаёте')} <span className="text-[#a9a49b]">({mode === 'bank' ? L('bank rate · you have', 'курс банка · у вас') : L('you have', 'у вас')})</span></p>
       <div className="flex gap-[8px]">
         {bank.rows.map((r) => (

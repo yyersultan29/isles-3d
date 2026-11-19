@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { botGame, fixture } from '../../game/__tests__/helpers'
 import { COSTS, RESOURCE_ORDER, apply, legalActions, tradeRate, validate, type GameState, type Resource, type VertexId } from '../../game'
-import { affordable, bankQuote, noPayReason, payOptions, sameDraft, shortfall, tradesText } from '../tradePlan'
+import { affordable, bankQuote, noDealReason, noPayReason, readyDeals, payOptions, sameDraft, shortfall, tradesText } from '../tradePlan'
 import type { BuildKind } from '../gameView'
 
 /** a settlement for p1 away from every port, plus a free edge next to it */
@@ -166,5 +166,25 @@ describe('noPayReason (G7.8)', () => {
     s.buildings[portOf(s, 'generic')] = { owner: 'p1', type: 'settlement' }
     expect(noPayReason(s, 'ore')).toBe("Can't pay the bank: you need 2 wool or 3 of another kind")
     expect(noPayReason(s, 'wool')).toBe("Can't pay the bank: you need 3 of one kind")
+  })
+})
+
+describe('readyDeals and noDealReason (G10.3)', () => {
+  it('lists the kinds held at their rate, with what the bank has, and engine accepts each', () => {
+    const s = fixture({ hands: { p1: { grain: 5, lumber: 2 } }, buildings: [[HOME, 'p1']] })
+    s.bank.ore = 0
+    const d = readyDeals(s)
+    expect(d).toEqual([{ give: 'grain', rate: 4, gets: ['lumber', 'brick', 'wool'] }])
+    for (const x of d[0].gets) expect(validate(s, 'p1', { type: 'BANK_TRADE', give: 'grain', get: x, count: 1 }).ok).toBe(true)
+    expect(noDealReason(s)).toBeNull()
+  })
+
+  it('says what is short before anything is picked, using port rates', () => {
+    const s = fixture({ hands: { p1: { grain: 1, lumber: 2 } }, buildings: [[HOME, 'p1']] })
+    expect(readyDeals(s)).toEqual([])
+    expect(noDealReason(s)).toBe('The bank takes 4 of one kind: 2 wood short')
+    s.buildings[portOf(s, 'grain')] = { owner: 'p1', type: 'settlement' }
+    expect(noDealReason(s)).toBe('The bank takes 2 of one kind: 1 grain short')
+    expect(noDealReason(s, 'p2')).toBe('Wait for your turn')
   })
 })

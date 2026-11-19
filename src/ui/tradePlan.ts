@@ -91,6 +91,31 @@ export function noPayReason(s: GameState, want: Resource, count = 1, me: Me = nu
   return L(`Can't pay the bank: you need ${low * count} ${cheap} or ${high * count} of another kind`, `Нечем заплатить банку: нужно ${low * count} (${cheap}) или ${high * count} карт другого вида`)
 }
 
+export interface ReadyDeal { give: Resource; rate: 2 | 3 | 4; gets: Resource[] }
+
+/** G10.3: the bank trades the hand can make now (one card each): every kind held at its rate, and what the bank has for it */
+export function readyDeals(s: GameState, me: Me = null): ReadyDeal[] {
+  const t = trader(s, me)
+  if ('reason' in t) return []
+  const pl = s.players.find((p) => p.id === t.player)!
+  return RESOURCE_ORDER.map((r) => ({ give: r, rate: tradeRate(s, t.player, r) }))
+    .filter((d) => pl.resources[d.give] >= d.rate)
+    .map((d) => ({ ...d, gets: RESOURCE_ORDER.filter((x) => x !== d.give && s.bank[x] > 0) }))
+    .filter((d) => d.gets.length)
+}
+
+/** G10.3: why the bank has no trade now, said before anything is picked (null when there is one) */
+export function noDealReason(s: GameState, me: Me = null): string | null {
+  if (readyDeals(s, me).length) return null
+  const t = trader(s, me)
+  if ('reason' in t) return t.reason
+  const pl = s.players.find((p) => p.id === t.player)!
+  // the kind closest to its rate
+  const [best] = RESOURCE_ORDER.map((r) => ({ r, rate: tradeRate(s, t.player, r), short: tradeRate(s, t.player, r) - pl.resources[r] })).sort((a, b) => a.short - b.short)
+  if (best.short <= 0) return L('The bank has nothing to give', 'В банке нечего взять')
+  return L(`The bank takes ${best.rate} of one kind: ${RC(best.short, best.r)} short`, `Банку нужно ${best.rate} карты одного вида: не хватает ${RC(best.short, best.r)}`)
+}
+
 export interface Shortfall {
   /** cards the build still needs (empty when the hand already pays) */
   missing: Counts
