@@ -3,6 +3,7 @@
 // opponents: public VP (never hidden VP cards), hand and dev-card counts, awards.
 
 import { COSTS, legalActions, MAX_PROPOSALS_PER_TURN, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource, type Viewer } from '../game'
+import { longestRoad } from '../game/rules/awards'
 import { useGame, useSeat, useSession } from '../store/GameProvider'
 import type { OnlineSession } from '../store/onlineStore'
 import { L, count as countOf, getLocale, onLocale } from './locale'
@@ -58,6 +59,8 @@ export interface SeatView {
   cards: number
   devCards: number
   knights: number
+  /** length of the seat's longest road (public) */
+  road: number
   longestRoad: boolean
   largestArmy: boolean
   active: boolean
@@ -87,6 +90,7 @@ export function seats(s: GameState): SeatView[] {
       cards: count(p.resources),
       devCards: p.devCards.length,
       knights: p.playedKnights,
+      road: longestRoad(s, id),
       longestRoad: s.longestRoad === id,
       largestArmy: s.largestArmy === id,
       active: id === active,

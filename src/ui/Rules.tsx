@@ -4,7 +4,7 @@ import { COSTS } from '../game/rules/build'
 import { DEFAULT_SETTINGS } from '../game'
 import { L } from './locale'
 import { resList } from './words'
-import { CardsIco, DevCardIco, KnightIco, Trophy, focusRing } from './HUD'
+import { ArmyAwardIco, CardsIco, DevCardIco, RoadAwardIco, Trophy, focusRing } from './HUD'
 
 export const ruleLines = () => {
   const win = DEFAULT_SETTINGS.vpToWin
@@ -38,7 +38,8 @@ export function Rules({ className = '' }: { className?: string }) {
         <li><Trophy />{L('victory points', 'победные очки')}</li>
         <li><CardsIco />{L('resource cards', 'карты ресурсов')}</li>
         <li><DevCardIco />{L('development cards', 'карты развития')}</li>
-        <li><KnightIco />{L('knights played', 'сыграно рыцарей')}</li>
+        <li><ArmyAwardIco className="h-[16px] w-[16px]" />{L('knights played (army)', 'рыцари (войско)')}</li>
+        <li><RoadAwardIco className="h-[16px] w-[16px]" />{L('longest road length', 'длина дороги')}</li>
       </ul>
     </details>
   )

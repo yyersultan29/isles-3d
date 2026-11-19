@@ -89,10 +89,6 @@ export const Trophy = () => (
 export const DevCardIco = () => (
   <svg aria-hidden viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="#e7c27a" strokeWidth="2"><rect x="6" y="4" width="12" height="16" rx="2" /><path d="M12 8.2l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z" fill="#e7c27a" strokeWidth="0.8" /></svg>
 )
-export const KnightIco = () => (
-  <svg aria-hidden viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="#d8dde6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4H20v5.5L10 19.5 4.5 14z" /><path d="M7 12l5 5M3.5 20.5l3-3" /></svg>
-)
-
 export const CardsIco = () => (
   <svg viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none" stroke="#e8e4dc" strokeWidth="2">
     <rect x="6" y="5" width="12" height="15" rx="2" />
@@ -141,8 +137,8 @@ function AwardLines({ seat }: { seat: SeatView }) {
 }
 
 export const seatLabel = (p: SeatView) => L(
-  `${p.name}: ${p.vp} of ${p.win} victory points, ${p.cards} resource cards, ${p.devCards} development cards, ${p.knights} ${p.knights === 1 ? 'knight' : 'knights'} played${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}${p.auto ? ', played automatically' : ''}`,
-  `${p.name}: ${p.vp} из ${p.win} победных очков, ${count(p.cards, '', '', 'карта ресурсов', 'карты ресурсов', 'карт ресурсов')}, ${count(p.devCards, '', '', 'карта развития', 'карты развития', 'карт развития')}, сыграно рыцарей: ${p.knights}${p.longestRoad ? `, ${awardName('longestRoad')}` : ''}${p.largestArmy ? `, ${awardName('largestArmy')}` : ''}${p.active ? ', сейчас ходит' : ''}${p.away ? ', нет связи' : ''}${p.auto ? ', играет автоматически' : ''}`,
+  `${p.name}: ${p.vp} of ${p.win} victory points, ${p.cards} resource cards, ${p.devCards} development cards, ${p.knights} ${p.knights === 1 ? 'knight' : 'knights'} played, longest road ${p.road}${p.longestRoad ? ', Longest Road' : ''}${p.largestArmy ? ', Largest Army' : ''}${p.active ? ', current turn' : ''}${p.away ? ', away (disconnected)' : ''}${p.auto ? ', played automatically' : ''}`,
+  `${p.name}: ${p.vp} из ${p.win} победных очков, ${count(p.cards, '', '', 'карта ресурсов', 'карты ресурсов', 'карт ресурсов')}, ${count(p.devCards, '', '', 'карта развития', 'карты развития', 'карт развития')}, сыграно рыцарей: ${p.knights}, длина дороги: ${p.road}${p.longestRoad ? `, ${awardName('longestRoad')}` : ''}${p.largestArmy ? `, ${awardName('largestArmy')}` : ''}${p.active ? ', сейчас ходит' : ''}${p.away ? ', нет связи' : ''}${p.auto ? ', играет автоматически' : ''}`,
 )
 
 /** What the bank still holds: each resource and the development-card deck (online the deck is a count). */
@@ -184,16 +180,23 @@ function Players() {
             <Avatar i={p.avatar} className="h-full w-full" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="mb-[8px] flex items-center gap-[6px] text-[16px] font-bold leading-none" style={{ color: `color-mix(in srgb, ${p.color} 62%, white)` }}>{p.name}{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}</div>
-            <div aria-hidden className="flex items-center gap-[7px] text-[14px] text-[#ece8e0] leading-none [&>span]:gap-[3px]">
-              <span title={L('Victory points', 'Победные очки')} className="flex items-center gap-[4px]"><Trophy />{p.vp}<span className="-ml-[2px] text-[11px] text-[#c4bfb6]">/{p.win}</span></span>
-              <span title={L('Resource cards', 'Карты ресурсов')} className="flex items-center gap-[4px]"><CardsIco />{p.cards}</span>
-              <span title={L('Development cards in hand', 'Карты развития на руке')} className="flex items-center gap-[4px]"><DevCardIco />{p.devCards}</span>
-              <span title={L('Knights played', 'Сыграно рыцарей')} className={`flex items-center gap-[4px] ${p.knights ? '' : 'opacity-45'}`}><KnightIco />{p.knights}</span>
+            <div className="mb-[8px] flex items-center gap-[6px] text-[16px] font-bold leading-none">
+              <span className="min-w-0 truncate" style={{ color: `color-mix(in srgb, ${p.color} 62%, white)` }}>{p.name}</span>{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}
+              <span aria-hidden title={L('Victory points', 'Победные очки')} className="ml-auto flex shrink-0 items-center gap-[3px] text-[14px] font-semibold text-[#ece8e0]"><Trophy />{p.vp}<span className="-ml-[1px] text-[11px] text-[#c4bfb6]">/{p.win}</span></span>
+            </div>
+            {/* army = knights played, road = longest road length; gold while the seat holds that award */}
+            <div aria-hidden className="flex items-center gap-[7px] text-[14px] text-[#ece8e0] leading-none">
+              <span title={L('Resource cards', 'Карты ресурсов')} className="flex items-center gap-[3px]"><CardsIco />{p.cards}</span>
+              <span title={L('Development cards in hand', 'Карты развития на руке')} className="flex items-center gap-[3px]"><DevCardIco />{p.devCards}</span>
+              <span className="h-[14px] w-px bg-white/20" />
+              <span data-army title={L(`Army: ${p.knights} knights played (Largest Army from 3)`, `Войско: сыграно рыцарей — ${p.knights} (самое большое войско — от 3)`)}
+                className={`flex items-center gap-[3px] ${p.largestArmy ? 'font-bold text-[#ffd77a]' : p.knights ? '' : 'opacity-45'}`}><ArmyAwardIco className="h-[16px] w-[16px]" />{p.knights}</span>
+              <span data-road title={L(`Longest road: ${p.road} (Longest Road from 5)`, `Дорога: длина ${p.road} (самая длинная дорога — от 5)`)}
+                className={`flex items-center gap-[3px] ${p.longestRoad ? 'font-bold text-[#ffd77a]' : p.road ? '' : 'opacity-45'}`}><RoadAwardIco className="h-[16px] w-[16px]" />{p.road}</span>
             </div>
             <AwardLines seat={p} />
           </div>
-          {p.active && <span aria-hidden className="absolute right-[10px] top-[9px] h-[9px] w-[9px] rounded-full bg-[#f2b544] shadow-[0_0_8px_#f2b544]" />}
+          {p.active && <span aria-hidden className="absolute left-[45px] top-[7px] h-[11px] w-[11px] rounded-full bg-[#f2b544] shadow-[0_0_8px_#f2b544] ring-2 ring-black/60" />}
         </li>
       ))}
     </ul>
