@@ -1,8 +1,23 @@
 // G4.4a: HUD data is derived from state and shows only public information for everyone.
 import { describe, expect, it } from 'vitest'
 import { act, fixture, newGame, playSetup } from '../../game/__tests__/helpers'
-import { bankMax, bankView, devView, finalScores, offerView, proposeCheck, buildOptions, costText, discardPrompt, handOf, hasPrivate, needsPass, stealPrompt, viewerOf, phaseText, primaryAction, seats, SEATS } from '../gameView'
+import { bankMax, bankView, devView, finalScores, offerView, proposeCheck, buildOptions, costText, discardPrompt, handOf, hasPrivate, needsPass, stealPrompt, viewerOf, phaseText, primaryAction, seats, SEATS, sharedView } from '../gameView'
+import { setLocale } from '../locale'
 import { COSTS, apply, createGame, legalActions, type ReplayFile } from '../../game'
+
+describe('shared HUD view', () => {
+  it('one computation per state, seat, presence and language', () => {
+    const s = newGame(2)
+    const v = sharedView(s, null, undefined)
+    expect(sharedView(s, null, undefined)).toBe(v) // every HUD component in a render shares it
+    expect(sharedView(s, 'p1', undefined)).not.toBe(v)
+    const seatsOnline = [{ id: 'p1', taken: true, connected: false, absent: false }] as never
+    expect(sharedView(s, 'p1', seatsOnline).seats.find((p) => p.id === 'p1')).toMatchObject({ away: true, auto: false })
+    const en = sharedView(s, null, undefined)
+    setLocale('ru')
+    try { expect(sharedView(s, null, undefined)).not.toBe(en) } finally { setLocale('en') }
+  })
+})
 
 describe('G4.4a HUD view', () => {
   it('seats follow turn order, mark the active player and count public VP only', () => {

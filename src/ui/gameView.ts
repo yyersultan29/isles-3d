@@ -1,11 +1,11 @@
 // What the HUD shows for the current game (ROADMAP G4.4a). Pure functions of GameState so they are
-// unit-tested; `useGameView` memoises them per state. Only public information is shown for
+// unit-tested; `useGameView` shares one computation per change. Only public information is shown for
 // opponents: public VP (never hidden VP cards), hand and dev-card counts, awards.
 
-import { useMemo } from 'react'
 import { COSTS, legalActions, MAX_PROPOSALS_PER_TURN, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource, type Viewer } from '../game'
 import { useGame, useSeat, useSession } from '../store/GameProvider'
-import { L, count as countOf, onLocale } from './locale'
+import type { OnlineSession } from '../store/onlineStore'
+import { L, count as countOf, getLocale, onLocale } from './locale'
 import { cardName, colourName, resCount } from './words'
 
 /**
@@ -155,17 +155,28 @@ export function primaryAction(s: GameState, me: Me = null): { label: string; sho
   return { label, short, action: null, player }
 }
 
-export function useGameView() {
-  const s = useGame((x) => x)
-  const me = useSeat()
-  const seatsOnline = useSession()?.seats
-  return useMemo(() => {
-    const v = gameView(s, me)
-    if (!seatsOnline?.length) return v
+type View = ReturnType<typeof gameView>
+type Seats = OnlineSession['seats'] | undefined
+/** The last view built: the ~20 HUD components that read it in one render share one computation. */
+let lastView: { s: GameState; me: Me; seats: Seats; locale: string; v: View } | null = null
+
+/** The HUD model for this state, seat, presence and language; computed once per change, not per component. */
+export function sharedView(s: GameState, me: Me, seatsOnline: Seats): View {
+  const locale = getLocale()
+  const c = lastView
+  if (c && c.s === s && c.me === me && c.seats === seatsOnline && c.locale === locale) return c.v
+  let v = gameView(s, me)
+  if (seatsOnline?.length) {
     const away = new Set(seatsOnline.filter((x) => x.taken && !x.connected).map((x) => x.id))
     const auto = new Set(seatsOnline.filter((x) => x.absent).map((x) => x.id))
-    return { ...v, seats: v.seats.map((p) => (away.has(p.id) || auto.has(p.id) ? { ...p, away: away.has(p.id), auto: auto.has(p.id) } : p)) }
-  }, [s, me, seatsOnline])
+    v = { ...v, seats: v.seats.map((p) => (away.has(p.id) || auto.has(p.id) ? { ...p, away: away.has(p.id), auto: auto.has(p.id) } : p)) }
+  }
+  lastView = { s, me, seats: seatsOnline, locale, v }
+  return v
+}
+
+export function useGameView() {
+  return sharedView(useGame((x) => x), useSeat(), useSession()?.seats)
 }
 
 /** Everything the HUD shows, from one state and one point of view. */
