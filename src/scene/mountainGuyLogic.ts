@@ -85,6 +85,8 @@ export function bestSpot(t: Tile): GuySpot | null {
       // the quarry ledge flattens his ground, so relief only sets how deep the cut is
       const base = (hi - lo) * 1.5 + lo + Math.max(0, -lz) * 0.3
       if (base >= bs) continue
+      // his own sight lines don't depend on the boulder: computed once per spot, and only when needed
+      let h1 = -1, h2 = -1, h3 = -1
       // the boulder beside him: free ground at the same level, best off to his side (as the camera
       // sees it, world ±x) so his swing shows in profile, a little toward the camera
       for (let i = 0; i < 16; i++) {
@@ -92,8 +94,20 @@ export function bestSpot(t: Tile): GuySpot | null {
         if (!spotFree(lx + dx, lz + dz, ROCK_R)) continue
         const [rlo, rhi] = relief(t, x + dx, z + dz, ROCK_R)
         // behind him (−z) the camera would see his back and not the swing; ahead or to the side is fine
-        const score = base + (rhi - rlo) * 0.5 + Math.abs(rlo - lo) * 1 + Math.max(0, -Math.sin(a)) * 0.6 + (1 - Math.abs(Math.cos(a))) * 0.05
-          + hidden(x, z, lo + 0.2) * 0.5 + hidden(x, z, lo + 0.005) * 3 + hidden(x, z, lo + 0.05) * 3 + hidden(x + dx, z + dz, rlo + 0.05) * 0.5
+        // summed left to right like one expression, bailing out as soon as it can't win (every term ≥ 0);
+        // the sight-line samples (groundHeight × 24 each) are most of the search's cost
+        let score = base + (rhi - rlo) * 0.5 + Math.abs(rlo - lo) * 1 + Math.max(0, -Math.sin(a)) * 0.6 + (1 - Math.abs(Math.cos(a))) * 0.05
+        if (score >= bs) continue
+        if (h1 < 0) h1 = hidden(x, z, lo + 0.2)
+        score += h1 * 0.5
+        if (score >= bs) continue
+        if (h2 < 0) h2 = hidden(x, z, lo + 0.005)
+        score += h2 * 3
+        if (score >= bs) continue
+        if (h3 < 0) h3 = hidden(x, z, lo + 0.05)
+        score += h3 * 3
+        if (score >= bs) continue
+        score += hidden(x + dx, z + dz, rlo + 0.05) * 0.5
         if (score >= bs) continue
         bs = score
         // at rest he faces the camera, turned a little toward the token so he "looks" at his tile

@@ -10,11 +10,15 @@ import { oceanTime } from './Ocean'
 import { animTime, motion } from './motion'
 
 /** Large sea-cliff mass with a grassy top, smooth-shaded and painted like the island's own cliff (Island.tsx). */
+let sphere: THREE.BufferGeometry | null = null // the same welded sphere under every cliff: built once
 function cliffGeometry(seed: number, sx: number, sy: number, sz: number) {
-  let g: THREE.BufferGeometry = new THREE.IcosahedronGeometry(1, 26)
-  g.deleteAttribute('normal')
-  g.deleteAttribute('uv')
-  g = mergeVertices(g)
+  if (!sphere) {
+    sphere = new THREE.IcosahedronGeometry(1, 26)
+    sphere.deleteAttribute('normal')
+    sphere.deleteAttribute('uv')
+    sphere = mergeVertices(sphere)
+  }
+  const g = sphere.clone()
   const p = g.attributes.position as THREE.BufferAttribute
   for (let i = 0; i < p.count; i++) {
     let x = p.getX(i), y = p.getY(i), z = p.getZ(i)

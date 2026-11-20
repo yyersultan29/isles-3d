@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { TILES, Tile, tileHeight, hexDist, corner, EDGES, VERTICES, HEX_R } from './board'
 import { fbm, noise2, smoothstep, clamp } from './noise'
 
@@ -114,30 +113,37 @@ function biomeColor(t: Tile, x: number, z: number, h: number, ny: number, out: T
 
 /** Subdivided pointy-top hex surface displaced by the tile height function. */
 export function buildTileGeometry(t: Tile, N: number, flat = false) {
-  const pos: number[] = []
   const R = HEX_R * 0.995
+  // built indexed: sector k's point i·A + j·B (corners A = c_k, B = c_k+1) has integer coordinates in the
+  // basis (c0, c1), since c2 = c1 − c0, c3 = −c0, …; shared vertices are found by those, the first one kept
+  // in first-seen order, exactly what mergeVertices produced from the triangle soup at ~1/10 the cost
+  const BASIS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]]
+  const pos: number[] = [], index: number[] = [], seen = new Map<number, number>()
   for (let k = 0; k < 6; k++) {
     const [ax, az] = corner({ x: 0, z: 0 }, k, R)
     const [bx, bz] = corner({ x: 0, z: 0 }, (k + 1) % 6, R)
-    const P = (i: number, j: number): [number, number] => {
-      // barycentric on triangle (0, A, B)
-      const u = i / N, v = j / N
-      return [ax * u + bx * v, az * u + bz * v]
+    const [pa, qa] = BASIS[k], [pb, qb] = BASIS[(k + 1) % 6]
+    const V = (i: number, j: number) => {
+      const key = (i * pa + j * pb + N) * 1024 + (i * qa + j * qb + N) // each coordinate in −N..N, N < 512
+      let id = seen.get(key)
+      if (id === undefined) {
+        const u = i / N, v = j / N
+        id = pos.length / 3
+        pos.push(ax * u + bx * v, 0, az * u + bz * v)
+        seen.set(key, id)
+      }
+      return id
     }
     for (let i = 0; i < N; i++) {
       for (let j = 0; j < N - i; j++) {
-        const p0 = P(i, j), p1 = P(i + 1, j), p2 = P(i, j + 1)
-        pos.push(p0[0], 0, p0[1], p2[0], 0, p2[1], p1[0], 0, p1[1])
-        if (j < N - i - 1) {
-          const p3 = P(i + 1, j + 1)
-          pos.push(p1[0], 0, p1[1], p2[0], 0, p2[1], p3[0], 0, p3[1])
-        }
+        index.push(V(i, j), V(i, j + 1), V(i + 1, j))
+        if (j < N - i - 1) index.push(V(i + 1, j), V(i, j + 1), V(i + 1, j + 1))
       }
     }
   }
   let g = new THREE.BufferGeometry()
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
-  g = mergeVertices(g, 1e-4)
+  g.setIndex(index)
   const p = g.attributes.position as THREE.BufferAttribute
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i) + t.x, z = p.getZ(i) + t.z
