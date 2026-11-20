@@ -1,5 +1,4 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import gsap from 'gsap'
 import { Avatar, Brick, HexLogo, Logs, Ore, SheepIcon, WheatIcon } from './icons'
 import { RES_CARD, RES_CARD_FRAME, ResourceCardFace } from './cards/ResourceCard'
 import { DevCardBack } from './cards/DevCardArt'
@@ -299,17 +298,30 @@ export function DiceSum({ total, className = '', small = false }: { total: numbe
   )
 }
 
+/** Penner's bounce-out (what gsap called 'bounce.out'). */
+function bounceOut(t: number) {
+  const n = 7.5625, d = 2.75
+  if (t < 1 / d) return n * t * t
+  if (t < 2 / d) return n * (t -= 1.5 / d) * t + 0.75
+  if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + 0.9375
+  return n * (t -= 2.625 / d) * t + 0.984375
+}
+const BOUNCE = Array.from({ length: 41 }, (_, i) => 1 - bounceOut(i / 40)) // share of the drop left
+/** The dice drop in and bounce: each die falls from `dy` px up, tilted, 80 ms after the one before. */
+export function diceBounce(el: HTMLElement, dy: number, ms: number) {
+  const frames = BOUNCE.map((k) => ({ transform: `translateY(${-dy * k}px) rotate(${-25 * k}deg)` }))
+  Array.from(el.children).forEach((c, i) => c.animate(frames, { duration: ms, delay: i * 80, fill: 'backwards' }))
+}
+
 function DiceArea() {
-  const { ref, a, b, rolled, primary, act } = useDiceAndAction((el) =>
-    gsap.fromTo(el.children, { y: -18, rotate: -25 }, { y: 0, rotate: 0, duration: 0.7, ease: 'bounce.out', stagger: 0.08 }),
-  )
+  const { ref, a, b, rolled, primary, act } = useDiceAndAction((el) => diceBounce(el, 18, 700))
   return (
     <div className="relative mt-[22px] w-[232px] shrink-0">
       <div ref={ref} aria-label={rolled ? L(`Dice: ${a} and ${b}, total ${a + b}`, `Кубики: ${a} и ${b}, сумма ${a + b}`) : L('Dice not rolled yet', 'Кубики ещё не брошены')} role="img" className={`relative z-10 mx-auto flex w-[150px] justify-between drop-shadow-[0_10px_8px_rgba(0,0,0,0.55)] transition-opacity ${rolled ? '' : 'opacity-70'}`}>
         <Die faces={dieFaces(a)} rot="rotateX(-24deg) rotateY(-28deg) rotateZ(-4deg)" />
         <Die faces={dieFaces(b)} rot="rotateX(-22deg) rotateY(30deg) rotateZ(6deg)" color="red" />
       </div>
-      {/* G9.2: the roll as a number, so nobody has to count pips; a sibling of the dice, which gsap animates */}
+      {/* G9.2: the roll as a number, so nobody has to count pips; a sibling of the dice, which diceBounce animates */}
       {rolled && <DiceSum total={a + b} className="absolute left-1/2 -top-[22px] z-20 -translate-x-1/2" />}
       {/* wooden plinth */}
       <div className="relative -mt-[18px] h-[96px] rounded-[28px] bg-[linear-gradient(180deg,#6b4a2c,#3d2817_60%,#2a1b10)] shadow-[0_14px_30px_rgba(0,0,0,0.6),inset_0_2px_0_rgba(255,220,170,0.25),inset_0_-6px_12px_rgba(0,0,0,0.5)] ring-1 ring-black/40">

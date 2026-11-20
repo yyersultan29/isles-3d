@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import gsap from 'gsap'
 import { Avatar, HexLogo } from './icons'
-import { MenuButton, DiceSum, AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction } from './HUD'
+import { MenuButton, DiceSum, AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, diceBounce } from './HUD'
 import { useGameView } from './gameView'
 import { HelpButton } from './shortcuts'
 import { GameDialogs } from './Dialogs'
@@ -26,9 +25,7 @@ export function CompactHUD() {
   // short (landscape phone) screens: the seven dialogs sit over the disabled dock instead of
   // climbing over the top bar
   const short = useViewport().h < 560
-  const { ref: dice, a, b, rolled, primary, act } = useDiceAndAction((el) =>
-    gsap.fromTo(el.children, { y: -10, rotate: -25 }, { y: 0, rotate: 0, duration: 0.6, ease: 'bounce.out', stagger: 0.08 }),
-  )
+  const { ref: dice, a, b, rolled, primary, act } = useDiceAndAction((el) => diceBounce(el, 10, 600))
   // Escape closes the build popover; focus inside it goes back to its toggle (G4.6b)
   const buildBtn = useRef<HTMLButtonElement>(null)
   const refocus = () => {

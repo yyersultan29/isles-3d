@@ -10,7 +10,7 @@
 // Steps: OBJ -> glTF (obj2gltf), weld, simplify to ~5k triangles (meshoptimizer, Permissive mode:
 // the Hyper3D UV atlas has seams everywhere and locks the plain simplifier at ~84k; UVs weighted in), one PBR
 // material (base colour sRGB; roughness -> G and metallic -> B of one linear map; normal map),
-// textures 1024 px WebP, quantize + meshopt compression (decoder ships with three, no CDN fetch).
+// textures 512 px WebP, quantize + meshopt compression (decoder ships with three, no CDN fetch).
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
@@ -23,7 +23,7 @@ import sharp from 'sharp'
 const require = createRequire(path.join(process.cwd(), 'x.js'))
 const obj2gltf = require('obj2gltf')
 const [, , dir, output, ratioArg = '0.01', errArg = '0.05'] = process.argv
-const SIZE = 1024
+const SIZE = 512 // figures are ~60 px on screen; 4 maps × 1024² cost ~21 MB VRAM per model, 512² ~5 MB
 const UV_WEIGHT = Number(process.env.UV_WEIGHT ?? 1)
 
 await Promise.all([MeshoptSimplifier.ready, MeshoptEncoder.ready, MeshoptDecoder.ready])

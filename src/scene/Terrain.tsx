@@ -71,13 +71,15 @@ function biomeColor(t: Tile, x: number, z: number, h: number, ny: number, out: T
       // large-scale slope (finite differences over a wide footprint) so snow and shading form
       // coherent caps instead of flickering per facet
       const e = 0.06
-      const gx = (tileHeight(t, x + e, z) - tileHeight(t, x - e, z)) / (2 * e)
-      const gz = (tileHeight(t, x, z + e) - tileHeight(t, x, z - e)) / (2 * e)
+      const xp = tileHeight(t, x + e, z), xm = tileHeight(t, x - e, z)
+      const zp = tileHeight(t, x, z + e), zm = tileHeight(t, x, z - e)
+      const gx = (xp - xm) / (2 * e)
+      const gz = (zp - zm) / (2 * e)
       const nys = 1 / Math.sqrt(1 + gx * gx + gz * gz)
       ny = ny * 0.3 + nys * 0.7
       // curvature (Laplacian): >0 in gullies/hollows, <0 on ridges and crests
       const c0 = tileHeight(t, x, z)
-      const lap = (tileHeight(t, x + e, z) + tileHeight(t, x - e, z) + tileHeight(t, x, z + e) + tileHeight(t, x, z - e) - 4 * c0) / (e * e)
+      const lap = (xp + xm + zp + zm - 4 * c0) / (e * e)
       const hollow = smoothstep(0.4, 3, lap)
       const ridge = smoothstep(0.4, 3, -lap)
       const steep = smoothstep(0.85, 0.45, ny)

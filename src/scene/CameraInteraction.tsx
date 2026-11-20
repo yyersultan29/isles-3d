@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import gsap from 'gsap'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { motion } from './motion'
 
@@ -65,19 +64,27 @@ export function CameraInteraction() {
 
   useEffect(() => {
     if (!controls) return
-    let tween: gsap.core.Timeline | null = null
+    let raf = 0
     const reset = () => {
       if (!home.set) return
-      tween?.kill()
+      cancelAnimationFrame(raf)
       if (motion.reduced) {
         camera.position.copy(home.pos)
         controls.target.copy(home.target)
         controls.update()
         return
       }
-      tween = gsap.timeline({ onUpdate: () => controls.update() })
-      tween.to(camera.position, { x: home.pos.x, y: home.pos.y, z: home.pos.z, duration: 0.7, ease: 'power2.inOut' }, 0)
-      tween.to(controls.target, { x: home.target.x, y: home.target.y, z: home.target.z, duration: 0.7, ease: 'power2.inOut' }, 0)
+      // 0.7 s glide home, power2 in-out; controls.update() fires 'change', which wakes the frame loop
+      const p0 = camera.position.clone(), t0 = controls.target.clone(), start = performance.now()
+      const step = (now: number) => {
+        const u = Math.min(1, (now - start) / 700)
+        const k = u < 0.5 ? 2 * u * u : 1 - (2 - 2 * u) ** 2 / 2
+        camera.position.lerpVectors(p0, home.pos, k)
+        controls.target.lerpVectors(t0, home.target, k)
+        controls.update()
+        if (u < 1) raf = requestAnimationFrame(step)
+      }
+      raf = requestAnimationFrame(step)
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'r' && e.key !== 'R') return
@@ -91,7 +98,7 @@ export function CameraInteraction() {
     window.addEventListener('keydown', onKey)
     if (import.meta.env.DEV) Object.assign((window as unknown as { __isles?: object }).__isles ?? {}, { resetCamera: reset, camera, controls })
     return () => {
-      tween?.kill()
+      cancelAnimationFrame(raf)
       canvas.removeEventListener('dblclick', reset)
       window.removeEventListener('keydown', onKey)
     }

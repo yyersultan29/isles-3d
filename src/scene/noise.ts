@@ -13,10 +13,9 @@ export function mulberry32(seed: number) {
 
 const F2 = 0.5 * (Math.sqrt(3) - 1)
 const G2 = (3 - Math.sqrt(3)) / 6
-const grad = [
-  [1, 1], [-1, 1], [1, -1], [-1, -1],
-  [1, 0], [-1, 0], [0, 1], [0, -1],
-]
+// gradients as flat x/y tables: noise2 runs ~10^6 times at load (terrain), nested arrays cost ~30%
+const GX = new Int8Array([1, -1, 1, -1, 1, -1, 0, 0])
+const GY = new Int8Array([1, 1, -1, -1, 0, 0, 1, -1])
 
 function buildPerm(seed: number) {
   const rnd = mulberry32(seed)
@@ -51,21 +50,21 @@ export function noise2(xin: number, yin: number): number {
   let n0 = 0, n1 = 0, n2 = 0
   let t0 = 0.5 - x0 * x0 - y0 * y0
   if (t0 > 0) {
-    const g = grad[perm[ii + perm[jj]] & 7]
+    const g = perm[ii + perm[jj]] & 7
     t0 *= t0
-    n0 = t0 * t0 * (g[0] * x0 + g[1] * y0)
+    n0 = t0 * t0 * (GX[g] * x0 + GY[g] * y0)
   }
   let t1 = 0.5 - x1 * x1 - y1 * y1
   if (t1 > 0) {
-    const g = grad[perm[ii + i1 + perm[jj + j1]] & 7]
+    const g = perm[ii + i1 + perm[jj + j1]] & 7
     t1 *= t1
-    n1 = t1 * t1 * (g[0] * x1 + g[1] * y1)
+    n1 = t1 * t1 * (GX[g] * x1 + GY[g] * y1)
   }
   let t2 = 0.5 - x2 * x2 - y2 * y2
   if (t2 > 0) {
-    const g = grad[perm[ii + 1 + perm[jj + 1]] & 7]
+    const g = perm[ii + 1 + perm[jj + 1]] & 7
     t2 *= t2
-    n2 = t2 * t2 * (g[0] * x2 + g[1] * y2)
+    n2 = t2 * t2 * (GX[g] * x2 + GY[g] * y2)
   }
   return 70 * (n0 + n1 + n2) // ~[-1, 1]
 }
