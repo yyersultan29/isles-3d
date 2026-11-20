@@ -22,3 +22,32 @@ canvas { display: block; }
 /* G7.2: hand deltas ("+2" on a card) pop in and fade by 2.5 s; under reduced motion they simply
    show (base opacity 1) until React removes them */
 @keyframes delta-pop { 0% { opacity: 0; transform: translateY(6px) scale(.8); } 8% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+/* G11: an emote pops in over the sender's avatar, then the emoji (inner .emote-motion, so its transform
+   never fights the pop) moves in its own way. Under reduced motion it only shows (no animation at all,
+   so nothing loops) and React removes it after 2.5 s */
+@keyframes emote-pop { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes emote-punch { 0%, 100% { transform: none; } 30% { transform: translateY(-4px) scale(1.18); } 60% { transform: scale(.95); } }
+@keyframes emote-shake { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
+@keyframes emote-pulse { 0%, 100% { transform: none; } 50% { transform: scale(1.14); } }
+@keyframes emote-pump { 0%, 100% { transform: none; } 25% { transform: translateY(-4px); } 50% { transform: translateY(2px); } 75% { transform: translateY(-2px); } }
+@keyframes emote-tremble { 0%, 100% { transform: translateX(-1.5px) scale(1.06); } 50% { transform: translateX(1.5px) scale(1.06); } }
+@keyframes emote-sink { 0% { transform: none; } 100% { transform: translateY(4px) scale(.94); } }
+@keyframes emote-plead { 0%, 100% { transform: rotate(-5deg) translateY(0); } 50% { transform: rotate(5deg) translateY(-2px); } }
+@keyframes emote-tilt { 0% { transform: none; } 40%, 100% { transform: rotate(-12deg); } }
+@keyframes emote-sway { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg) translateY(1px); } }
+@keyframes emote-sneak { 0%, 100% { transform: translateX(-5px); } 25%, 75% { transform: translate(0, -2px); } 50% { transform: translateX(5px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .emote-bubble { animation: emote-pop 260ms ease-out; }
+  .emote-motion { animation: 1s ease-in-out 260ms infinite; }
+  [data-emote="thumbs"] .emote-motion { animation-name: emote-punch; animation-duration: .9s; }
+  [data-emote="laugh"] .emote-motion { animation-name: emote-shake; animation-duration: .35s; }
+  [data-emote="wow"] .emote-motion { animation-name: emote-pulse; animation-duration: .8s; }
+  [data-emote="deal"] .emote-motion { animation-name: emote-pump; animation-duration: .7s; }
+  [data-emote="angry"] .emote-motion { animation-name: emote-tremble; animation-duration: .12s; animation-timing-function: linear; }
+  [data-emote="sad"] .emote-motion { animation-name: emote-sink; animation-duration: 1.6s; animation-iteration-count: 1; animation-fill-mode: forwards; }
+  [data-emote="please"] .emote-motion { animation-name: emote-plead; animation-duration: 1s; }
+  [data-emote="smirk"] .emote-motion { animation-name: emote-tilt; animation-duration: .6s; animation-iteration-count: 1; animation-fill-mode: forwards; }
+  [data-emote="sleepy"] .emote-motion { animation-name: emote-sway; animation-duration: 2s; }
+  [data-emote="robber"] .emote-motion { animation-name: emote-sneak; animation-duration: 1.4s; }
+}

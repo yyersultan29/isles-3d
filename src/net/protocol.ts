@@ -24,6 +24,12 @@ export type ClientMessage =
   | { type: 'ping' }
   /** an intent; `clientSeq` (strictly increasing per seat) makes retries idempotent */
   | { type: 'action'; clientSeq: number; action: Action }
+  /** G11: show an emote to the room (seats only, after the start); not a game action, never logged */
+  | { type: 'emote'; id: EmoteId }
+
+/** G11: the fixed emote set; only these ids travel, never free text */
+export const EMOTES = ['thumbs', 'laugh', 'wow', 'deal', 'angry', 'sad', 'please', 'smirk', 'sleepy', 'robber'] as const
+export type EmoteId = (typeof EMOTES)[number]
 
 // ---------- server → client ----------
 
@@ -61,6 +67,8 @@ export type ServerMessage =
   | { type: 'rejected'; clientSeq: number | null; error: EngineError }
   /** lobby or room errors outside the engine (unknown room, not the host, game not started) */
   | { type: 'error'; code: RoomErrorCode; message: string }
+  /** G11: `seat` sent an emote; everyone in the room gets it, the sender too */
+  | { type: 'emote'; seat: PlayerId; id: EmoteId }
 
 /** REPLACED: the same seat joined from another connection; this one is closed (G5.4) */
 /** ABANDONED: nobody played for five minutes; the room is closed (G5.5, §20) */
@@ -105,6 +113,8 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       if (!Number.isSafeInteger(m.clientSeq) || (m.clientSeq as number) < 0) return null
       if (!isObj(m.action) || typeof m.action.type !== 'string') return null
       return { type: 'action', clientSeq: m.clientSeq as number, action: m.action as unknown as Action }
+    case 'emote':
+      return (EMOTES as readonly unknown[]).includes(m.id) ? { type: 'emote', id: m.id as EmoteId } : null
     default:
       return null
   }

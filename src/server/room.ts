@@ -8,7 +8,7 @@
 import { NEW_GAME_BOARD, apply, createGame, eventsFor, legalActions, viewFor } from '../game'
 import type { Action, EngineError, GameEvent, GameSettings, GameState, LegalAction, PlayerId, Viewer } from '../game'
 import { createRng, type Rng } from '../game/rng'
-import { parseClientMessage, type RoomErrorCode, type SeatInfo, type ServerMessage, type LobbyBoard, type TimerInfo, type TimerPreset } from '../net/protocol'
+import { parseClientMessage, type RoomErrorCode, type SeatInfo, type ServerMessage, type LobbyBoard, type EmoteId, type TimerInfo, type TimerPreset } from '../net/protocol'
 import { decisionOf, extendForTrade, limitFor, timeoutAction, type DecisionKind } from './timeouts'
 
 export type ConnId = string
@@ -30,6 +30,8 @@ export interface RoomOptions {
 export const ABSENT_AFTER_DISCONNECT_MS = 60_000
 /** §20: with no present human for this long the room is abandoned */
 export const ABANDON_AFTER_MS = 5 * 60_000
+/** G11: the shortest gap between two emotes from one seat */
+export const EMOTE_COOLDOWN_MS = 2500
 
 interface Clock { kind: DecisionKind; seats: PlayerId[]; turn: number; at: number; started: number; deadline: number | null }
 
@@ -59,6 +61,7 @@ export class Room {
   private readonly streak = new Map<PlayerId, { count: number; turn: number }>()
   private readonly droppedAt = new Map<PlayerId, number>()
   private idleSince: number | null = null
+  private readonly lastEmote = new Map<PlayerId, number>()
   /** nobody played for ABANDON_AFTER_MS; the server removes the room */
   abandoned = false
 
@@ -84,6 +87,7 @@ export class Room {
     if (!who) return [this.err(conn, 'NOT_JOINED', 'join the room first')]
     if (m.type === 'start') return this.start(conn, who)
     if (m.type === 'settings') return this.setSettings(conn, who, m.timer, m.board)
+    if (m.type === 'emote') return this.emote(conn, who, m.id)
     return this.act(conn, who, m.clientSeq, m.action)
   }
 
@@ -209,6 +213,18 @@ export class Room {
     if (timer) this.preset = timer
     if (board) this.settings.boardPreset = board
     return this.seatsToAll()
+  }
+
+  // ---------- G11: emotes ----------
+
+  private emote(conn: ConnId, who: Viewer, id: EmoteId): Outbound[] {
+    if (!this.state) return [this.err(conn, 'NOT_STARTED', 'the game has not started')]
+    if (who === 'spectator') return [this.err(conn, 'SPECTATOR', 'spectators cannot send emotes')]
+    const t = this.now()
+    // one per EMOTE_COOLDOWN_MS per seat; extras are dropped quietly (the client greys its button out anyway)
+    if (t - (this.lastEmote.get(who) ?? -Infinity) < EMOTE_COOLDOWN_MS) return []
+    this.lastEmote.set(who, t)
+    return [...this.conns.keys()].map((c) => ({ to: c, msg: { type: 'emote', seat: who, id } }))
   }
 
   // ---------- game ----------

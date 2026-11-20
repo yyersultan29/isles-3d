@@ -13,7 +13,7 @@
 
 import { ENGINE_VERSION, RESOURCE_ORDER, createGame, validate } from '../game'
 import type { Action, EngineError, GameEvent, GameState, LegalAction, PlayerId, PlayerState, PublicGameState, ReplayFile, Result, ResourceCounts, Viewer } from '../game'
-import type { ClientMessage, LobbyBoard, RoomErrorCode, SeatInfo, ServerMessage, TimerInfo, TimerPreset } from '../net/protocol'
+import type { ClientMessage, EmoteId, LobbyBoard, RoomErrorCode, SeatInfo, ServerMessage, TimerInfo, TimerPreset } from '../net/protocol'
 import type { GameEventListener, GameStore, RejectionListener } from './gameStore'
 
 /** The part of WebSocket the store uses: the browser's WebSocket and `ws` both fit. */
@@ -68,6 +68,10 @@ export interface OnlineStore extends GameStore {
   setTimer(preset: TimerPreset): void
   /** B4: the host picks the board in the lobby */
   setBoard(board: LobbyBoard): void
+  /** G11: show an emote to the room (a seat in a started game; the server enforces both) */
+  sendEmote(id: EmoteId): void
+  /** G11: an emote arrived (the own one too) */
+  onEmote(listener: (seat: PlayerId, id: EmoteId) => void): () => void
 }
 
 export interface OnlineOptions {
@@ -143,6 +147,7 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
   const eventListeners = new Set<GameEventListener>()
   const rejectionListeners = new Set<RejectionListener>()
   const sessionListeners = new Set<() => void>()
+  const emoteListeners = new Set<(seat: PlayerId, id: EmoteId) => void>()
 
   const sessionChanged = () => { sessionSnap = { ...session }; for (const l of [...sessionListeners]) l() }
   const reject = (error: EngineError, player: PlayerId, action: Action) => { for (const l of [...rejectionListeners]) l(error, player, action) }
@@ -219,6 +224,9 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
         if (action && session.me && session.me !== 'spectator') reject(m.error, session.me, action)
         return
       }
+      case 'emote':
+        for (const l of [...emoteListeners]) l(m.seat, m.id)
+        return
       case 'error':
         session.error = `${m.code}: ${m.message}`
         session.errorCode = m.code
@@ -301,6 +309,8 @@ export function createOnlineStore(o: OnlineOptions): OnlineStore {
     close: () => { stopped = true; if (timer) clearTimeout(timer); if (noticeTimer) clearTimeout(noticeTimer); clearInterval(keepAlive); ws?.close() },
     setTimer: (preset) => send({ type: 'settings', timer: preset }),
     setBoard: (board) => send({ type: 'settings', board }),
+    sendEmote: (id) => send({ type: 'emote', id }),
+    onEmote(l) { emoteListeners.add(l); return () => { emoteListeners.delete(l) } },
     reconnectNow: () => { if (timer && !stopped) { clearTimeout(timer); connect() } },
   }
 }

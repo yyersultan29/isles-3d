@@ -61,6 +61,17 @@ describe('shadowState', () => {
 })
 
 describe('online store over a real server', () => {
+  it('G11: an emote from a seat reaches every store, the spectator too', async () => {
+    const { players, spectator } = await setup()
+    players[0].start()
+    await until(() => [...players, spectator].every((s) => s.session().status === 'playing'), 'start')
+    const got: string[] = []
+    for (const s of [...players, spectator]) s.onEmote((seat, id) => got.push(`${seat}:${id}`))
+    players[2].sendEmote('robber')
+    await until(() => got.length === 5, 'emotes')
+    expect(new Set(got)).toEqual(new Set(['p3:robber']))
+  })
+
   it('lobby, start by the host, and refusals that never reach the server', async () => {
     const { players, spectator } = await setup()
     await until(() => players.every((s) => s.session().status === 'lobby' && s.session().seats.every((x) => x.taken)), 'lobby')

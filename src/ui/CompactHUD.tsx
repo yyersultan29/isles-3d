@@ -10,6 +10,7 @@ import { Victory } from './Victory'
 import { BoardPicker } from './BoardPicker'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
 import { L } from './locale'
+import { EmoteBubble, EmoteButton } from './Emotes'
 
 /**
  * HUD for narrow and portrait screens. It uses real CSS pixels (no global down-scaling), so text
@@ -56,6 +57,7 @@ export function CompactHUD() {
             >
               <div className={`h-[30px] w-[30px] shrink-0 overflow-hidden rounded-[6px] ring-2 min-[560px]:h-[36px] min-[560px]:w-[36px] ${p.away ? 'opacity-45 grayscale' : ''} relative`} style={{ ['--tw-ring-color' as string]: p.color }}>
                 <Avatar i={p.avatar} className="h-full w-full" />
+                <EmoteBubble seat={p.id} name={p.name} size={22} />
                 {p.auto && <span aria-hidden title={L('Played automatically', 'Играет автоматически')} className="absolute bottom-0 right-0 h-[9px] w-[9px] rounded-full bg-[#f2b544] ring-1 ring-black/60" />}
               </div>
               <div aria-hidden className="min-w-0 leading-none [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:shrink-0">
@@ -100,6 +102,7 @@ export function CompactHUD() {
           </button>
           <TradeButton icon={22} className="!h-[44px] !w-[40px] shrink-0" />
           <DevButton icon={22} className="!h-[44px] !w-[40px]" />
+          <EmoteButton dock icon={22} className="!h-[44px] !w-[40px]" />
           <button
             ref={buildBtn}
             data-build-toggle

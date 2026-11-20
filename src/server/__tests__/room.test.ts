@@ -259,3 +259,32 @@ describe('Room G5.4: resume tokens', () => {
     expect(one(send(room, 'a', { type: 'action', clientSeq: 99, action: { type: 'END_TURN' } }), 'a', 'rejected')).toBeTruthy()
   })
 })
+
+describe('Room G11: emotes', () => {
+  function started() {
+    let t = 1000
+    const room = new Room({ id: 'r1', random32: counter(), now: () => t, settings: { boardPreset: 'standard-fixed' } })
+    for (const c of ['a', 'b', 'c', 'd', 'e']) send(room, c, { type: 'join', roomId: 'r1', claim: true })
+    return { room, wait: (ms: number) => { t += ms } }
+  }
+
+  it('the envelope takes only the fixed ids', () => {
+    expect(parseClientMessage('{"type":"emote","id":"laugh"}')).toEqual({ type: 'emote', id: 'laugh' })
+    for (const bad of ['{"type":"emote"}', '{"type":"emote","id":"hello"}', '{"type":"emote","id":1}', '{"type":"emote","id":"toString"}'])
+      expect(parseClientMessage(bad)).toBeNull()
+  })
+
+  it('a seat reaches everyone (spectator too); a spectator and the lobby are refused; one per 2.5 s per seat', () => {
+    const { room, wait } = started()
+    expect(one(send(room, 'a', { type: 'emote', id: 'wow' }), 'a', 'error').code).toBe('NOT_STARTED')
+    send(room, 'a', { type: 'start' })
+    const out = send(room, 'b', { type: 'emote', id: 'smirk' })
+    for (const c of ['a', 'b', 'c', 'd', 'e']) expect(one(out, c, 'emote')).toEqual({ type: 'emote', seat: 'p2', id: 'smirk' })
+    expect(one(send(room, 'e', { type: 'emote', id: 'laugh' }), 'e', 'error').code).toBe('SPECTATOR')
+    wait(2000)
+    expect(send(room, 'b', { type: 'emote', id: 'laugh' })).toEqual([])
+    expect(send(room, 'c', { type: 'emote', id: 'laugh' })).toHaveLength(5) // the cooldown is per seat
+    wait(500)
+    expect(send(room, 'b', { type: 'emote', id: 'laugh' })).toHaveLength(5)
+  })
+})

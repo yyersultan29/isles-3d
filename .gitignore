@@ -12,3 +12,6 @@ references/card-ref.png
 
 # Hyper3D source model (63 MB OBJ + textures); the game ships public/models/mountain-guy.glb, rebuilt by scripts/build-character.mjs
 src/models/
+
+# local-only milestone screenshots (96 MB, kept on disk, too large to commit)
+screenshots/milestones/g9.7/

@@ -24,6 +24,7 @@ import { HelpButton, useShortcuts } from './shortcuts'
 import { deltaText, handDiff, hintSeen, markHintSeen, type HandCounts } from './handDelta'
 import { L, count } from './locale'
 import { awardName, awardShort, pieceName, resName, resTitle } from './words'
+import { EmoteBubble, EmoteButton } from './Emotes'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -174,8 +175,9 @@ function Players() {
             boxShadow: `inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'dd' : '77'}, inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px rgba(0,0,0,.4)${p.active ? `, 0 0 16px ${p.color}99` : ''}`,
           }}
         >
-          <div className={`h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
+          <div className={`relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
             <Avatar i={p.avatar} className="h-full w-full" />
+            <EmoteBubble seat={p.id} name={p.name} size={34} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="mb-[8px] flex items-center gap-[6px] text-[16px] font-bold leading-none">
@@ -829,6 +831,8 @@ export const HUD = memo(function HUD() {
         </div>
         <ResourceCards />
         <BottomLeft />
+        {/* G11b: online only; the picker opens upward over the log, clear of the hand and the board */}
+        <div className="absolute bottom-[16px] left-[304px]"><EmoteButton className="!h-[54px] !w-[54px] !rounded-[12px]" icon={28} /></div>
         <GameDialogs className="absolute bottom-[132px] left-1/2 -translate-x-[54%]" />
         <BoardPicker className="absolute inset-x-0 bottom-[132px]" />
         <Victory />
