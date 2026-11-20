@@ -39,9 +39,9 @@ export interface ServerOptions {
   origins?: string[]
   /** G5.6: the server's clock for limits and room cleanup (tests) */
   now?: () => number
-  /** G5.7: behind a hosting proxy (Render) every socket comes from the proxy: take the client address
-   *  from the last X-Forwarded-For entry, the one the proxy appended (earlier ones can be forged) */
-  trustProxy?: boolean
+  /** G5.7: how many proxies stand in front (Render: TRUST_PROXY). Each appends one X-Forwarded-For
+   *  entry, so the client is the Nth from the end; entries before it can be forged. 0 = none */
+  trustProxy?: number
 }
 
 export interface RunningServer {
@@ -74,9 +74,11 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
   let nextConn = 0
 
   const clientAddress = (req: IncomingMessage) => {
-    const xff = o.trustProxy ? req.headers['x-forwarded-for'] : undefined
-    const last = (Array.isArray(xff) ? xff.join(',') : xff)?.split(',').map((s) => s.trim()).filter(Boolean).pop()
-    return last ?? req.socket.remoteAddress ?? 'unknown'
+    const hops = o.trustProxy ?? 0
+    const xff = hops > 0 ? req.headers['x-forwarded-for'] : undefined
+    const list = (Array.isArray(xff) ? xff.join(',') : xff)?.split(',').map((s) => s.trim()).filter(Boolean) ?? []
+    // a shorter list than expected: the first entry is still the closest we have to the client
+    return (list.length ? list[Math.max(0, list.length - hops)] : undefined) ?? req.socket.remoteAddress ?? 'unknown'
   }
   const originAllowed = (origin: string | undefined) => !o.origins || (!!origin && o.origins.includes(origin))
 
@@ -178,7 +180,9 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
     if (!connects.take(address)) return refuse('429 Too Many Requests', 'ws.connect')
     if (sockets.size >= L.maxSockets) return refuse('503 Service Unavailable', 'ws.max')
     if ((perAddress.get(address) ?? 0) >= L.socketsPerAddress) return refuse('429 Too Many Requests', 'ws.address')
-    wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, address))
+    // entries only, never addresses: shows in the log how many proxies the host really puts in front
+    const xffHops = String(req.headers['x-forwarded-for'] ?? '').split(',').filter((s) => s.trim()).length
+    wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, address, xffHops))
   })
 
   // a socket that vanished without a close (sleep, lost network) is found by the heartbeat; its
@@ -204,7 +208,7 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
     connects.sweep()
   }, o.tickMs ?? 250)
 
-  function onConnection(ws: WebSocket, address: string) {
+  function onConnection(ws: WebSocket, address: string, xffHops: number) {
     const conn = `c${++nextConn}`
     sockets.set(conn, ws)
     addressOf.set(conn, address)
@@ -217,7 +221,7 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
       log({ ev: 'conn.join-timeout', conn })
       ws.close(1008, 'join a room first')
     }, L.joinTimeoutMs)
-    log({ ev: 'conn.open', conn, sockets: sockets.size })
+    log({ ev: 'conn.open', conn, sockets: sockets.size, hops: xffHops })
 
     ws.on('message', (data, isBinary) => {
       if (!frames.take()) {
@@ -234,7 +238,8 @@ export function startServer(o: ServerOptions = {}): Promise<RunningServer> {
         if (m.type !== 'join') return reply(ws, { type: 'error', code: 'NOT_JOINED', message: 'join a room first' })
         room = rooms.get(m.roomId)
         if (!room) return reply(ws, { type: 'error', code: 'NO_ROOM', message: `no room ${m.roomId}` })
-        if ((members.get(room)?.size ?? 0) >= L.connsPerRoom) {
+        // the cap is for spectators: a seat's owner (at most 4) always gets back in
+        if ((members.get(room)?.size ?? 0) >= L.connsPerRoom && !room.holdsSeat(m.token, m.resume)) {
           log({ ev: 'limit', what: 'room.full', room: room.id })
           return reply(ws, { type: 'error', code: 'ROOM_FULL', message: 'this room has too many connections' })
         }

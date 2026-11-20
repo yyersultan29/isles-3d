@@ -87,6 +87,13 @@ export class Room {
     return this.act(conn, who, m.clientSeq, m.action)
   }
 
+  /** True when a join carries a seat's token, so the room's connection cap must not lock its owner out. */
+  holdsSeat(token?: string, resume: string[] = []): boolean {
+    // same rule as join(): a token takes its seat over, resume only reclaims a seat nobody holds now
+    const online = new Set(this.conns.values())
+    return SEATS.some((p) => { const t = this.tokens.get(p); return !!t && (t === token || (!online.has(p) && resume.includes(t))) })
+  }
+
   /** A connection closed. */
   leave(conn: ConnId): Outbound[] {
     const who = this.conns.get(conn)

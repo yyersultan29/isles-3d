@@ -2,7 +2,7 @@
 // unit-tested; `useGameView` shares one computation per change. Only public information is shown for
 // opponents: public VP (never hidden VP cards), hand and dev-card counts, awards.
 
-import { COSTS, legalActions, MAX_PROPOSALS_PER_TURN, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource, type Viewer } from '../game'
+import { COSTS, legalActions, MAX_PROPOSALS_PER_TURN, publicVP, RESOURCE_ORDER, tradeRate, type Action, type GameState, type PlayerId, type Resource, type Viewer } from '../game'
 import { longestRoad } from '../game/rules/awards'
 import { useGame, useSeat, useSession } from '../store/GameProvider'
 import type { OnlineSession } from '../store/onlineStore'
@@ -71,14 +71,6 @@ export interface SeatView {
 }
 
 const count = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0)
-
-export function publicVP(s: GameState, id: PlayerId) {
-  let vp = 0
-  for (const b of Object.values(s.buildings)) if (b?.owner === id) vp += b.type === 'city' ? 2 : 1
-  if (s.longestRoad === id) vp += 2
-  if (s.largestArmy === id) vp += 2
-  return vp
-}
 
 export function seats(s: GameState): SeatView[] {
   const active = s.phase.kind === 'gameOver' ? s.phase.winner : s.order[s.active]

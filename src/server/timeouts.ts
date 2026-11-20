@@ -4,7 +4,7 @@
 // like any other, so they are logged and replay deterministically. Random choices use a separate,
 // non-game RNG, so a timeout never shifts the game's dice sequence.
 
-import { legalActions, pips, RESOURCE_ORDER } from '../game'
+import { legalActions, pips, publicVP, RESOURCE_ORDER } from '../game'
 import type { Action, GameState, PlayerId, Resource, TileId } from '../game'
 import type { Rng } from '../game/rng'
 import { pick } from '../game/rng'
@@ -48,15 +48,6 @@ export function extendForTrade(started: number, deadline: number, preset: TimerP
 
 const tilePips = (s: GameState, t: TileId) => (t === s.robber ? 0 : pips(s.board.tiles[t].token))
 const vertexPips = (s: GameState, v: string) => s.board.topo.vertexTiles[v as keyof typeof s.board.topo.vertexTiles].reduce((a, t) => a + pips(s.board.tiles[t].token), 0)
-
-/** Public VP (never hidden cards): the leader is chosen on what everyone can see. */
-function publicVP(s: GameState, p: PlayerId) {
-  let vp = 0
-  for (const b of Object.values(s.buildings)) if (b?.owner === p) vp += b.type === 'city' ? 2 : 1
-  if (s.longestRoad === p) vp += 2
-  if (s.largestArmy === p) vp += 2
-  return vp
-}
 
 /**
  * The action submitted for `p` when its time is up (or it is absent). Always one of

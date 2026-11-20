@@ -116,15 +116,28 @@ describe('server hardening G5.6', () => {
   it('a room takes a limited number of connections (ROOM_FULL)', async () => {
     const { url } = await boot({ limits: { connsPerRoom: 2 } })
     const room = server!.createRoom()
+    let token: string | undefined
     for (let i = 0; i < 2; i++) {
       const c = await connect(url)
       c.send({ type: 'join', roomId: room.id, claim: true })
-      await c.wait((m) => m.type === 'welcome')
+      const w = await c.wait((m) => m.type === 'welcome')
+      if (w.type === 'welcome' && i === 0) token = w.token
     }
     const third = await connect(url)
     third.send({ type: 'join', roomId: room.id, claim: true })
     expect(await third.wait((m) => m.type === 'error')).toMatchObject({ code: 'ROOM_FULL' })
     expect(third.got.some((m) => m.type === 'welcome')).toBe(false)
+    // a full room still lets a seat's owner back in, with its token or through resume
+    const owner = await connect(url)
+    owner.send({ type: 'join', roomId: room.id, token })
+    expect(await owner.wait((m) => m.type === 'welcome')).toMatchObject({ you: 'p1' })
+    const forged = await connect(url)
+    forged.send({ type: 'join', roomId: room.id, token: 'not-a-seat-token' })
+    expect(await forged.wait((m) => m.type === 'error')).toMatchObject({ code: 'ROOM_FULL' })
+    // resume names a seat whose owner is online: that join would only watch, so the cap applies
+    const sameBrowser = await connect(url)
+    sameBrowser.send({ type: 'join', roomId: room.id, resume: [token!] })
+    expect(await sameBrowser.wait((m) => m.type === 'error')).toMatchObject({ code: 'ROOM_FULL' })
   })
 
   it('a malformed upgrade target is refused and the server goes on', async () => {
@@ -219,11 +232,19 @@ describe('server hardening G5.6', () => {
   })
 
   it('behind a trusted proxy the address is the last X-Forwarded-For entry, which a client cannot forge', async () => {
-    const { url } = await boot({ trustProxy: true, limits: { socketsPerAddress: 1 } })
+    const { url } = await boot({ trustProxy: 1, limits: { socketsPerAddress: 1 } })
     const open = (xff: string) => { const c = new Client(url, undefined, { 'x-forwarded-for': xff }); clients.push(c); return c.open() }
     await open('10.0.0.1')
     await open('6.6.6.6, 10.0.0.2') // another client
     await expect(open('7.7.7.7, 10.0.0.1')).rejects.toThrow('429') // a forged first entry doesn't help
+  })
+
+  it('with two proxies in front the client is the second entry from the end', async () => {
+    const { url } = await boot({ trustProxy: 2, limits: { socketsPerAddress: 1 } })
+    const open = (xff: string) => { const c = new Client(url, undefined, { 'x-forwarded-for': xff }); clients.push(c); return c.open() }
+    await open('1.1.1.1, 10.0.0.9') // both behind the same last proxy, yet different clients
+    await open('2.2.2.2, 10.0.0.9')
+    await expect(open('6.6.6.6, 1.1.1.1, 10.0.0.9')).rejects.toThrow('429') // a forged first entry doesn't help
   })
 
   it('a keep-alive ping gets no reply and changes nothing', async () => {
