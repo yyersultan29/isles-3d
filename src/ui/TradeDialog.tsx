@@ -25,7 +25,8 @@ import { L } from './locale'
 import { resCount, resList, resName } from './words'
 
 // G9.4: resource words in the current language
-export const NAME = new Proxy({} as Record<Resource, string>, { get: (_, r: string) => resName(r as Resource) })
+// only resource keys: React Refresh probes exports (toString…) and resName throws on those in Russian
+export const NAME = new Proxy({} as Record<Resource, string>, { get: (_, r) => (RESOURCE_ORDER as readonly unknown[]).includes(r) ? resName(r as Resource) : undefined })
 const text = (c: Counts) => resList(c)
 const VERB_RU: Record<string, string> = { Give: 'Отдать', Want: 'Получить' }
 // functions, not constants: HUD.tsx (focusRing) and this module import each other

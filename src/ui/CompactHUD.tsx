@@ -79,9 +79,9 @@ export function CompactHUD() {
 
       {/* ---------- phase line, under the top bar (inside COMPACT_SAFE.top) ---------- */}
       <div className="absolute inset-x-[8px] flex justify-center" style={{ top: COMPACT_SAFE.top - PHASE_ROW + 2 }}>
-        <PhaseBanner className="max-w-full truncate !px-[12px] !py-[5px] !text-[13px]" />
+        <PhaseBanner wrap className="max-w-full !px-[12px] !py-[5px] !text-[13px]" />
       </div>
-      <Notices className="absolute inset-x-[8px] [&>button]:!text-[13px]" style={{ top: COMPACT_SAFE.top + 4 }} />
+      <Notices max={2} className="absolute inset-x-[8px] [&>button]:!text-[13px]" style={{ top: COMPACT_SAFE.top + 4 }} />
 
       {/* ---------- bottom dock ---------- */}
       {/* an open build popover sits above the dialogs: it rises over the dock, where the trade panel is (G6.3) */}

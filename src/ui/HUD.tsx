@@ -163,7 +163,7 @@ function BankStock({ className = '' }: { className?: string }) {
 function Players() {
   const { seats } = useGameView()
   return (
-    <ul aria-label={L('Players', 'Игроки')} className="mr-[4px] flex w-[228px] shrink-0 flex-col gap-[7px]">
+    <ul aria-label={L('Players', 'Игроки')} className="mr-[4px] flex w-[240px] shrink-0 flex-col gap-[7px]">
       {seats.map((p) => (
         <li
           key={p.id}
@@ -204,7 +204,7 @@ function Players() {
 }
 
 /** Turn and phase line, announced politely to screen readers. */
-export function PhaseBanner({ className = '' }: { className?: string }) {
+export function PhaseBanner({ className = '', wrap = false }: { className?: string; wrap?: boolean }) {
   const { phase, seats, phaseKind, dice } = useGameView()
   const active = seats.find((x) => x.active)
   // G4.6b: the roll is part of the same announcement as the phase it leads to
@@ -215,8 +215,8 @@ export function PhaseBanner({ className = '' }: { className?: string }) {
       style={active ? { boxShadow: `inset 0 0 0 1.5px ${active.color}aa, 0 8px 22px rgba(0,0,0,.5)` } : undefined}>
       {active && <span aria-hidden className="mr-[8px] inline-block h-[10px] w-[10px] shrink-0 rounded-full" style={{ background: active.color }} />}
       {rolled && <span className="sr-only">{rolled}</span>}
-      {/* a long phase line shortens; the turn clock after it always stays visible */}
-      <span className="min-w-0 truncate">{phase}</span>
+      {/* a long phase line shortens (phone: wraps to two lines); the turn clock after it always stays visible */}
+      <span className={`min-w-0 ${wrap ? 'line-clamp-2 leading-[1.2]' : 'truncate'}`}>{phase}</span>
       <TurnClock />
     </div>
   )

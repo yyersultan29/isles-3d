@@ -15,7 +15,7 @@ const RING: Record<NoticeKind, string> = { info: 'ring-white/15', good: 'ring-[#
 
 /**
  * `events={false}` (desktop, G9.1): game events go to the game log instead, so only rejected actions
- * and the viewer's own notices (a roll that paid nothing, the card they bought) appear here.
+ * and the card the viewer bought appear here (a roll that paid nothing is already plain from the log).
  */
 export function Notices({ className = '', style, align = 'center', events: showEvents = true, max }: { className?: string; style?: React.CSSProperties; align?: 'center' | 'start'; events?: boolean; max?: number }) {
   const store = useGameStore()
@@ -28,7 +28,7 @@ export function Notices({ className = '', style, align = 'center', events: showE
     if (showEvents) for (const n of eventNotices(events)) pushNotice(n)
     // G7.2: the viewer's own roll that paid nothing (never for a spectator or behind the pass screen)
     const viewer = me === 'spectator' || covered ? null : handOf(state, me).owner
-    const own = ownRollNotice(events, viewer)
+    const own = showEvents && ownRollNotice(events, viewer)
     if (own) pushNotice(own)
     // G7.4: the buyer sees which card they got
     const bought = boughtNotice(events, viewer)
