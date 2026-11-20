@@ -1212,6 +1212,9 @@ time, each checked before the next; no camera, engine or protocol changes.
   and 390×844: first click builds nothing, another corner moves the preview, Esc clears it, "Place here" builds and
   moves to the road. 323 tests, build, g6-audit at 1280×720 (axe 0) and g9-setup clean.
   Limit: settlements built during the game (build menu) still place on one click.
+  2026-11-20: removed at the owner's request ("мешает"): a setup settlement places on one click again. `SetupConfirm`
+  and the preview disc are gone; the ring legend no longer says "click to see its tiles". Checked by mouse at 1440×900
+  and 390×844: one click places and moves to the road, no confirm panel, no console errors or warnings; 334 tests, build.
 - [x] **G10.3 Bank trade around ready deals** (4 grain → 1 wood) and the reason before the choice ("3 grain short").
   Done: with nothing picked, Bank / ports opens on "Ready trades (one click)": one row per pile at its rate (ports count), a button per resource the bank has; a click trades 1 and closes the panel. With no deal it says up front which pile is closest and how many short ("The bank takes 3 of one kind: 1 wood short"). The block hides once a card is picked, so the manual grids work as before. Checked: tradePlan tests (readyDeals / noDealReason), 2 grain → 1 wood via a 2:1 port dispatched at 1440×900, 1280×720, 390×844, no page errors; g6-audit axe 0, flows ok; g7-refusals unchanged.
 - [x] **G10.4 Corner rings explained** (resources and numbers of a corner, not just "gold is best") and points as "3 / 10".

@@ -13,9 +13,8 @@ import { Victory } from './Victory'
 import { usePrivacy } from './PassDevice'
 import { TurnClock } from './TurnClock'
 import { BoardPicker } from './BoardPicker'
-import { SetupConfirm } from './SetupConfirm'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
-import { changeDraft, clearDraft, draftCovered, draftEmpty, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePanel, usePendingCorner, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
+import { changeDraft, clearDraft, draftCovered, draftEmpty, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePanel, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 import { useGame, useGameStore, useGameEvents, useOnline } from '../store/GameProvider'
 import { openMenu, useBeforeGame } from './StartMenu'
@@ -396,8 +395,7 @@ export function SetupNote({ compact = false, className = '' }: { compact?: boole
   const setup = useSetup()
   const covered = usePrivacy().covered // hooks before any early return
   const step = useGame((s) => (s.phase.kind === 'setup' ? s.phase.step : null))
-  const previewing = usePendingCorner() !== null // G10.2: the confirm panel takes this place and says the corner's value
-  if (!setup || covered || previewing) return null
+  if (!setup || covered) return null
   // G9.5: while a settlement is placed, the note says what the rings mean (a value legend)
   if (step === 'settlement') return (
     <p id={SETUP_NOTE_ID} data-setup-note className={`pointer-events-none flex items-center gap-[8px] whitespace-nowrap rounded-full px-[12px] py-[5px] text-[13px] font-medium text-[#f4efe6] ring-1 ring-white/15 ${panel} ${className}`}>
@@ -407,8 +405,8 @@ export function SetupNote({ compact = false, className = '' }: { compact?: boole
         <span className="h-[15px] w-[15px] rounded-full border-[3px] border-[#ffc23d]" />
       </span>
       {compact
-        ? L('Ring = dots on the numbers around · tap to check', 'Кольцо = точки на числах · тап — подробнее')
-        : L('Ring = the dots on the numbers around a corner: more dots, more often it pays; gold is the most. Click a corner to see its tiles.', 'Кольцо — это точки на числах вокруг угла: больше точек — чаще доход; золотое — больше всех. Клик по углу покажет его гексы.')}
+        ? L('Ring = dots on the numbers around a corner', 'Кольцо = точки на числах вокруг угла')
+        : L('Ring = the dots on the numbers around a corner: more dots, more often it pays; gold is the most. ', 'Кольцо — это точки на числах вокруг угла: больше точек — чаще доход; золотое — больше всех.')}
     </p>
   )
   return (
@@ -833,7 +831,6 @@ export const HUD = memo(function HUD() {
         <BottomLeft />
         <GameDialogs className="absolute bottom-[132px] left-1/2 -translate-x-[54%]" />
         <BoardPicker className="absolute inset-x-0 bottom-[132px]" />
-        <SetupConfirm className="absolute inset-x-0 bottom-[132px]" />
         <Victory />
       </div>
     </div>

@@ -147,24 +147,3 @@ export const useBuildGoal = () => useSyncExternalStore(subscribeDraft, () => bui
 // dev-only handle for browser checks (like window.__islesStore): scripts must read this instance, not
 // import the module themselves (after a hot update Vite serves the app `ui.ts?t=…`, another instance)
 if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __islesUi: unknown }).__islesUi = { getPlacementMode, getDraft, getPanel, getBuildGoal, getTradeMode }
-
-// ---------- G10.2: a setup settlement chosen by mouse waits for a confirm ----------
-// The corner (vertex id) clicked during setup; a second click on it or "Place here" builds. The
-// keyboard picker already shows a label before Enter, so it places directly.
-let pendingCorner: string | null = null
-const pendingListeners = new Set<() => void>()
-
-export function setPendingCorner(v: string | null) {
-  if (v === pendingCorner) return
-  pendingCorner = v
-  for (const l of [...pendingListeners]) l()
-}
-
-export const getPendingCorner = () => pendingCorner
-
-export function usePendingCorner(): string | null {
-  return useSyncExternalStore(
-    (l) => { pendingListeners.add(l); return () => { pendingListeners.delete(l) } },
-    () => pendingCorner,
-  )
-}
