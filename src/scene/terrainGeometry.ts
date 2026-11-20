@@ -1,0 +1,179 @@
+// Tile surface meshes, pure (no React): built by terrain.worker.ts off the main thread, and by
+// Terrain.tsx itself when no worker is available.
+import * as THREE from 'three'
+import { Tile, tileHeight, hexDist, corner, HEX_R } from './board'
+import { fbm, noise2, smoothstep, clamp } from './noise'
+
+const C = (hex: string) => new THREE.Color(hex)
+const PAL = {
+  grass: C('#527027'), grassLight: C('#7f8f3c'), grassDark: C('#30481a'), meadow: C('#7a7a38'),
+  forest: C('#3d5a20'), forestDark: C('#263813'),
+  wheat: C('#c48a24'), wheatLight: C('#e6b444'), wheatGreen: C('#a3902f'), wheatStubble: C('#a8732a'),
+  sand: C('#d8b47a'), sandLight: C('#efd6a4'), sandDark: C('#b08752'),
+  clay: C('#96442a'), clayLight: C('#b86c3e'), clayDark: C('#5a2818'), clayGreen: C('#5f6e2c'), clayDust: C('#a5805c'),
+  rock: C('#776f66'), rockDark: C('#423c37'), rockLight: C('#9d958a'), snow: C('#f4f6f8'), snowShade: C('#cfd8e2'),
+  dirt: C('#9b744a'), dirtDark: C('#6e5032'),
+}
+
+const tmp = new THREE.Color()
+
+function biomeColor(t: Tile, x: number, z: number, h: number, ny: number, out: THREE.Color) {
+  /* eslint-disable no-param-reassign */
+  const n1 = fbm(x * 3 + t.seed, z * 3, 3) * 0.5 + 0.5
+  const n2 = noise2(x * 14, z * 14) * 0.5 + 0.5
+  switch (t.biome) {
+    case 'pasture':
+      out.lerpColors(PAL.grassDark, PAL.grass, clamp(n1 * 1.3))
+      out.lerp(PAL.grassLight, smoothstep(0.55, 0.9, n2 * 0.6 + n1 * 0.5) * 0.55)
+      // drier meadow patches and darker clover clumps break up the green
+      out.lerp(PAL.meadow, smoothstep(0.6, 0.85, fbm(x * 1.7 - t.seed, z * 1.7, 2) * 0.5 + 0.5) * 0.5)
+      out.lerp(PAL.grassDark, smoothstep(0.72, 0.95, noise2(x * 22, z * 22) * 0.5 + 0.5) * 0.35)
+      // rare worn earth patches where sheep graze
+      out.lerp(PAL.dirt, smoothstep(0.78, 0.92, fbm(x * 4.5 + t.seed, z * 4.5 - t.seed, 2) * 0.5 + 0.5) * 0.45)
+      break
+    case 'forest':
+      out.lerpColors(PAL.forestDark, PAL.forest, n1)
+      out.lerp(PAL.grassDark, n2 * 0.3)
+      out.multiplyScalar(0.8)
+      break
+    case 'wheat':
+      out.lerpColors(PAL.wheat, PAL.wheatLight, n1 * 0.7 + n2 * 0.3)
+      // field-scale patches: some still ripening (greener), some harvested (stubble)
+      {
+        const patch = fbm(x * 2.2 - t.seed, z * 2.2 + t.seed, 2)
+        out.lerp(PAL.wheatGreen, smoothstep(0.25, 0.55, patch) * 0.35)
+        out.lerp(PAL.wheatStubble, smoothstep(-0.25, -0.55, patch) * 0.4)
+      }
+      // furrows between the field patches
+      out.multiplyScalar(0.82 + 0.18 * smoothstep(-0.6, 0.4, Math.sin((x + z * 0.4) * 38 + n1 * 4)))
+      break
+    case 'desert':
+      out.lerpColors(PAL.sandDark, PAL.sand, clamp(ny * ny * 1.1 + (n1 - 0.5) * 0.4))
+      out.lerp(PAL.sandLight, smoothstep(0.6, 1, n2 * 0.5 + h * 3) * 0.6)
+      // wind ripples running across the dunes, fading out on the central mound
+      {
+        const rip = Math.sin((x * 3 - z * 6) * 7 + fbm(x * 2, z * 2, 2) * 5) * 0.5 + 0.5
+        const rc = Math.hypot(x - t.x, z - t.z)
+        out.multiplyScalar(1 - 0.09 * rip * smoothstep(0.18, 0.35, rc))
+      }
+      break
+    case 'hills': {
+      const crev = smoothstep(0.95, 0.55, ny)
+      out.lerpColors(PAL.clay, PAL.clayLight, clamp(h * 2.5 + (n1 - 0.5) * 0.6))
+      out.lerp(PAL.clayDark, crev * 0.8)
+      out.lerp(PAL.clayGreen, smoothstep(0.62, 0.8, n1) * smoothstep(0.12, 0.05, h) * 0.8)
+      // dry dusty crusts on the crests, scrubby grass in the hollows
+      out.lerp(PAL.clayDust, smoothstep(0.9, 1, ny) * smoothstep(0.16, 0.24, h) * 0.3)
+      out.lerp(PAL.clayGreen, smoothstep(0.55, 0.75, fbm(x * 3.5 + t.seed, z * 3.5, 2) * 0.5 + 0.5) * smoothstep(0.16, 0.08, h) * 0.45)
+      break
+    }
+    case 'mountain': {
+      // large-scale slope (finite differences over a wide footprint) so snow and shading form
+      // coherent caps instead of flickering per facet
+      const e = 0.06
+      const xp = tileHeight(t, x + e, z), xm = tileHeight(t, x - e, z)
+      const zp = tileHeight(t, x, z + e), zm = tileHeight(t, x, z - e)
+      const gx = (xp - xm) / (2 * e)
+      const gz = (zp - zm) / (2 * e)
+      const nys = 1 / Math.sqrt(1 + gx * gx + gz * gz)
+      ny = ny * 0.3 + nys * 0.7
+      // curvature (Laplacian): >0 in gullies/hollows, <0 on ridges and crests
+      const c0 = tileHeight(t, x, z)
+      const lap = (xp + xm + zp + zm - 4 * c0) / (e * e)
+      const hollow = smoothstep(0.4, 3, lap)
+      const ridge = smoothstep(0.4, 3, -lap)
+      const steep = smoothstep(0.85, 0.45, ny)
+      // horizontal strata give the rock a layered, carved look
+      const strata = Math.sin(h * 70 + noise2(x * 5, z * 5) * 3) * 0.5 + 0.5
+      out.lerpColors(PAL.rockLight, PAL.rock, clamp(0.35 + n1 * 0.5 + n2 * 0.1 + steep * 0.45))
+      out.lerp(PAL.rockDark, steep * 0.5 + strata * 0.24)
+      out.lerp(PAL.rockLight, smoothstep(0.78, 0.95, noise2(x * 9, h * 40)) * 0.22) // pale stone bands
+      out.lerp(PAL.rockLight, ridge * 0.12) // sunlit, weathered crests
+      out.lerp(PAL.rockDark, hollow * 0.35 * (1 - smoothstep(0.3, 0.45, h))) // shadowed lower gullies
+      // snow: caps on gentle upper slopes, plus streaks that collect in gullies below the snow line
+      // ragged high-frequency breakup keeps the snow edge crisp instead of a soft smear
+      const snowLine = 0.36 + fbm(x * 1.5, z * 1.5, 2) * 0.08 + noise2(x * 13, z * 13) * 0.018
+      const cap = smoothstep(snowLine, snowLine + 0.022, h) * smoothstep(0.4, 0.54, ny)
+      const streak = smoothstep(0.45, 0.65, hollow) * smoothstep(snowLine - 0.16, snowLine - 0.05, h) * smoothstep(0.3, 0.45, ny) * 0.9
+      const snow = Math.max(cap, streak)
+      tmp.lerpColors(PAL.snowShade, PAL.snow, clamp(ny * 1.4 - 0.3))
+      out.lerp(tmp, snow)
+      out.lerp(PAL.grassDark, smoothstep(0.1, 0.04, h) * 0.7)
+      break
+    }
+  }
+  // soft seam toward the rails: the biome fades through a ragged, narrow strip of
+  // trodden earth, with contact darkening right at the rail instead of a hard outline
+  const d = hexDist(x - t.x, z - t.z)
+  const ragged = (fbm(x * 9 + t.seed, z * 9, 2) * 0.5 + (n2 - 0.5)) * 0.07
+  const band = smoothstep(0.87, 0.97, d + ragged)
+  tmp.lerpColors(PAL.dirt, PAL.dirtDark, 0.35 + n2 * 0.5)
+  out.lerp(tmp, band * 0.7)
+  out.multiplyScalar(1 - 0.22 * smoothstep(0.9, 0.995, d))
+}
+
+/** Subdivided pointy-top hex surface displaced by the tile height function. */
+export function buildTileGeometry(t: Tile, N: number, flat = false) {
+  const R = HEX_R * 0.995
+  // built indexed: sector k's point i·A + j·B (corners A = c_k, B = c_k+1) has integer coordinates in the
+  // basis (c0, c1), since c2 = c1 − c0, c3 = −c0, …; shared vertices are found by those, the first one kept
+  // in first-seen order, exactly what mergeVertices produced from the triangle soup at ~1/10 the cost
+  const BASIS = [[1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]]
+  const pos: number[] = [], index: number[] = [], seen = new Map<number, number>()
+  for (let k = 0; k < 6; k++) {
+    const [ax, az] = corner({ x: 0, z: 0 }, k, R)
+    const [bx, bz] = corner({ x: 0, z: 0 }, (k + 1) % 6, R)
+    const [pa, qa] = BASIS[k], [pb, qb] = BASIS[(k + 1) % 6]
+    const V = (i: number, j: number) => {
+      const key = (i * pa + j * pb + N) * 1024 + (i * qa + j * qb + N) // each coordinate in −N..N, N < 512
+      let id = seen.get(key)
+      if (id === undefined) {
+        const u = i / N, v = j / N
+        id = pos.length / 3
+        pos.push(ax * u + bx * v, 0, az * u + bz * v)
+        seen.set(key, id)
+      }
+      return id
+    }
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N - i; j++) {
+        index.push(V(i, j), V(i, j + 1), V(i + 1, j))
+        if (j < N - i - 1) index.push(V(i + 1, j), V(i, j + 1), V(i + 1, j + 1))
+      }
+    }
+  }
+  let g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setIndex(index)
+  const p = g.attributes.position as THREE.BufferAttribute
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i) + t.x, z = p.getZ(i) + t.z
+    p.setY(i, tileHeight(t, x, z))
+  }
+  if (flat) g = g.toNonIndexed()
+  g.computeVertexNormals()
+  const pp = g.attributes.position as THREE.BufferAttribute
+  const nn = g.attributes.normal as THREE.BufferAttribute
+  const col = new Float32Array(pp.count * 3)
+  const c = new THREE.Color()
+  if (flat) {
+    // one colour per face for a faceted, carved-stone look
+    for (let i = 0; i < pp.count; i += 3) {
+      const x = (pp.getX(i) + pp.getX(i + 1) + pp.getX(i + 2)) / 3 + t.x
+      const z = (pp.getZ(i) + pp.getZ(i + 1) + pp.getZ(i + 2)) / 3 + t.z
+      const y = (pp.getY(i) + pp.getY(i + 1) + pp.getY(i + 2)) / 3
+      biomeColor(t, x, z, y, nn.getY(i), c)
+      for (let k = 0; k < 3; k++) c.toArray(col, (i + k) * 3)
+    }
+  } else {
+    for (let i = 0; i < pp.count; i++) {
+      biomeColor(t, pp.getX(i) + t.x, pp.getZ(i) + t.z, pp.getY(i), nn.getY(i), c)
+      c.toArray(col, i * 3)
+    }
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3))
+  return g
+}
+
+/** Subdivisions per tile: smooth-shaded, finer meshes for organic rock and clay instead of sharp low-poly facets. */
+export const tileDetail = (t: Tile) => (t.biome === 'mountain' ? 72 : t.biome === 'hills' ? 48 : 30)
