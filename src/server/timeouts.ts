@@ -15,7 +15,7 @@ export const TIMER_PRESETS: readonly TimerPreset[] = ['relaxed', 'normal', 'fast
 const SCALE: Record<Exclude<TimerPreset, 'off'>, number> = { relaxed: 2, normal: 1, fast: 0.5 }
 
 /** §20 limits at `normal`, in ms */
-export const LIMITS = { placement: 60_000, roll: 15_000, discard: 30_000, robber: 30_000, actions: 90_000, perTrade: 15_000, actionsCap: 180_000 }
+export const LIMITS = { placement: 60_000, roll: 10_000, discard: 30_000, robber: 30_000, actions: 60_000, perTrade: 15_000, actionsCap: 180_000 }
 
 export type DecisionKind = 'placement' | 'roll' | 'discard' | 'robber' | 'actions'
 

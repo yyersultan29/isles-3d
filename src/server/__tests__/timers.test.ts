@@ -56,11 +56,11 @@ describe('timeout actions are always legal and follow §20', () => {
   })
 
   it('limits scale with the preset; trades add time up to the cap', () => {
-    expect(limitFor('actions', 'normal')).toBe(90_000)
-    expect(limitFor('actions', 'relaxed')).toBe(180_000)
-    expect(limitFor('roll', 'fast')).toBe(7_500)
+    expect(limitFor('actions', 'normal')).toBe(60_000)
+    expect(limitFor('actions', 'relaxed')).toBe(120_000)
+    expect(limitFor('roll', 'fast')).toBe(5_000)
     expect(limitFor('roll', 'off')).toBeNull()
-    expect(extendForTrade(0, 90_000, 'normal')).toBe(105_000)
+    expect(extendForTrade(0, 60_000, 'normal')).toBe(75_000)
     expect(extendForTrade(0, 175_000, 'normal')).toBe(LIMITS.actionsCap)
   })
 })
@@ -136,7 +136,7 @@ describe('Room turn timers', () => {
     while (r.game!.phase.kind !== 'actions' && guard++ < 100) { clock.advance(60_000); r.tick() }
     expect(r.game!.phase.kind).toBe('actions')
     const t0 = r.timerInfo()!
-    expect(t0).toMatchObject({ kind: 'actions', remainingMs: 90_000 })
+    expect(t0).toMatchObject({ kind: 'actions', remainingMs: 60_000 })
     clock.advance(10_000)
     // an END_TURN-free action by the active seat: an offer to everyone and its decline keep the clock
     const s = r.game!, me = s.order[s.active]
@@ -145,7 +145,7 @@ describe('Room turn timers', () => {
     if (give) {
       const want = give === 'ore' ? 'grain' : 'ore'
       send(seatConn(me), { type: 'action', clientSeq: 100, action: { type: 'PROPOSE_TRADE', offer: { [give]: 1 }, request: { [want]: 1 } } })
-      expect(r.timerInfo()!.remainingMs).toBe(80_000)
+      expect(r.timerInfo()!.remainingMs).toBe(50_000)
     }
   })
 

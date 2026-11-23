@@ -221,9 +221,9 @@ function closedReason(code: SessionErrorCode | null, joined: boolean): { title: 
 }
 
 const PRESETS = (): { id: TimerPreset; label: string; hint: string }[] => [
-  { id: 'relaxed', label: L('Relaxed', 'Спокойно'), hint: L('3 min per turn', '3 мин на ход') },
-  { id: 'normal', label: L('Normal', 'Обычно'), hint: L('90 s per turn', '90 с на ход') },
-  { id: 'fast', label: L('Fast', 'Быстро'), hint: L('45 s per turn', '45 с на ход') },
+  { id: 'relaxed', label: L('Relaxed', 'Спокойно'), hint: L('2 min per turn', '2 мин на ход') },
+  { id: 'normal', label: L('Normal', 'Обычно'), hint: L('60 s per turn', '60 с на ход') },
+  { id: 'fast', label: L('Fast', 'Быстро'), hint: L('30 s per turn', '30 с на ход') },
   { id: 'off', label: L('Off', 'Выкл.'), hint: L('no time limit', 'без ограничения') },
 ]
 

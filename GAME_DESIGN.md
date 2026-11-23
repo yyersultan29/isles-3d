@@ -840,10 +840,10 @@ because the log records the action, not the clock.
 | Decision | Default limit | On timeout |
 |---|---|---|
 | Setup settlement / road | 60 s each | auto-place: legal vertex with the highest pip total (ties: canonical ID order); first legal edge |
-| Roll | 15 s | auto `ROLL` |
+| Roll | 10 s | auto `ROLL` |
 | Discard | 30 s | discard at random using a dedicated, non-game RNG |
 | Move robber / steal | 30 s | legal tile that hurts the current public-VP leader (not self); random victim |
-| Actions phase | 90 s, +15 s per completed trade, cap 180 s | `END_TURN` |
+| Actions phase | 60 s, +15 s per completed trade, cap 180 s | `END_TURN` |
 | Trade response | until the proposer's turn timer or cancel | counts as no response |
 
 Presets: `relaxed` ×2, `normal` ×1, `fast` ×0.5, `off` (friends' rooms).
