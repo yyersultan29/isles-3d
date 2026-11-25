@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
-import { focusRing, panel } from './HUD'
+import { focusRing, panel } from './tokens'
 import { L } from './locale'
 import { awardName } from './words'
 import { useGameView } from './gameView'

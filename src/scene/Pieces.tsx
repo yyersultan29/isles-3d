@@ -14,7 +14,9 @@ import { useCharacterModel } from './characterModel'
 import { LoadGuard, noRaycast } from './CharacterFigures'
 
 // ---------------- Number tokens ----------------
-const TOKEN_R = 0.27
+export const TOKEN_R = 0.27
+/** Token face height above the highest ground under the token (Vegetation keeps trees below it). */
+export const TOKEN_LIFT = 0.04, TOKEN_FACE_Y = 0.0525
 
 function tokenSideGeometry() {
   // A7: a raised, rounded rim around the face and a soft chamfer at the foot; the face (the number's
@@ -49,11 +51,11 @@ export function Tokens() {
           const r = TOKEN_R * 0.9
           y = Math.max(y, tileHeight(t, t.x + Math.cos(a) * r, t.z + Math.sin(a) * r))
         }
-        y = Math.max(y, tileHeight(t, t.x, t.z)) + 0.04
+        y = Math.max(y, tileHeight(t, t.x, t.z)) + TOKEN_LIFT
         return (
           <group key={t.id} position={[t.x, y, t.z]} rotation-y={0} userData={{ piece: 'token' }}>
             <mesh geometry={side} material={TOKEN_SIDE} castShadow receiveShadow />
-            <mesh geometry={top} material={tokenTop(t.number!)} position-y={0.0525} receiveShadow />
+            <mesh geometry={top} material={tokenTop(t.number!)} position-y={TOKEN_FACE_Y} receiveShadow />
           </group>
         )
       })}

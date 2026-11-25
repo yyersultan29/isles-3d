@@ -7,7 +7,8 @@ import type { PlayerId } from '../game'
 import { useOnline, useSeat } from '../store/GameProvider'
 import { localStore } from '../store/autosave'
 import { useGameView } from './gameView'
-import { IconButton, focusRing, panel } from './HUD'
+import { IconButton } from './HUD'
+import { focusRing, panel } from './tokens'
 import { L } from './locale'
 
 export const EMOTE_SHOW_MS = 2500

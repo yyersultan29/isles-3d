@@ -13,7 +13,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
-import { RESOURCES, focusRing, panel } from './HUD'
+import { RESOURCES } from './HUD'
+import { focusRing, panel } from './tokens'
 import { ResourceBackdrop } from './cards/ResourceArt'
 import { ResourceItem } from './cards/ResourceItems'
 import { SEATS, proposeCheck, useGameView, type Counts } from './gameView'

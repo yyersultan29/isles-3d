@@ -6,7 +6,7 @@
 // phase starts with nothing focused, and returns to where it came from when the targets go away.
 
 import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent } from 'react'
-import { panel } from './HUD'
+import { panel } from './tokens'
 import { usingKeyboard } from './modality'
 import { L } from './locale'
 

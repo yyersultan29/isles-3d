@@ -9,7 +9,7 @@ import { useGameStore } from '../store/GameProvider'
 import { useGameLog, type LogEntry } from './gameLog'
 import { SEATS } from './gameView'
 import { Brick, Logs, Ore, SheepIcon, WheatIcon } from './icons'
-import { focusRing, panel } from './HUD'
+import { focusRing, panel } from './tokens'
 import { L } from './locale'
 import { resName } from './words'
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Avatar, HexLogo } from './icons'
-import { MenuButton, DiceSum, AwardBadges, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, CardsIco, Die, PhaseBanner, Trophy, dieFaces, focusRing, panel, seatLabel, useDiceAndAction, diceBounce } from './HUD'
+import { HexLogo } from './icons'
+import { MenuButton, DiceSum, BuildRows, HandCards, HandHint, SetupNote, setBack, useSetup, DevButton, TradeButton, Die, PhaseBanner, dieFaces, useDiceAndAction, diceBounce, SeatCard } from './HUD'
+import { focusRing, panel } from './tokens'
 import { useGameView } from './gameView'
 import { HelpButton } from './shortcuts'
 import { GameDialogs } from './Dialogs'
@@ -10,7 +11,7 @@ import { Victory } from './Victory'
 import { BoardPicker } from './BoardPicker'
 import { COMPACT_SAFE, PHASE_ROW, useViewport } from './layout'
 import { L } from './locale'
-import { EmoteBubble, EmoteButton } from './Emotes'
+import { EmoteButton } from './Emotes'
 
 /**
  * HUD for narrow and portrait screens. It uses real CSS pixels (no global down-scaling), so text
@@ -47,27 +48,7 @@ export function CompactHUD() {
         </span>
 
         <ul aria-label={L('Players', 'Игроки')} className="flex min-w-0 flex-1 gap-[6px]">
-          {seats.map((p) => (
-            <li
-              key={p.id}
-              aria-label={seatLabel(p)}
-              aria-current={p.active ? 'true' : undefined}
-              className={`flex h-[46px] min-w-0 flex-1 items-center gap-[3px] overflow-hidden rounded-[8px] pl-[3px] pr-[3px] ${panel}`}
-              style={{ boxShadow: `inset ${p.active ? 4 : 3}px 0 0 ${p.color}, inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '55'}` }}
-            >
-              <div className={`h-[30px] w-[30px] shrink-0 overflow-hidden rounded-[6px] ring-2 min-[560px]:h-[36px] min-[560px]:w-[36px] ${p.away ? 'opacity-45 grayscale' : ''} relative`} style={{ ['--tw-ring-color' as string]: p.color }}>
-                <Avatar i={p.avatar} className="h-full w-full" />
-                <EmoteBubble seat={p.id} name={p.name} size={22} />
-                {p.auto && <span aria-hidden title={L('Played automatically', 'Играет автоматически')} className="absolute bottom-0 right-0 h-[9px] w-[9px] rounded-full bg-[#f2b544] ring-1 ring-black/60" />}
-              </div>
-              <div aria-hidden className="min-w-0 leading-none [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:shrink-0">
-                <div className="mb-[4px] hidden items-center gap-[4px] truncate text-[13px] font-semibold text-white min-[560px]:flex">{p.name}</div>
-                {/* G9.6: awards beside the points (the name row is cut short by long names) */}
-                <div className="flex items-center gap-[3px] text-[13px] font-semibold"><Trophy />{p.vp}<span className="text-[11px] font-medium text-[#a9a49b]">/{p.win}</span><AwardBadges seat={p} /></div>
-                <div className="mt-[2px] flex items-center gap-[3px] text-[12px] text-[#d6d2ca] min-[560px]:hidden"><CardsIco />{p.cards}</div>
-              </div>
-            </li>
-          ))}
+          {seats.map((p) => <SeatCard key={p.id} seat={p} compact />)}
         </ul>
 
         <CompactLogButton className="!h-[46px] !w-[40px]" sheetTop={COMPACT_SAFE.top + 4} />

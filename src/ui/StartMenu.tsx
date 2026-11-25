@@ -11,14 +11,14 @@ import { Rules } from './Rules'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { Avatar } from './icons'
-import { focusRing, panel } from './HUD'
+import { focusRing, panel } from './tokens'
 import { DEFAULT_NAMES, NAME_MAX, SEATS, phaseText, seats, setSeatNames } from './gameView'
 import { clearNotices } from './noticeQueue'
 import { useGameStore } from '../store/GameProvider'
 import { clearSave, readSave, resumable, startAutosave } from '../store/autosave'
 import { readNames, writeNames, type Names } from '../store/names'
 import { BOARD_CHOICES, readBoardChoice, writeBoardChoice, type BoardChoice } from '../store/boardChoice'
-import { setDevOpen, setPanel, setPlacementMode, setSeen, setTradeOpen } from '../store/ui'
+import { resetUi } from '../store/ui'
 import { BRAND_NAME } from '../brand'
 import { L, count as countOf, useLocale } from './locale'
 import { LangSwitch } from './LangSwitch'
@@ -114,7 +114,7 @@ export function StartMenu({ atStart, noWebGL = false }: { atStart: boolean; noWe
   if (!isOpen) return null
 
   const autosave = () => { if (atStart && !saving.current) saving.current = startAutosave(store) }
-  const quiet = () => { clearNotices(); setPlacementMode(null); setPanel(null); setTradeOpen(false); setDevOpen(false); setSeen(null) }
+  const quiet = () => { clearNotices(); resetUi('leave') }
   const finish = () => { autosave(); setLive(true); setSave(null); closeMenu() }
 
   const resume = () => {

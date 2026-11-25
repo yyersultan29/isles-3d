@@ -4,7 +4,8 @@ import { COSTS } from '../game/rules/build'
 import { DEFAULT_SETTINGS } from '../game'
 import { L } from './locale'
 import { resList } from './words'
-import { ArmyAwardIco, CardsIco, DevCardIco, RoadAwardIco, Trophy, focusRing } from './HUD'
+import { ArmyAwardIco, CardsIco, DevCardIco, RoadAwardIco, Trophy } from './HUD'
+import { focusRing } from './tokens'
 
 export const ruleLines = () => {
   const win = DEFAULT_SETTINGS.vpToWin

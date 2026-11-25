@@ -8,7 +8,7 @@ import { errorText } from './i18n'
 import { clearNotices, dismissNotice, boughtNotice, eventNotices, ownRollNotice, pushNotice, useNotices, type NoticeKind } from './noticeQueue'
 import { handOf, useGameView } from './gameView'
 import { usePrivacy } from './PassDevice'
-import { panel } from './HUD'
+import { panel } from './tokens'
 import { L } from './locale'
 
 const RING: Record<NoticeKind, string> = { info: 'ring-white/15', good: 'ring-[#f2b544]/70', warn: 'ring-[#e0812f]/70', error: 'ring-[#e0483a]/80' }
