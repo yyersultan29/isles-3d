@@ -4,7 +4,8 @@
 // never while typing, behind the pass-the-device screen, or outside the player's turn.
 
 import { useEffect, useRef, useState } from 'react'
-import { IconButton, chooseBuild, focusRing, panel } from './HUD'
+import { IconButton, chooseBuild } from './HUD'
+import { focusRing, panel } from './tokens'
 import { gameView, type BuildKind } from './gameView'
 import { shortfall } from './tradePlan'
 import { usePrivacy } from './PassDevice'

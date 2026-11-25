@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Avatar } from './icons'
-import { focusRing, panel } from './HUD'
+import { focusRing, panel } from './tokens'
 import { SEATS } from './gameView'
 import { useOnline, useSession } from '../store/GameProvider'
 import { inviteLink } from '../net/connect'

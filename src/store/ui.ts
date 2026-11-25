@@ -144,6 +144,25 @@ const subscribeDraft = (l: () => void) => { draftListeners.add(l); return () => 
 export const useTradeDraft = (): TradeDraft => useSyncExternalStore(subscribeDraft, () => draft)
 export const useBuildGoal = () => useSyncExternalStore(subscribeDraft, () => buildGoal)
 
+// ---------- what each moment of the game closes: the one list of UI resets ----------
+
+/**
+ * `turn`: a new turn or player drops the board choice, any panel and the draft. `escape`: the board
+ * choice and any panel. `leave` (a new or resumed game): those plus who is looking at the screen.
+ */
+export function resetUi(reason: 'turn' | 'escape' | 'leave') {
+  setPlacementMode(null)
+  setPanel(null)
+  if (reason === 'turn') clearDraft()
+  if (reason === 'leave') setSeen(null)
+}
+
+/** A phase change: building and trading only exist in `actions`; knights may be played before the roll too. */
+export function resetUiForPhase(kind: string) {
+  if (kind !== 'actions') { setPlacementMode(null); setTradeOpen(false) }
+  if (kind !== 'actions' && kind !== 'preRoll') setDevOpen(false)
+}
+
 // dev-only handle for browser checks (like window.__islesStore): scripts must read this instance, not
 // import the module themselves (after a hot update Vite serves the app `ui.ts?t=…`, another instance)
 if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __islesUi: unknown }).__islesUi = { getPlacementMode, getDraft, getPanel, getBuildGoal, getTradeMode }

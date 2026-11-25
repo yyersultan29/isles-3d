@@ -2,7 +2,7 @@
 // Lower settings run cooler and quieter on laptops; Auto steps down by itself when High can't keep up.
 import { GRAPHICS_SETTINGS, setGraphics, useGraphicsSetting, useQuality, type GraphicsSetting } from '../scene/quality'
 import { L } from './locale'
-import { focusRing } from './HUD'
+import { focusRing } from './tokens'
 
 const NAMES: Record<GraphicsSetting, () => string> = {
   auto: () => L('Auto', 'Авто'),

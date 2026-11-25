@@ -1,6 +1,6 @@
 // G9.4: the language switch (EN / RU), in the start menu, the help panel and the online lobby.
 import { LOCALES, setLocale, useLocale } from './locale'
-import { focusRing } from './HUD'
+import { focusRing } from './tokens'
 
 export function LangSwitch({ className = '' }: { className?: string }) {
   const current = useLocale()

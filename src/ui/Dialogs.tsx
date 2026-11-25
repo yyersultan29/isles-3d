@@ -4,7 +4,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Avatar } from './icons'
-import { RESOURCES, focusRing, panel } from './HUD'
+import { RESOURCES } from './HUD'
+import { focusRing, panel } from './tokens'
 import { L, count } from './locale'
 import { resTitle } from './words'
 import { ResourceBackdrop } from './cards/ResourceArt'

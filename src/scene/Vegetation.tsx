@@ -7,7 +7,7 @@ import { pineGeometry, broadleafGeometry, bushGeometry, rockGeometry, wheatGeome
 import { addWind } from './shaders'
 import { oceanTime } from './Ocean'
 import { animTime } from './motion'
-import { usePieces } from './Pieces'
+import { usePieces, TOKEN_R, TOKEN_LIFT, TOKEN_FACE_Y } from './Pieces'
 import { GUY_SPOT, GUY_FOOT, ROCK_R } from './mountainGuyLogic'
 import { CHARACTER_SPOTS } from './characters'
 import { onSceneBoard } from './sceneBoard'
@@ -202,8 +202,8 @@ function clearRoofs(buckets: Inst[][], geos: THREE.BufferGeometry[], buildings: 
 
 /** Number tokens get the same treatment once per board: a tile's own sightline strip is not enough
  *  when a tall tree lands just beyond it (which trees grow where depends on the whole layout). */
-const TOKEN_TOP = 0.1 // token face above the ground (Pieces.tsx: lift 0.04 + face 0.0525)
-const tokenSpots = () => TILES.filter((t) => t.number).map((t) => ({ x: t.x, z: t.z, half: 0.27, top: tileHeight(t, t.x, t.z) + TOKEN_TOP }))
+const TOKEN_TOP = Math.max(0.1, TOKEN_LIFT + TOKEN_FACE_Y) // the token face plus a little margin
+const tokenSpots = () => TILES.filter((t) => t.number).map((t) => ({ x: t.x, z: t.z, half: TOKEN_R, top: tileHeight(t, t.x, t.z) + TOKEN_TOP }))
 
 /** Shrinks (or drops, below half size) every tree that would hide a spot's `top` from the board camera. */
 function clearSight(buckets: Inst[][], geos: THREE.BufferGeometry[], spots: { x: number; z: number; half: number; top: number }[]) {

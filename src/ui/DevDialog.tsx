@@ -7,7 +7,7 @@
 // Plenty and Monopoly ask for resources there first. Back keeps the card.
 
 import { useEffect, useRef, useState } from 'react'
-import { focusRing, panel } from './HUD'
+import { focusRing, panel } from './tokens'
 import { SEATS, useGameView, type DevGroup, type DevKind, type DevRow } from './gameView'
 import { NAME, Tile, gold, plain, useAct } from './TradeDialog'
 import { setDevOpen } from '../store/ui'

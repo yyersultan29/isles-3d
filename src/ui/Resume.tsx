@@ -6,14 +6,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Avatar } from './icons'
-import { focusRing, panel } from './HUD'
+import { focusRing, panel } from './tokens'
 import { L } from './locale'
 import { phaseText, seats } from './gameView'
 import { clearNotices } from './noticeQueue'
 import { usingKeyboard } from './modality'
 import { useGameStore } from '../store/GameProvider'
 import { clearSave, readSave, resumable, startAutosave } from '../store/autosave'
-import { setPanel, setPlacementMode, setSeen } from '../store/ui'
+import { resetUi } from '../store/ui'
 import type { GameState, ReplayFile } from '../game'
 
 export function Resume() {
@@ -53,7 +53,7 @@ export function Resume() {
   const { state } = offer
   const resume = () => {
     const r = store.load(offer.file)
-    if (r.ok) { clearNotices(); setPlacementMode(null); setPanel(null); setSeen(null) }
+    if (r.ok) { clearNotices(); resetUi('leave') }
     else clearSave() // it replayed a moment ago; if it no longer does, start fresh
     setOffer(null)
   }

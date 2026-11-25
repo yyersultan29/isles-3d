@@ -14,7 +14,7 @@ import { usePrivacy } from './PassDevice'
 import { TurnClock } from './TurnClock'
 import { BoardPicker } from './BoardPicker'
 import { costText, useGameView, type BuildKind, type SeatView } from './gameView'
-import { changeDraft, clearDraft, draftCovered, draftEmpty, getDraft, setDevOpen, setPanel, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePanel, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
+import { resetUi, resetUiForPhase, changeDraft, clearDraft, draftCovered, draftEmpty, getDraft, setDevOpen, setBuildGoal, setDraft, setPlacementMode, setTradeOpen, useDevOpen, type PlacementMode, usePanel, usePlacementMode, useTradeDraft, useTradeOpen } from '../store/ui'
 import { RESOURCE_ORDER, type Action, type PlayerId, type Resource } from '../game'
 import { useGame, useGameStore, useGameEvents, useOnline } from '../store/GameProvider'
 import { openMenu, useBeforeGame } from './StartMenu'
@@ -25,6 +25,7 @@ import { deltaText, handDiff, hintSeen, markHintSeen, type HandCounts } from './
 import { L, count } from './locale'
 import { awardName, awardShort, pieceName, resName, resTitle } from './words'
 import { EmoteBubble, EmoteButton } from './Emotes'
+import { focusRing, glass, panel } from './tokens'
 
 const LOGICAL_W = 1600
 const LOGICAL_H = 904
@@ -41,14 +42,6 @@ function useHudScale() {
   return s
 }
 
-// Shared HUD tokens: panels use r-12, controls and cards r-8/9; type is 14/15 UI and 20 display.
-export const panel =
-  'bg-[linear-gradient(180deg,rgba(28,32,40,0.88),rgba(12,14,19,0.9))] backdrop-blur-md border border-[#c9a45c]/35 shadow-[0_10px_30px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]'
-
-/** Frosted glass for the right column (players, build): the board shows through, blurred, under a light rim. */
-export const glass =
-  'bg-[linear-gradient(180deg,rgba(120,138,158,0.30),rgba(22,28,38,0.55))] backdrop-blur-lg border border-white/25 shadow-[0_12px_32px_rgba(0,0,0,0.40),inset_0_1px_0_rgba(255,255,255,0.28)] [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]'
-
 function Brand() {
   return (
     <div className="absolute left-[18px] top-[8px] flex items-center gap-3 rounded-[14px] pr-5 pl-1.5 py-1.5 bg-[linear-gradient(90deg,rgba(10,12,16,0.75),rgba(10,12,16,0.0))]">
@@ -62,8 +55,6 @@ function Brand() {
   )
 }
 
-/** Visible keyboard focus that reads over both water and panels. */
-export const focusRing = 'outline-none focus-visible:ring-2 focus-visible:ring-[#f2b544] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1018]'
 
 export function IconButton({ children, label, className = '', ref, ...rest }: { children: ReactNode; label: string; className?: string; ref?: React.Ref<HTMLButtonElement> } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'className'>) {
   return (
@@ -159,51 +150,68 @@ function BankStock({ className = '' }: { className?: string }) {
   )
 }
 
-function Players() {
-  const { seats } = useGameView()
+/** One player's card in either layout: label, avatar, emote and away state live here once (an emote or badge lands in both). */
+export function SeatCard({ seat: p, compact = false }: { seat: SeatView; compact?: boolean }) {
   return (
-    <ul aria-label={L('Players', 'Игроки')} className="mr-[4px] flex w-[240px] shrink-0 flex-col gap-[7px]">
-      {seats.map((p) => (
-        <li
-          key={p.id}
-          aria-label={seatLabel(p)}
-          aria-current={p.active ? 'true' : undefined}
-          className={`relative flex min-h-[62px] items-center gap-[10px] overflow-hidden rounded-[14px] py-[6px] pl-[6px] pr-[10px] transition-transform ${glass} ${p.active ? '-translate-x-[8px]' : ''}`}
-          style={{
+    <li
+      aria-label={seatLabel(p)}
+      aria-current={p.active ? 'true' : undefined}
+      className={compact
+        ? `flex h-[46px] min-w-0 flex-1 items-center gap-[3px] overflow-hidden rounded-[8px] pl-[3px] pr-[3px] ${panel}`
+        : `relative flex min-h-[62px] items-center gap-[10px] overflow-hidden rounded-[14px] py-[6px] pl-[6px] pr-[10px] transition-transform ${glass} ${p.active ? '-translate-x-[8px]' : ''}`}
+      style={compact
+        ? { boxShadow: `inset ${p.active ? 4 : 3}px 0 0 ${p.color}, inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'cc' : '55'}` }
+        : {
             // tinted in the seat colour; the active seat glows
             backgroundImage: `linear-gradient(180deg, ${p.color}${p.active ? '55' : '38'}, rgba(22,28,38,.62) 85%)`,
             boxShadow: `inset 0 0 0 ${p.active ? 2 : 1}px ${p.color}${p.active ? 'dd' : '77'}, inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px rgba(0,0,0,.4)${p.active ? `, 0 0 16px ${p.color}99` : ''}`,
           }}
-        >
-          <div className={`relative h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full ring-2 ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
-            <Avatar i={p.avatar} className="h-full w-full" />
-            <EmoteBubble seat={p.id} name={p.name} size={34} />
+    >
+      <div className={`relative shrink-0 overflow-hidden ring-2 ${compact ? 'h-[30px] w-[30px] rounded-[6px] min-[560px]:h-[36px] min-[560px]:w-[36px]' : 'h-[50px] w-[50px] rounded-full'} ${p.away ? 'opacity-45 grayscale' : ''}`} style={{ ['--tw-ring-color' as string]: p.color }}>
+        <Avatar i={p.avatar} className="h-full w-full" />
+        <EmoteBubble seat={p.id} name={p.name} size={compact ? 22 : 34} />
+        {compact && p.auto && <span aria-hidden title={L('Played automatically', 'Играет автоматически')} className="absolute bottom-0 right-0 h-[9px] w-[9px] rounded-full bg-[#f2b544] ring-1 ring-black/60" />}
+      </div>
+      {compact ? (
+        <div aria-hidden className="min-w-0 leading-none [&_svg]:h-[13px] [&_svg]:w-[13px] [&_svg]:shrink-0">
+          <div className="mb-[4px] hidden items-center gap-[4px] truncate text-[13px] font-semibold text-white min-[560px]:flex">{p.name}</div>
+          {/* G9.6: awards beside the points (the name row is cut short by long names) */}
+          <div className="flex items-center gap-[3px] text-[13px] font-semibold"><Trophy />{p.vp}<span className="text-[11px] font-medium text-[#a9a49b]">/{p.win}</span><AwardBadges seat={p} /></div>
+          <div className="mt-[2px] flex items-center gap-[3px] text-[12px] text-[#d6d2ca] min-[560px]:hidden"><CardsIco />{p.cards}</div>
+        </div>
+      ) : (
+        <div className="min-w-0 flex-1">
+          <div className="mb-[8px] flex items-center gap-[6px] text-[16px] font-bold leading-none">
+            <span className="min-w-0 truncate" style={{ color: `color-mix(in srgb, ${p.color} 62%, white)` }}>{p.name}</span>{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}
+            <span aria-hidden title={L('Victory points', 'Победные очки')} className="ml-auto flex shrink-0 items-center gap-[3px] text-[14px] font-semibold text-[#ece8e0]"><Trophy />{p.vp}<span className="-ml-[1px] text-[11px] text-[#c4bfb6]">/{p.win}</span></span>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="mb-[8px] flex items-center gap-[6px] text-[16px] font-bold leading-none">
-              <span className="min-w-0 truncate" style={{ color: `color-mix(in srgb, ${p.color} 62%, white)` }}>{p.name}</span>{p.auto ? <AwayBadge auto /> : p.away && <AwayBadge />}
-              <span aria-hidden title={L('Victory points', 'Победные очки')} className="ml-auto flex shrink-0 items-center gap-[3px] text-[14px] font-semibold text-[#ece8e0]"><Trophy />{p.vp}<span className="-ml-[1px] text-[11px] text-[#c4bfb6]">/{p.win}</span></span>
-            </div>
-            {/* army = knights played, road = longest road length; gold while the seat holds that award */}
-            <div aria-hidden className="flex items-center gap-[7px] text-[14px] text-[#ece8e0] leading-none">
-              <span title={L('Resource cards', 'Карты ресурсов')} className="flex items-center gap-[3px]"><CardsIco />{p.cards}</span>
-              <span title={L('Development cards in hand', 'Карты развития на руке')} className="flex items-center gap-[3px]"><DevCardIco />{p.devCards}</span>
-              <span className="h-[14px] w-px bg-white/20" />
-              <span data-army title={L(`Army: ${p.knights} knights played (Largest Army from 3)`, `Войско: сыграно рыцарей — ${p.knights} (самое большое войско — от 3)`)}
-                className={`flex items-center gap-[3px] ${p.largestArmy ? 'font-bold text-[#ffd77a]' : p.knights ? '' : 'opacity-45'}`}><ArmyAwardIco className="h-[16px] w-[16px]" />{p.knights}</span>
-              <span data-road title={L(`Longest road: ${p.road} (Longest Road from 5)`, `Дорога: длина ${p.road} (самая длинная дорога — от 5)`)}
-                className={`flex items-center gap-[3px] ${p.longestRoad ? 'font-bold text-[#ffd77a]' : p.road ? '' : 'opacity-45'}`}><RoadAwardIco className="h-[16px] w-[16px]" />{p.road}</span>
-            </div>
-            <AwardLines seat={p} />
+          {/* army = knights played, road = longest road length; gold while the seat holds that award */}
+          <div aria-hidden className="flex items-center gap-[7px] text-[14px] text-[#ece8e0] leading-none">
+            <span title={L('Resource cards', 'Карты ресурсов')} className="flex items-center gap-[3px]"><CardsIco />{p.cards}</span>
+            <span title={L('Development cards in hand', 'Карты развития на руке')} className="flex items-center gap-[3px]"><DevCardIco />{p.devCards}</span>
+            <span className="h-[14px] w-px bg-white/20" />
+            <span data-army title={L(`Army: ${p.knights} knights played (Largest Army from 3)`, `Войско: сыграно рыцарей — ${p.knights} (самое большое войско — от 3)`)}
+              className={`flex items-center gap-[3px] ${p.largestArmy ? 'font-bold text-[#ffd77a]' : p.knights ? '' : 'opacity-45'}`}><ArmyAwardIco className="h-[16px] w-[16px]" />{p.knights}</span>
+            <span data-road title={L(`Longest road: ${p.road} (Longest Road from 5)`, `Дорога: длина ${p.road} (самая длинная дорога — от 5)`)}
+              className={`flex items-center gap-[3px] ${p.longestRoad ? 'font-bold text-[#ffd77a]' : p.road ? '' : 'opacity-45'}`}><RoadAwardIco className="h-[16px] w-[16px]" />{p.road}</span>
           </div>
-          {p.active && <span aria-hidden className="absolute left-[45px] top-[7px] h-[11px] w-[11px] rounded-full bg-[#f2b544] shadow-[0_0_8px_#f2b544] ring-2 ring-black/60" />}
-        </li>
-      ))}
+          <AwardLines seat={p} />
+        </div>
+      )}
+      {!compact && p.active && <span aria-hidden className="absolute left-[45px] top-[7px] h-[11px] w-[11px] rounded-full bg-[#f2b544] shadow-[0_0_8px_#f2b544] ring-2 ring-black/60" />}
+    </li>
+  )
+}
+
+function Players() {
+  const { seats } = useGameView()
+  return (
+    <ul aria-label={L('Players', 'Игроки')} className="mr-[4px] flex w-[240px] shrink-0 flex-col gap-[7px]">
+      {seats.map((p) => <SeatCard key={p.id} seat={p} />)}
     </ul>
   )
 }
 
-/** Turn and phase line, announced politely to screen readers. */
 export function PhaseBanner({ className = '', wrap = false }: { className?: string; wrap?: boolean }) {
   const { phase, seats, phaseKind, dice } = useGameView()
   const active = seats.find((x) => x.active)
@@ -448,14 +456,13 @@ export function HandHint({ compact = false, className = '' }: { compact?: boolea
 export function usePlacementAutoReset() {
   const { phaseKind, active, turn, hand } = useGameView()
   useEffect(() => {
-    if (phaseKind !== 'actions') { setPlacementMode(null); setTradeOpen(false) }
-    if (phaseKind !== 'actions' && phaseKind !== 'preRoll') setDevOpen(false) // knights may be played before the roll
+    resetUiForPhase(phaseKind)
   }, [phaseKind])
-  useEffect(() => { setPlacementMode(null); setPanel(null); clearDraft() }, [active, turn])
+  useEffect(() => { resetUi('turn') }, [active, turn])
   // G6.2: a trade draft the hand can no longer pay (after a trade or a robbery) is dropped
   useEffect(() => { if (!draftCovered(getDraft(), hand.counts)) clearDraft() }, [hand])
   useEffect(() => {
-    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') { setPlacementMode(null); setPanel(null) } }
+    const f = (e: KeyboardEvent) => { if (e.key === 'Escape') resetUi('escape') }
     window.addEventListener('keydown', f)
     return () => window.removeEventListener('keydown', f)
   }, [])

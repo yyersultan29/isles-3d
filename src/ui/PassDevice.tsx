@@ -7,7 +7,7 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Avatar } from './icons'
-import { focusRing } from './HUD'
+import { focusRing } from './tokens'
 import { usingKeyboard } from './modality'
 import { SEATS, discardPrompt, needsPass, viewerOf } from './gameView'
 import { useGame, useSeat } from '../store/GameProvider'
